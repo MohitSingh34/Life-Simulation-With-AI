@@ -1,0 +1,45 @@
+{
+  "id": "bedroom",
+  "name": "Bedroom",
+  "description": "A cozy, sunlit bedroom with cream walls and a quiet breeze. A wooden double bed with a comfortable mattress and cotton pillows sits against the south wall. Next to it stands a small bedside table with a brass lamp and a water flask. A teakwood wardrobe stands in the corner.",
+  "ambience": {
+    "morning": "Golden morning sunlight streams through the window grill, casting warm patterns across the bed sheet. The air is fresh with the faint scent of garden jasmine from outside.",
+    "afternoon": "The bedroom is calm and sheltered from the Jabalpur afternoon heat. The curtains are drawn, casting a soothing amber glow throughout the room.",
+    "evening": "The bedside lamp casts a warm, soft pool of golden light. Shadows stretch across the floor as the day cools down.",
+    "night": "The room is quiet and tranquil. Outside, crickets chirp in the distance. The street lamp outside filters a gentle moonlight-like sheen through the curtain."
+  },
+  "positions": [
+    {
+      "id": "bed_center",
+      "name": "On the Bed",
+      "objectId": "bed_001",
+      "standable": true,
+      "sittable": true,
+      "lieable": true
+    },
+    {
+      "id": "bedside",
+      "name": "By the Bedside Table",
+      "objectId": "bedside_table_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "wardrobe_area",
+      "name": "In Front of Wardrobe",
+      "objectId": "wardrobe_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "bedroom_door_area",
+      "name": "Near Bedroom Door",
+      "objectId": null,
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    }
+  ]
+}

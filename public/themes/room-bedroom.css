@@ -1,0 +1,56 @@
+/* ============================================================
+   ROOM THEME: BEDROOM (Cozy, Warm, Intimate Morning Sanctuary)
+   ============================================================ */
+
+:root {
+  --room-accent: #d4a359;
+  --room-accent-glow: rgba(212, 163, 89, 0.35);
+  --border-active: #d4a359;
+  --bg-card: rgba(22, 17, 14, 0.28);
+  --bg-card-hover: rgba(32, 24, 18, 0.38);
+  --bg-card-inner: rgba(30, 22, 18, 0.35);
+  --border-card: rgba(212, 163, 89, 0.16);
+}
+
+/* Clear full-page bedroom photo */
+.room-backdrop-layer {
+  filter: brightness(0.68) saturate(1.1) !important;
+  opacity: 0.88 !important;
+}
+
+.room-backdrop-scrim {
+  background: radial-gradient(circle at 45% 30%, rgba(20, 15, 10, 0.25) 0%, rgba(10, 8, 6, 0.65) 100%) !important;
+}
+
+/* Bedroom-specific card accents */
+.card {
+  box-shadow: 0 12px 40px rgba(18, 12, 6, 0.45);
+}
+
+.current-room-title {
+  color: #fef3c7;
+  text-shadow: 0 2px 10px rgba(212, 163, 89, 0.4);
+}
+
+.time-mood-badge {
+  background: rgba(212, 163, 89, 0.25);
+  border-color: rgba(212, 163, 89, 0.5);
+  color: #fef08a;
+}
+
+.profile-name {
+  color: #fff;
+}
+
+.avatar-ring {
+  border-color: #d4a359;
+  box-shadow: 0 0 18px rgba(212, 163, 89, 0.35);
+}
+
+/* Active room on top-down floorplan */
+#map-room-bedroom .room-floor {
+  stroke: #d4a359 !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 12px rgba(212, 163, 89, 0.5)) !important;
+}
+

@@ -1,0 +1,53 @@
+{
+  "id": "toilet",
+  "name": "Toilet",
+  "description": "A small, functional bathroom tiled floor-to-ceiling in pale green tiles. A white ceramic toilet sits in the corner, a plastic mug and bucket nearby — this is India, after all. A wall-mounted washbasin with a slightly spotted mirror hangs by the door. In the opposite corner, a shower head juts out from the wall above a tiled floor drain. Despite its size, the room is scrupulously clean — the tiles gleam, and there's a faint scent of phenyl floor cleaner.",
+  "ambience": {
+    "morning": "Cool tiles underfoot, the bathroom carries the chill of night. A thin shaft of light enters through the frosted ventilator window high on the wall. Water droplets from last night's shower still cling to the tiles, catching the light like tiny jewels.",
+    "afternoon": "The bathroom is cool and dim — a sanctuary from the afternoon heat. The ventilator lets in a diffused white light. The mirror has a slight fog from the humidity. The tap drips once, twice — a lazy metronome.",
+    "evening": "The tube light flickers on, harsh and white against the green tiles. The mirror reflects your tired face back at you. The bucket is half-full from an earlier fill. Everything smells clean and vaguely of soap.",
+    "night": "The bathroom is quiet and stark under the tube light. The tiles are cool, almost cold. The mirror shows dark circles under your eyes. The shower head drips occasionally, each drop echoing in the small space."
+  },
+  "positions": [
+    {
+      "id": "toilet_seat_area",
+      "name": "At the Toilet",
+      "objectId": "toilet_seat_001",
+      "standable": true,
+      "sittable": true,
+      "lieable": false
+    },
+    {
+      "id": "washbasin_area",
+      "name": "At the Washbasin",
+      "objectId": "washbasin_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "mirror_area",
+      "name": "In Front of the Mirror",
+      "objectId": "mirror_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "shower_area",
+      "name": "In the Shower",
+      "objectId": "shower_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "toilet_door_area",
+      "name": "At the Toilet Door",
+      "objectId": "door_toilet",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "id": "jabalpur_home_001",
+  "name": "Home",
+  "city": "Jabalpur",
+  "country": "India",
+  "floors": [
+    {
+      "id": "ground_floor",
+      "name": "Ground Floor",
+      "rooms": [
+        "bedroom",
+        "study_room",
+        "kitchen",
+        "toilet"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "door_bedroom_study",
+      "name": "Door between Bedroom and Study Room",
+      "roomA": "bedroom",
+      "roomB": "study_room",
+      "defaultState": "open"
+    },
+    {
+      "id": "door_bedroom_kitchen",
+      "name": "Doorway between Bedroom and Kitchen",
+      "roomA": "bedroom",
+      "roomB": "kitchen",
+      "defaultState": "open"
+    },
+    {
+      "id": "door_study_kitchen",
+      "name": "Door between Study Room and Kitchen",
+      "roomA": "study_room",
+      "roomB": "kitchen",
+      "defaultState": "open"
+    },
+    {
+      "id": "door_kitchen_toilet",
+      "name": "Door between Kitchen and Toilet",
+      "roomA": "kitchen",
+      "roomB": "toilet",
+      "defaultState": "closed"
+    },
+    {
+      "id": "door_bedroom_toilet",
+      "name": "Door between Bedroom and Toilet",
+      "roomA": "bedroom",
+      "roomB": "toilet",
+      "defaultState": "closed"
+    }
+  ]
+}

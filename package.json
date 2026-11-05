@@ -1,0 +1,23 @@
+{
+  "name": "life-simulation",
+  "version": "0.1.0",
+  "description": "Parameter-Driven Life Simulation — Text-based game where human and AI share the same world",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "web": "tsx src/server.ts",
+    "terminal": "tsx src/main.ts --terminal",
+    "dev": "tsx watch src/main.ts",
+    "test": "tsx src/test_simulation.ts && tsx src/test_realtime_persistence.ts"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "inquirer": "^9.2.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "@types/node": "^20.0.0",
+    "@types/inquirer": "^9.0.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "hunger",
+    "name": "Hunger",
+    "decayPerMinute": 0.08,
+    "warningThreshold": 65,
+    "criticalThreshold": 85,
+    "warningMessage": "Your stomach is rumbling quietly. Time to get something to eat.",
+    "criticalMessage": "You are ravenously hungry! You desperately need a proper meal."
+  },
+  {
+    "id": "thirst",
+    "name": "Thirst",
+    "decayPerMinute": 0.12,
+    "warningThreshold": 60,
+    "criticalThreshold": 80,
+    "warningMessage": "Your throat feels dry. A glass of water would be great.",
+    "criticalMessage": "You are severely parched! Get some water immediately."
+  },
+  {
+    "id": "energy",
+    "name": "Energy",
+    "decayPerMinute": -0.07,
+    "warningThreshold": 30,
+    "criticalThreshold": 15,
+    "warningMessage": "Fatigue is creeping in. Your limbs feel heavy.",
+    "criticalMessage": "You are completely exhausted and can barely keep your eyes open."
+  },
+  {
+    "id": "sleepiness",
+    "name": "Sleepiness",
+    "decayPerMinute": 0.07,
+    "warningThreshold": 70,
+    "criticalThreshold": 90,
+    "warningMessage": "You yawn deeply. Your eyelids are growing heavy.",
+    "criticalMessage": "Sleep is overpowering you. You need to sleep right away."
+  },
+  {
+    "id": "hygiene",
+    "name": "Hygiene",
+    "decayPerMinute": -0.04,
+    "warningThreshold": 35,
+    "criticalThreshold": 20,
+    "warningMessage": "You're feeling a bit sticky and stale. A quick wash or shower would feel great.",
+    "criticalMessage": "You desperately need a shower and fresh clothes."
+  },
+  {
+    "id": "bladder",
+    "name": "Bladder",
+    "decayPerMinute": 0.09,
+    "warningThreshold": 70,
+    "criticalThreshold": 90,
+    "warningMessage": "You feel an urge to visit the bathroom.",
+    "criticalMessage": "Urgent! You need to use the toilet right now!"
+  }
+]
+

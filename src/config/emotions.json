@@ -1,0 +1,31 @@
+{
+  "baseline": {
+    "happiness": 50,
+    "stress": 30,
+    "loneliness": 35,
+    "boredom": 35
+  },
+  "rules": [
+    {
+      "condition": "hunger > 75",
+      "effects": { "stress": 15, "happiness": -15 }
+    },
+    {
+      "condition": "thirst > 75",
+      "effects": { "stress": 15, "happiness": -10 }
+    },
+    {
+      "condition": "energy < 25",
+      "effects": { "stress": 20, "happiness": -20 }
+    },
+    {
+      "condition": "hygiene > 80",
+      "effects": { "happiness": 10, "stress": -10 }
+    },
+    {
+      "condition": "shared_room",
+      "effects": { "loneliness": -25, "happiness": 10 }
+    }
+  ]
+}
+

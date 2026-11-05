@@ -1,0 +1,327 @@
+[
+  {
+    "id": "sleep",
+    "name": "Sleep Through Night",
+    "description": "Close your eyes, relax deeply, and sleep peacefully for several hours.",
+    "category": "daily",
+    "duration": 25200,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "positionId": "bed_center",
+      "posture": ["lying"]
+    },
+    "effects": {
+      "needChanges": {
+        "energy": 90,
+        "sleepiness": -95,
+        "hunger": 25,
+        "thirst": 20,
+        "bladder": 35
+      },
+      "activity": "sleep"
+    },
+    "ongoingMessage": "Deep, restorative sleep takes over. Dreams drift by quietly as the world outside rests.",
+    "successMessage": "You wake up feeling thoroughly refreshed and rejuvenated. The morning awaits!",
+    "icon": "💤"
+  },
+  {
+    "id": "nap",
+    "name": "Take a Power Nap",
+    "description": "Rest your eyes for 45 minutes to recharge your batteries.",
+    "category": "daily",
+    "duration": 2700,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "posture": ["lying", "sitting"]
+    },
+    "effects": {
+      "needChanges": {
+        "energy": 35,
+        "sleepiness": -40
+      }
+    },
+    "successMessage": "You wake up from a crisp power nap with your head feeling much clearer.",
+    "icon": "😴"
+  },
+  {
+    "id": "cook_meal",
+    "name": "Cook Fresh Meal",
+    "description": "Saute spices, make fresh hot rotis and fragrant dal on the stove.",
+    "category": "daily",
+    "duration": 1200,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hunger": 10,
+        "stress": -10
+      }
+    },
+    "successMessage": "The kitchen fills with mouthwatering aromas! A steaming hot plate of home-cooked food is ready.",
+    "icon": "🍲"
+  },
+  {
+    "id": "eat_meal",
+    "name": "Eat Home-Cooked Meal",
+    "description": "Sit down and enjoy a delicious, fulfilling warm meal.",
+    "category": "daily",
+    "duration": 900,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "needChanges": {
+        "hunger": -65,
+        "energy": 15,
+        "thirst": 10
+      }
+    },
+    "successMessage": "Mmm, that was delicious and wholesome. You feel completely satisfied and energized.",
+    "icon": "🍛"
+  },
+  {
+    "id": "eat_snack",
+    "name": "Eat Quick Snack",
+    "description": "Grab a fruit or quick snack from the fridge or counter.",
+    "category": "daily",
+    "duration": 300,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "needChanges": {
+        "hunger": -25
+      }
+    },
+    "successMessage": "You munch on a fresh snack. Just what you needed to keep going.",
+    "icon": "🍎"
+  },
+  {
+    "id": "use_computer",
+    "name": "Work at Computer",
+    "description": "Sit down and work at the computer.",
+    "category": "daily",
+    "duration": 1800,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["sitting"],
+      "objectState": ["on", "in_use"]
+    },
+    "effects": {
+      "objectState": "in_use",
+      "needChanges": {
+        "energy": -8,
+        "sleepiness": 8
+      }
+    },
+    "successMessage": "You settle into focused work at the computer.",
+    "icon": "💻"
+  },
+  {
+    "id": "read_book",
+    "name": "Read Book",
+    "description": "Pick a book from the shelf and immerse yourself in captivating pages.",
+    "category": "daily",
+    "duration": 1500,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "study_room"
+    },
+    "effects": {
+      "needChanges": {
+        "energy": -5
+      }
+    },
+    "successMessage": "You read several illuminating chapters. A peaceful, enriching escape.",
+    "icon": "📖"
+  },
+  {
+    "id": "use_toilet",
+    "name": "Use Toilet",
+    "description": "Relieve your bladder comfortably.",
+    "category": "daily",
+    "duration": 120,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "toilet"
+    },
+    "effects": {
+      "needChanges": {
+        "bladder": -100
+      }
+    },
+    "successMessage": "Ah, what a relief. Bladder completely empty.",
+    "icon": "🚽"
+  },
+  {
+    "id": "wash_face",
+    "name": "Wash Face with Cold Water",
+    "description": "Splash cool water from the washbasin tap across your face.",
+    "category": "daily",
+    "duration": 60,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "toilet"
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 15,
+        "energy": 10,
+        "sleepiness": -15
+      }
+    },
+    "successMessage": "The brisk, cold water splashes across your cheeks and forehead. Instant awake boost!",
+    "icon": "💦"
+  },
+  {
+    "id": "brush_teeth",
+    "name": "Brush Teeth",
+    "description": "Brush your teeth with minty toothpaste.",
+    "category": "daily",
+    "duration": 180,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "toilet"
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 20
+      }
+    },
+    "successMessage": "You brush thoroughly until every tooth feels slick and your breath smells fresh mint.",
+    "icon": "🪥"
+  },
+  {
+    "id": "take_shower",
+    "name": "Take a Refreshing Shower",
+    "description": "Step under the rain shower for a warm, soothing bath.",
+    "category": "daily",
+    "duration": 600,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "toilet",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 65,
+        "stress": -25,
+        "energy": 15
+      }
+    },
+    "successMessage": "Warm streams of water massage your shoulders and wash away all tiredness. You feel spotless and reborn.",
+    "icon": "🚿"
+  },
+  {
+    "id": "meditate",
+    "name": "Meditate Peacefully",
+    "description": "Close your eyes, breathe deeply, and center your thoughts in mindful calm.",
+    "category": "daily",
+    "duration": 600,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["sitting", "lying", "kneeling"]
+    },
+    "effects": {
+      "needChanges": {
+        "stress": -30,
+        "energy": 10
+      }
+    },
+    "successMessage": "Ten minutes of quiet presence. Your mind slows down, leaving you grounded and at peace.",
+    "icon": "🧘"
+  },
+  {
+    "id": "make_masala_chai",
+    "name": "Brew Masala Chai",
+    "description": "Simmer fresh ginger, crushed cardamom, tea leaves and creamy milk over the gas flame.",
+    "category": "daily",
+    "duration": 360,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hunger": -10,
+        "thirst": -30,
+        "energy": 18,
+        "stress": -15
+      }
+    },
+    "ongoingMessage": "The kitchen fills with the heavenly aroma of crushed cardamom and boiled milk...",
+    "successMessage": "You strain the golden, piping-hot masala chai into a clay kulhad. The warm sip awakens every sense.",
+    "icon": "☕"
+  },
+  {
+    "id": "journal_notes",
+    "name": "Write in Journal",
+    "description": "Open your personal diary and jot down morning thoughts and plans.",
+    "category": "daily",
+    "duration": 300,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["sitting"]
+    },
+    "effects": {
+      "needChanges": {
+        "stress": -20,
+        "energy": 5
+      }
+    },
+    "successMessage": "The quiet scratching of pen on paper brings clarity to your morning thoughts.",
+    "icon": "✍️"
+  },
+  {
+    "id": "stretch_body",
+    "name": "Morning Body Stretch",
+    "description": "Stand tall, interlace fingers overhead, and stretch your spine and calves thoroughly.",
+    "category": "daily",
+    "duration": 60,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "energy": 12,
+        "sleepiness": -15
+      }
+    },
+    "successMessage": "A deep satisfying stretch rolls through your shoulders and spine, clearing remaining sluggishness.",
+    "icon": "🙆"
+  },
+  {
+    "id": "tidy_room",
+    "name": "Tidy Up Space",
+    "description": "Straighten blankets, align desk items, and return scattered objects to their places.",
+    "category": "daily",
+    "duration": 240,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 10,
+        "stress": -10,
+        "energy": -5
+      }
+    },
+    "successMessage": "Everything looks neat, balanced, and orderly now. The room breathes easier.",
+    "icon": "🧹"
+  }
+]

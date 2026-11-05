@@ -1,0 +1,52 @@
+/* ============================================================
+   ROOM THEME: STUDY ROOM (Focused, Modern Workstation, Slate & Cyan)
+   ============================================================ */
+
+:root {
+  --room-accent: #38bdf8;
+  --room-accent-glow: rgba(56, 189, 248, 0.35);
+  --border-active: #38bdf8;
+  --bg-card: rgba(14, 22, 34, 0.28);
+  --bg-card-hover: rgba(20, 32, 48, 0.38);
+  --bg-card-inner: rgba(18, 28, 44, 0.35);
+  --border-card: rgba(56, 189, 248, 0.16);
+}
+
+/* Clear full-page study room photo */
+.room-backdrop-layer {
+  filter: brightness(0.68) saturate(1.15) !important;
+  opacity: 0.88 !important;
+}
+
+.room-backdrop-scrim {
+  background: radial-gradient(circle at 55% 25%, rgba(10, 18, 30, 0.22) 0%, rgba(6, 10, 18, 0.65) 100%) !important;
+}
+
+/* Study room-specific card accents */
+.card {
+  box-shadow: 0 12px 40px rgba(6, 14, 26, 0.45);
+}
+
+.current-room-title {
+  color: #e0f2fe;
+  text-shadow: 0 2px 10px rgba(56, 189, 248, 0.4);
+}
+
+.time-mood-badge {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #bae6fd;
+}
+
+.avatar-ring {
+  border-color: #38bdf8;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.35);
+}
+
+/* Active room on top-down floorplan */
+#map-room-study_room .room-floor {
+  stroke: #38bdf8 !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.5)) !important;
+}
+

@@ -1,0 +1,41 @@
+[
+  {
+    "id": "player_001",
+    "name": "Mohit",
+    "type": "human",
+    "defaultRoom": "bedroom",
+    "defaultPosition": "bed_center",
+    "clothing": {
+      "upper": "Comfortable Cotton T-Shirt",
+      "lower": "Navy Blue Pajamas",
+      "footwear": "Barefoot"
+    },
+    "personality": {
+      "sociability": 75,
+      "tidiness": 65,
+      "studiousness": 70,
+      "laziness": 35,
+      "foodLove": 80
+    }
+  },
+  {
+    "id": "ai_001",
+    "name": "Aria",
+    "type": "ai",
+    "defaultRoom": "study_room",
+    "defaultPosition": "desk_chair",
+    "clothing": {
+      "upper": "Soft Linen Blouse",
+      "lower": "Soft Linen Trousers",
+      "footwear": "Barefoot"
+    },
+    "personality": {
+      "sociability": 30,
+      "tidiness": 80,
+      "studiousness": 60,
+      "laziness": 40,
+      "foodLove": 65
+    }
+  }
+]
+

@@ -1,0 +1,75 @@
+[
+  {
+    "id": "walk_to_bedroom",
+    "name": "Walk to Bedroom",
+    "description": "Walk into the bedroom to rest, sleep, or change clothes.",
+    "category": "movement",
+    "duration": 5,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToRoom": "bedroom",
+      "moveToPosition": "bedroom_door_area",
+      "posture": "standing"
+    },
+    "successMessage": "You walk over and step into the cozy bedroom.",
+    "icon": "🚪"
+  },
+  {
+    "id": "walk_to_study_room",
+    "name": "Walk to Study Room",
+    "description": "Head into the study room to read, write, or work on the computer.",
+    "category": "movement",
+    "duration": 5,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToRoom": "study_room",
+      "moveToPosition": "study_door_area",
+      "posture": "standing"
+    },
+    "successMessage": "You step into the quiet study room.",
+    "icon": "📚"
+  },
+  {
+    "id": "walk_to_kitchen",
+    "name": "Walk to Kitchen",
+    "description": "Walk over to the kitchen for food, water, or cooking.",
+    "category": "movement",
+    "duration": 5,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToRoom": "kitchen",
+      "moveToPosition": "kitchen_door_area",
+      "posture": "standing"
+    },
+    "successMessage": "You head into the kitchen. The cool granite counters welcome you.",
+    "icon": "🍳"
+  },
+  {
+    "id": "walk_to_toilet",
+    "name": "Walk to Toilet",
+    "description": "Enter the bathroom to freshen up, wash, or use the restroom.",
+    "category": "movement",
+    "duration": 5,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToRoom": "toilet",
+      "moveToPosition": "toilet_door_area",
+      "posture": "standing"
+    },
+    "successMessage": "You step into the clean, pale-green tiled bathroom.",
+    "icon": "🚿"
+  }
+]
+

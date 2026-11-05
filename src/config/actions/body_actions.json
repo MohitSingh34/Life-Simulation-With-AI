@@ -1,0 +1,138 @@
+[
+  {
+    "id": "get_up",
+    "name": "Get Up from Bed",
+    "description": "Rise up from the bed and stand beside it.",
+    "category": "body",
+    "duration": 3,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "positionId": "bed_center",
+      "posture": ["lying", "sitting"]
+    },
+    "effects": {
+      "posture": "standing",
+      "moveToPosition": "bedside"
+    },
+    "successMessage": "You stretch your limbs, swing your legs over the edge, and stand up steadily.",
+    "icon": "🧍"
+  },
+  {
+    "id": "stand_up",
+    "name": "Stand Up",
+    "description": "Stand up on your feet from your current seated or resting position.",
+    "category": "body",
+    "duration": 2,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["sitting", "kneeling", "squatting"]
+    },
+    "effects": {
+      "posture": "standing"
+    },
+    "successMessage": "You stand up and regain your footing.",
+    "icon": "🧍"
+  },
+  {
+    "id": "lie_down_bed",
+    "name": "Lie Down on Bed",
+    "description": "Lie down flat or sideways on the comfortable mattress.",
+    "category": "body",
+    "duration": 3,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "posture": ["standing", "sitting"]
+    },
+    "effects": {
+      "moveToPosition": "bed_center",
+      "posture": "lying"
+    },
+    "successMessage": "You recline gently onto the bed, sinking your head into the soft pillow.",
+    "icon": "🛏️"
+  },
+  {
+    "id": "sit_down_bed",
+    "name": "Sit on Bed Edge",
+    "description": "Sit comfortably on the edge of the bed.",
+    "category": "body",
+    "duration": 2,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToPosition": "bed_center",
+      "posture": "sitting"
+    },
+    "successMessage": "You sit down on the soft edge of the bed.",
+    "icon": "🪑"
+  },
+  {
+    "id": "sit_down_study_chair",
+    "name": "Sit at Study Desk",
+    "description": "Sit on the ergonomic chair in front of the desk.",
+    "category": "body",
+    "duration": 2,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToPosition": "desk_chair",
+      "posture": "sitting"
+    },
+    "successMessage": "You pull the desk chair out and sit comfortably at your workstation.",
+    "icon": "🪑"
+  },
+  {
+    "id": "sit_down_kitchen_stool",
+    "name": "Sit on Kitchen Stool",
+    "description": "Sit on the tall stool near the kitchen counter.",
+    "category": "body",
+    "duration": 2,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "kitchen",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToPosition": "dining_chair",
+      "posture": "sitting"
+    },
+    "successMessage": "You hop up onto the kitchen stool, resting your feet on the rung.",
+    "icon": "🪑"
+  },
+  {
+    "id": "turn_left",
+    "name": "Turn Left",
+    "description": "Rotate your body 90 degrees to the left.",
+    "category": "body",
+    "duration": 1,
+    "requiresTarget": false,
+    "preconditions": {},
+    "effects": {
+      "orientation": "left"
+    },
+    "successMessage": "You turn toward the left.",
+    "icon": "🔄"
+  },
+  {
+    "id": "turn_right",
+    "name": "Turn Right",
+    "description": "Rotate your body 90 degrees to the right.",
+    "category": "body",
+    "duration": 1,
+    "requiresTarget": false,
+    "preconditions": {},
+    "effects": {
+      "orientation": "right"
+    },
+    "successMessage": "You turn toward the right.",
+    "icon": "🔄"
+  }
+]
+

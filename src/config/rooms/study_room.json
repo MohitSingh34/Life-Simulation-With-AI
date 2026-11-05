@@ -1,0 +1,53 @@
+{
+  "id": "study_room",
+  "name": "Study Room",
+  "description": "A small room crammed with the evidence of a curious mind. A heavy wooden desk sits against the wall, its surface a landscape of notebooks, pens, and sticky notes. A modest bookshelf sags under the weight of paperbacks — everything from Premchand to programming textbooks. The walls are a pale green, and a poster of the solar system is tacked up with yellowing tape. It smells like old paper and possibility.",
+  "ambience": {
+    "morning": "Crisp morning light illuminates the desk through the single window. Dust motes dance in the sunbeams. The computer screen is dark, waiting patiently. It's the kind of morning that makes you want to learn something new.",
+    "afternoon": "The room is warm and stuffy despite the table fan's valiant efforts. The bookshelf casts long shadows. The computer hums softly in standby, a quiet companion in the drowsy afternoon.",
+    "evening": "The desk lamp is on, creating a focused circle of warm light in the otherwise dim room. The bookshelf becomes a wall of mysterious spines in the half-light. This is the room's best hour — perfect for deep work.",
+    "night": "Only the computer screen casts its cool blue glow across the desk, painting your face in digital light. The books are silent sentinels in the darkness. The house is quiet, and the world has shrunk to the size of this desk."
+  },
+  "positions": [
+    {
+      "id": "desk_area",
+      "name": "At the Desk",
+      "objectId": "desk_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "desk_chair",
+      "name": "On the Desk Chair",
+      "objectId": "chair_study",
+      "standable": false,
+      "sittable": true,
+      "lieable": false
+    },
+    {
+      "id": "bookshelf_area",
+      "name": "By the Bookshelf",
+      "objectId": "bookshelf_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "computer_area",
+      "name": "In Front of the Computer",
+      "objectId": "computer_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "study_door_area",
+      "name": "At the Study Room Door",
+      "objectId": "door_study",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    }
+  ]
+}

@@ -1,0 +1,455 @@
+[
+  {
+    "id": "bed_001",
+    "name": "Wooden Bed",
+    "type": "furniture",
+    "roomId": "bedroom",
+    "positionId": "bed_center",
+    "defaultState": "neat",
+    "possibleStates": ["neat", "rumpled", "occupied_lying", "occupied_sitting"],
+    "interactions": ["lie_down_bed", "sit_down_bed", "get_up", "make_bed"],
+    "description": "A spacious solid wood bed with a firm cotton mattress, crisp bedsheet, and soft pillows.",
+    "stateDescriptions": {
+      "neat": "The bedsheet is smoothly pulled tight with the pillows fluffed up neatly.",
+      "rumpled": "The blanket is crumpled and the pillows are indented from use.",
+      "occupied_lying": "Someone is resting comfortably in the bed.",
+      "occupied_sitting": "Someone is sitting upright on the edge of the mattress."
+    },
+    "portable": false,
+    "icon": "🛏️"
+  },
+  {
+    "id": "bedside_table_001",
+    "name": "Bedside Table",
+    "type": "furniture",
+    "roomId": "bedroom",
+    "positionId": "bedside",
+    "defaultState": "normal",
+    "possibleStates": ["normal"],
+    "interactions": ["check_phone"],
+    "description": "A small wooden nightstand supporting a brass lamp and personal items.",
+    "portable": false,
+    "icon": "🪵"
+  },
+  {
+    "id": "lamp_001",
+    "name": "Bedside Lamp",
+    "type": "appliance",
+    "roomId": "bedroom",
+    "positionId": "bedside",
+    "defaultState": "off",
+    "possibleStates": ["off", "on"],
+    "interactions": ["turn_on_lamp", "turn_off_lamp"],
+    "description": "A warm reading lamp with an antique brass base and a cloth shade.",
+    "stateDescriptions": {
+      "off": "The lamp is unlit, waiting for the evening.",
+      "on": "A soothing golden glow radiates from underneath the lampshade."
+    },
+    "portable": false,
+    "icon": "💡"
+  },
+  {
+    "id": "wardrobe_001",
+    "name": "Teakwood Wardrobe",
+    "type": "furniture",
+    "roomId": "bedroom",
+    "positionId": "wardrobe_area",
+    "defaultState": "closed",
+    "possibleStates": ["closed", "open"],
+    "interactions": ["open_wardrobe", "close_wardrobe"],
+    "description": "A large double-door wardrobe smelling faintly of camphor and fresh cotton.",
+    "stateDescriptions": {
+      "closed": "The twin wooden doors are shut tight.",
+      "open": "Hangers, neatly folded kurtas, jeans, and casual clothes are displayed inside."
+    },
+    "portable": false,
+    "icon": "🚪"
+  },
+  {
+    "id": "water_flask_001",
+    "name": "Copper Water Flask",
+    "type": "item",
+    "roomId": "bedroom",
+    "positionId": "bedside",
+    "defaultState": "full",
+    "possibleStates": ["full", "half", "empty"],
+    "interactions": ["pick_up_item", "put_down_item", "sip_from_flask", "drink_from_flask"],
+    "description": "A traditional hammered copper bottle filled with cool drinking water.",
+    "stateDescriptions": {
+      "full": "The flask is heavy and cool to the touch, brimming with water.",
+      "half": "The flask has a comfortable amount of water left.",
+      "empty": "The copper bottle is empty and hollow."
+    },
+    "portable": true,
+    "icon": "🍶"
+  },
+  {
+    "id": "desk_001",
+    "name": "Study Desk",
+    "type": "furniture",
+    "roomId": "study_room",
+    "positionId": "desk_area",
+    "defaultState": "tidy",
+    "possibleStates": ["tidy", "cluttered"],
+    "interactions": ["tidy_desk"],
+    "description": "A heavy wooden work desk with pen stands, a notebook, and adequate workspace.",
+    "portable": false,
+    "icon": "🖥️"
+  },
+  {
+    "id": "chair_study",
+    "name": "Desk Chair",
+    "type": "furniture",
+    "roomId": "study_room",
+    "positionId": "desk_chair",
+    "defaultState": "available",
+    "possibleStates": ["available", "occupied"],
+    "interactions": ["sit_down_study_chair", "stand_up"],
+    "description": "A cushioned revolving desk chair offering great back support.",
+    "stateDescriptions": {
+      "available": "The chair is empty, waiting at the desk.",
+      "occupied": "Someone is seated comfortably at the workstation."
+    },
+    "portable": false,
+    "icon": "🪑"
+  },
+  {
+    "id": "computer_001",
+    "name": "Desktop Computer",
+    "type": "electronics",
+    "roomId": "study_room",
+    "positionId": "computer_area",
+    "defaultState": "off",
+    "possibleStates": ["off", "on", "in_use"],
+    "interactions": ["turn_on_computer", "turn_off_computer", "use_computer", "browse_web", "view_photos", "take_selfie", "record_video"],
+    "description": "A dual-monitor workstation with a mechanical keyboard and quiet PC tower.",
+    "stateDescriptions": {
+      "off": "The dark monitors reflect the quiet room.",
+      "on": "The wallpaper glows invitingly, ready for work or gaming.",
+      "in_use": "Code, articles, and media flicker across the glowing monitors."
+    },
+    "portable": false,
+    "icon": "💻"
+  },
+  {
+    "id": "bookshelf_001",
+    "name": "Bookshelf",
+    "type": "furniture",
+    "roomId": "study_room",
+    "positionId": "bookshelf_area",
+    "defaultState": "stocked",
+    "possibleStates": ["stocked"],
+    "interactions": ["browse_books"],
+    "description": "A study shelf holding textbooks, personal notebooks, and well-used reference books.",
+    "containedObjectIds": ["math_book_001", "physics_book_001", "chemistry_book_001", "psychology_book_001", "mohit_notebook_001", "aria_notebook_001"],
+    "portable": false,
+    "icon": "📚"
+  },
+  {
+    "id": "stove_001",
+    "name": "Gas Stove",
+    "type": "appliance",
+    "roomId": "kitchen",
+    "positionId": "stove_area",
+    "defaultState": "off",
+    "possibleStates": ["off", "on", "cooking"],
+    "interactions": ["turn_on_stove", "turn_off_stove", "cook_meal"],
+    "description": "A two-burner stainless steel stove connected to a domestic gas cylinder.",
+    "stateDescriptions": {
+      "off": "The stove burners are cool and extinguished.",
+      "on": "A steady blue ring of flame hisses softly.",
+      "cooking": "A pan is sizzling pleasantly, releasing delicious aromas."
+    },
+    "portable": false,
+    "icon": "🔥"
+  },
+  {
+    "id": "fridge_001",
+    "name": "Refrigerator",
+    "type": "appliance",
+    "roomId": "kitchen",
+    "positionId": "fridge_area",
+    "defaultState": "closed",
+    "possibleStates": ["closed", "open"],
+    "interactions": ["open_fridge", "close_fridge", "get_food_from_fridge", "get_drink_from_fridge"],
+    "description": "A modern double-door refrigerator stocked with milk, vegetables, snacks, and chilled water.",
+    "stateDescriptions": {
+      "closed": "The refrigerator stands humming quietly with its door sealed shut.",
+      "open": "A rush of chilled air spills out, lighting up shelves filled with fresh food and juices."
+    },
+    "portable": false,
+    "icon": "🧊"
+  },
+  {
+    "id": "counter_001",
+    "name": "Granite Countertop",
+    "type": "furniture",
+    "roomId": "kitchen",
+    "positionId": "counter_area",
+    "defaultState": "clear",
+    "possibleStates": ["clear", "has_items"],
+    "interactions": ["prepare_snack"],
+    "description": "A gleaming black granite slab used for chopping and meal preparation.",
+    "portable": false,
+    "icon": "🥣"
+  },
+  {
+    "id": "sink_001",
+    "name": "Kitchen Sink",
+    "type": "fixture",
+    "roomId": "kitchen",
+    "positionId": "sink_area",
+    "defaultState": "idle",
+    "possibleStates": ["idle", "running_tap"],
+    "interactions": ["turn_on_kitchen_tap", "turn_off_kitchen_tap", "wash_hands_kitchen", "wash_dishes"],
+    "description": "A stainless steel wash sink equipped with a swivel gooseneck tap.",
+    "stateDescriptions": {
+      "idle": "The sink is dry and clean.",
+      "running_tap": "A clean stream of water splashes smoothly down the stainless drain."
+    },
+    "portable": false,
+    "icon": "🚰"
+  },
+  {
+    "id": "kitchen_chair_001",
+    "name": "Dining Stool",
+    "type": "furniture",
+    "roomId": "kitchen",
+    "positionId": "dining_chair",
+    "defaultState": "available",
+    "possibleStates": ["available", "occupied"],
+    "interactions": ["sit_down_kitchen_stool", "stand_up"],
+    "description": "A tall wooden counter stool suited for quick meals or resting while cooking.",
+    "portable": false,
+    "icon": "🪑"
+  },
+  {
+    "id": "drinking_glass_001",
+    "name": "Glass Tumbler",
+    "type": "item",
+    "roomId": "kitchen",
+    "positionId": "counter_area",
+    "defaultState": "empty",
+    "possibleStates": ["empty", "filled_water"],
+    "interactions": ["pick_up_item", "put_down_item", "fill_glass_water", "sip_water_glass", "drink_water_glass"],
+    "description": "A clear glass tumbler for drinking water or juice.",
+    "stateDescriptions": {
+      "empty": "The glass is dry and clean.",
+      "filled_water": "Clear, refreshing water fills the glass to the brim."
+    },
+    "portable": true,
+    "icon": "🥛"
+  },
+  {
+    "id": "plate_001",
+    "name": "Steel Dinner Plate",
+    "type": "item",
+    "roomId": "kitchen",
+    "positionId": "counter_area",
+    "defaultState": "empty",
+    "possibleStates": ["empty", "with_food"],
+    "interactions": ["pick_up_item", "put_down_item", "serve_meal", "eat_meal_from_plate"],
+    "description": "A traditional polished stainless steel thali plate.",
+    "stateDescriptions": {
+      "empty": "The steel plate shines brightly.",
+      "with_food": "A freshly cooked warm meal of dal, rice, warm rotis and sabzi is arranged on the plate."
+    },
+    "portable": true,
+    "icon": "🍽️"
+  },
+  {
+    "id": "toilet_seat_001",
+    "name": "Toilet",
+    "type": "fixture",
+    "roomId": "toilet",
+    "positionId": "toilet_seat_area",
+    "defaultState": "clean",
+    "possibleStates": ["clean", "in_use", "needs_flush"],
+    "interactions": ["use_toilet", "flush_toilet"],
+    "description": "A spotless white ceramic toilet with dual-flush buttons.",
+    "stateDescriptions": {
+      "clean": "The toilet is clean and ready for use.",
+      "in_use": "Currently in use.",
+      "needs_flush": "Awaiting a flush."
+    },
+    "portable": false,
+    "icon": "🚽"
+  },
+  {
+    "id": "washbasin_001",
+    "name": "Washbasin",
+    "type": "fixture",
+    "roomId": "toilet",
+    "positionId": "washbasin_area",
+    "defaultState": "idle",
+    "possibleStates": ["idle", "running_tap"],
+    "interactions": ["wash_face", "brush_teeth"],
+    "description": "A ceramic sink with chrome faucet, soap dispenser, and toothbrush stand.",
+    "portable": false,
+    "icon": "🧼"
+  },
+  {
+    "id": "mirror_001",
+    "name": "Bathroom Mirror",
+    "type": "fixture",
+    "roomId": "toilet",
+    "positionId": "mirror_area",
+    "defaultState": "clear",
+    "possibleStates": ["clear", "foggy"],
+    "interactions": ["look_in_mirror"],
+    "description": "A frameless glass mirror mounted over the washbasin.",
+    "stateDescriptions": {
+      "clear": "The mirror gives a crisp, true reflection.",
+      "foggy": "Warm steam blankets the mirror surface in a hazy mist."
+    },
+    "portable": false,
+    "icon": "🪞"
+  },
+  {
+    "id": "shower_001",
+    "name": "Shower",
+    "type": "fixture",
+    "roomId": "toilet",
+    "positionId": "shower_area",
+    "defaultState": "off",
+    "possibleStates": ["off", "running"],
+    "interactions": ["take_shower", "turn_on_shower", "turn_off_shower"],
+    "description": "An overhead chrome rain shower head mounted above tiled flooring with drainage.",
+    "stateDescriptions": {
+      "off": "The shower is off.",
+      "running": "Warm streams of water cascade down in a relaxing deluge."
+    },
+    "portable": false,
+    "icon": "🚿"
+  },
+  {
+    "id": "phone_001",
+    "name": "Mohit's Phone",
+    "type": "electronics",
+    "roomId": "bedroom",
+    "positionId": "bedside",
+    "defaultState": "on",
+    "possibleStates": ["on", "off"],
+    "interactions": ["check_phone"],
+    "description": "A smartphone charging beside the bed, with familiar photos and messages.",
+    "portable": true,
+    "icon": "📱"
+  },
+  {
+    "id": "study_lamp_001",
+    "name": "Study Desk Lamp",
+    "type": "appliance",
+    "roomId": "study_room",
+    "positionId": "desk_area",
+    "defaultState": "off",
+    "possibleStates": ["off", "on"],
+    "interactions": ["turn_on_room_light", "turn_off_room_light"],
+    "description": "An adjustable lamp that casts a focused pool of warm light across the desk.",
+    "portable": false,
+    "icon": "🛋️"
+  },
+  {
+    "id": "kitchen_light_001",
+    "name": "Kitchen Ceiling Light",
+    "type": "appliance",
+    "roomId": "kitchen",
+    "positionId": "counter_area",
+    "defaultState": "on",
+    "possibleStates": ["off", "on"],
+    "interactions": ["turn_on_room_light", "turn_off_room_light"],
+    "description": "A soft ceiling light over the kitchen counters.",
+    "portable": false,
+    "icon": "💡"
+  },
+  {
+    "id": "bathroom_light_001",
+    "name": "Bathroom Light",
+    "type": "appliance",
+    "roomId": "toilet",
+    "positionId": "washbasin_area",
+    "defaultState": "off",
+    "possibleStates": ["off", "on"],
+    "interactions": ["turn_on_room_light", "turn_off_room_light"],
+    "description": "A bright, moisture-safe light above the washbasin.",
+    "portable": false,
+    "icon": "💡"
+  },
+  {
+    "id": "math_book_001",
+    "name": "Math Textbook",
+    "type": "item",
+    "roomId": "study_room",
+    "positionId": "bookshelf_area",
+    "defaultState": "on_shelf",
+    "possibleStates": ["on_shelf"],
+    "interactions": ["pick_up_math_book", "pick_up_item", "put_down_item", "read_book"],
+    "description": "Mohit's mathematics textbook, filled with worked examples and dog-eared pages.",
+    "portable": true,
+    "icon": "📘"
+  },
+  {
+    "id": "physics_book_001",
+    "name": "Physics Textbook",
+    "type": "item",
+    "roomId": "study_room",
+    "positionId": "bookshelf_area",
+    "defaultState": "on_shelf",
+    "possibleStates": ["on_shelf"],
+    "interactions": ["pick_up_physics_book", "pick_up_item", "put_down_item", "read_book"],
+    "description": "A physics textbook with diagrams of motion, light, and electricity.",
+    "portable": true,
+    "icon": "📗"
+  },
+  {
+    "id": "chemistry_book_001",
+    "name": "Chemistry Textbook",
+    "type": "item",
+    "roomId": "study_room",
+    "positionId": "bookshelf_area",
+    "defaultState": "on_shelf",
+    "possibleStates": ["on_shelf"],
+    "interactions": ["pick_up_chemistry_book", "pick_up_item", "put_down_item", "read_book"],
+    "description": "A chemistry text with colorful molecular drawings and handwritten notes.",
+    "portable": true,
+    "icon": "📙"
+  },
+  {
+    "id": "psychology_book_001",
+    "name": "Psychology Book",
+    "type": "item",
+    "roomId": "study_room",
+    "positionId": "bookshelf_area",
+    "defaultState": "on_shelf",
+    "possibleStates": ["on_shelf"],
+    "interactions": ["pick_up_psychology_book", "pick_up_item", "put_down_item", "read_book"],
+    "description": "An introductory psychology book, underlined and bookmarked by Aria.",
+    "portable": true,
+    "icon": "📕"
+  },
+  {
+    "id": "mohit_notebook_001",
+    "name": "Mohit's Notebook",
+    "type": "item",
+    "roomId": "study_room",
+    "positionId": "bookshelf_area",
+    "defaultState": "on_shelf",
+    "possibleStates": ["on_shelf"],
+    "interactions": ["pick_up_mohit_notebook", "pick_up_item", "put_down_item", "read_book"],
+    "description": "Mohit's personal notebook with a few folded corners and private notes.",
+    "portable": true,
+    "icon": "📓"
+  },
+  {
+    "id": "aria_notebook_001",
+    "name": "Aria's Notebook",
+    "type": "item",
+    "roomId": "study_room",
+    "positionId": "bookshelf_area",
+    "defaultState": "on_shelf",
+    "possibleStates": ["on_shelf"],
+    "interactions": ["pick_up_aria_notebook", "pick_up_item", "put_down_item", "read_book"],
+    "description": "Aria's private notebook with a cloth cover and small handwriting.",
+    "portable": true,
+    "icon": "📔"
+  }
+]

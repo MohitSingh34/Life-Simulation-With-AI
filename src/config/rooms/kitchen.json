@@ -1,0 +1,61 @@
+{
+  "id": "kitchen",
+  "name": "Kitchen",
+  "description": "A well-organized Indian kitchen with polished black granite countertops, a stainless steel sink, a modern two-burner gas stove, and a stainless steel spice rack. A medium-sized refrigerator hums gently against the wall.",
+  "ambience": {
+    "morning": "Morning light shines over the steel utensils drying on the rack. The aroma of freshly brewed chai and roasted spices still lingers faintly in the air.",
+    "afternoon": "The kitchen is quiet and clean. A gentle warm breeze comes through the ventilator. The refrigerator hums faithfully in the silence.",
+    "evening": "The overhead warm bulb lights up the cooking counter. Everything is ready for a warm evening dinner.",
+    "night": "The kitchen is dark except for the quiet LED indicator on the refrigerator. Everything is cleaned and put away for the night."
+  },
+  "positions": [
+    {
+      "id": "stove_area",
+      "name": "At the Gas Stove",
+      "objectId": "stove_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "fridge_area",
+      "name": "In Front of Refrigerator",
+      "objectId": "fridge_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "counter_area",
+      "name": "At the Kitchen Counter",
+      "objectId": "counter_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "sink_area",
+      "name": "At the Kitchen Sink",
+      "objectId": "sink_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "dining_chair",
+      "name": "On the Kitchen Dining Stool",
+      "objectId": "kitchen_chair_001",
+      "standable": false,
+      "sittable": true,
+      "lieable": false
+    },
+    {
+      "id": "kitchen_door_area",
+      "name": "Near Kitchen Doorway",
+      "objectId": null,
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    }
+  ]
+}

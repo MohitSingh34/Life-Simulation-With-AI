@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Our Jabalpur Home — Life Simulation</title>
+  <link rel="stylesheet" href="style.css">
+  <link id="room-theme-link" rel="stylesheet" href="themes/room-bedroom.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="theme-morning weather-clear" data-time="morning" data-weather="clear">
+  <!-- Dynamic Atmospheric Canvas (Rain, Fog, Dust Motes, Twinkling Stars) -->
+  <canvas id="weather-canvas" class="weather-canvas" aria-hidden="true"></canvas>
+
+  <!-- Room Ambient Backdrop with Smooth Fade Transitions -->
+  <div class="room-backdrop" aria-hidden="true">
+    <div class="room-backdrop-layer is-visible" id="room-backdrop-a"></div>
+    <div class="room-backdrop-layer" id="room-backdrop-b"></div>
+    <div class="room-backdrop-scrim"></div>
+  </div>
+
+  <!-- Top Ambient Header Navigation -->
+  <header class="top-nav">
+    <span class="weather-sky-scene" id="weather-sky-scene" role="img" aria-label="Morning sky, moving clouds">
+      <span class="sky-stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="sky-sun"></span>
+      <span class="sky-moon"></span>
+      <span class="sky-cloud cloud-one"></span>
+      <span class="sky-cloud cloud-two"></span>
+      <span class="sky-cloud cloud-three"></span>
+      <span class="sky-rain"><i></i><i></i><i></i><i></i></span>
+    </span>
+    <div class="nav-left">
+      <div class="home-badge-icon">
+        <span>🏠</span>
+      </div>
+      <div class="home-titles">
+        <h1 class="home-name">Our Jabalpur Home</h1>
+        <p class="home-sub">Ground Floor • 4 Rooms • Jabalpur, MP, India</p>
+      </div>
+    </div>
+
+    <div class="nav-center">
+      <div class="time-capsule-pill" id="time-weather-pill" title="Click to refresh live Jabalpur weather">
+        <span class="capsule-item time-item">
+          <span class="capsule-icon" id="time-icon">☀️</span>
+          <span id="time-clock" class="capsule-bold">--:-- --</span>
+        </span>
+        <span class="capsule-divider">|</span>
+        <span id="time-day" class="capsule-item">Loading local time…</span>
+        <span class="capsule-divider">|</span>
+        <span class="capsule-item weather-item">
+          <span id="time-weather" class="visually-hidden" data-ai-tag="time_weather">Fetching weather...</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="nav-right">
+      <button id="btn-conv-toggle" class="btn-nav-glass" title="Switch or continue previous conversations">
+        <span class="btn-icon">💬</span>
+        <span>History</span>
+      </button>
+      <button id="btn-json-inspect" class="btn-nav-glass" title="View authoritative simulation state">
+        <span class="btn-icon">📚</span>
+        <span>World State</span>
+        <span class="btn-caret">▾</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Alerts Banner -->
+  <div id="alerts-container" class="alerts-container"></div>
+
+  <!-- Main 3-Column Living Dashboard -->
+  <main class="dashboard-grid">
+
+    <!-- ========================================== -->
+    <!-- COLUMN 1: Player Presence & Living Needs   -->
+    <!-- ========================================== -->
+    <section class="panel-column col-player">
+      
+      <!-- Player Profile Card (30% Glass) -->
+      <div class="card profile-card">
+        <div class="profile-header">
+          <div class="avatar-ring player-avatar-ring">
+            <span class="avatar-fallback player-fallback">M</span>
+          </div>
+          <div class="profile-info">
+            <div class="profile-name-row">
+              <h2 id="player-name" class="profile-name">MOHIT</h2>
+              <button class="btn-card-dots" title="Options">•••</button>
+            </div>
+            <p id="player-pose-summary" class="profile-pose" data-ai-tag="player_pose">Lying comfortably</p>
+            <div class="profile-status-row">
+              <span class="dot-online"></span>
+              <span id="player-presence-status">Present · In Bedroom</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-divider"></div>
+
+        <!-- Physical State Section -->
+        <div class="section-box">
+          <span class="section-eyebrow">PHYSICAL BODY STATE</span>
+          <p id="player-detailed-body" class="physical-desc" data-ai-tag="player_body">
+            Lying sideways on the soft cotton mattress, body relaxed. Eyes blinking softly, breathing is rhythmic and calm.
+          </p>
+        </div>
+
+        <div class="card-divider"></div>
+
+        <!-- Body Needs Section (Identical system for both player & AI) -->
+        <div class="section-box needs-section">
+          <div class="needs-header-row">
+            <span class="section-eyebrow">YOUR BODY NEEDS</span>
+            <span class="needs-badge">Equally Maintained</span>
+          </div>
+          <div class="needs-list">
+
+            <!-- Appetite -->
+            <div class="need-item" id="need-hunger">
+              <div class="need-label-group">
+                <span class="need-icon gold">🍴</span>
+                <span class="need-name">Appetite</span>
+              </div>
+              <div class="need-bar-track">
+                <div id="bar-hunger" class="need-bar-fill fill-appetite" style="width: 40%;"></div>
+              </div>
+              <span id="pct-hunger" class="need-pct">40%</span>
+              <span id="label-hunger" class="feeling-hidden" data-ai-tag="hunger_feeling">Stomach rumbling softly</span>
+            </div>
+
+            <!-- Thirst -->
+            <div class="need-item" id="need-thirst">
+              <div class="need-label-group">
+                <span class="need-icon blue">💧</span>
+                <span class="need-name">Thirst</span>
+              </div>
+              <div class="need-bar-track">
+                <div id="bar-thirst" class="need-bar-fill fill-thirst" style="width: 30%;"></div>
+              </div>
+              <span id="pct-thirst" class="need-pct">30%</span>
+              <span id="label-thirst" class="feeling-hidden" data-ai-tag="thirst_feeling">Could enjoy a glass of water</span>
+            </div>
+
+            <!-- Energy -->
+            <div class="need-item" id="need-energy">
+              <div class="need-label-group">
+                <span class="need-icon green">⚡</span>
+                <span class="need-name">Energy</span>
+              </div>
+              <div class="need-bar-track">
+                <div id="bar-energy" class="need-bar-fill fill-energy" style="width: 75%;"></div>
+              </div>
+              <span id="pct-energy" class="need-pct">75%</span>
+              <span id="label-energy" class="feeling-hidden" data-ai-tag="energy_feeling">Rested, alert &amp; energetic</span>
+            </div>
+
+            <!-- Drowsiness -->
+            <div class="need-item" id="need-sleepiness">
+              <div class="need-label-group">
+                <span class="need-icon purple">🛏️</span>
+                <span class="need-name">Drowsiness</span>
+              </div>
+              <div class="need-bar-track">
+                <div id="bar-sleepiness" class="need-bar-fill fill-sleepiness" style="width: 20%;"></div>
+              </div>
+              <span id="pct-sleepiness" class="need-pct">20%</span>
+              <span id="label-sleepiness" class="feeling-hidden" data-ai-tag="sleepiness_feeling">Wide awake</span>
+            </div>
+
+            <!-- Hidden tags for Hygiene and Bladder to maintain full tag support -->
+            <span id="label-hygiene" class="feeling-hidden" data-ai-tag="hygiene_feeling">Clean and comfortable</span>
+            <span id="label-bladder" class="feeling-hidden" data-ai-tag="bladder_feeling">Moderate</span>
+            <span id="player-mood-pill" class="feeling-hidden" data-ai-tag="player_mood">😌 Calm</span>
+          </div>
+        </div>
+
+        <div class="card-divider"></div>
+
+        <!-- Wearing Pill -->
+        <div class="wearing-pill">
+          <div class="wearing-icon-box">
+            <span>👕</span>
+          </div>
+          <div class="wearing-details">
+            <span class="wearing-title">Wearing</span>
+            <p id="player-clothing" class="wearing-desc" data-ai-tag="player_clothing">Cotton T-Shirt, Navy Pajamas (Barefoot)</p>
+          </div>
+          <span class="wearing-arrow">›</span>
+        </div>
+
+        <div class="holding-pack" id="holding-pack">
+          <div class="holding-pack-header">
+            <span class="holding-pack-icon">🤲</span>
+            <span class="wearing-title">IN YOUR HANDS</span>
+          </div>
+          <div class="holding-pack-content">
+            <span id="held-item-label" class="held-item-label">Hands are free</span>
+            <button id="btn-put-down-item" class="btn-put-down-item" type="button" disabled>Put down</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- COLUMN 2: Top-Down House Map & Room Scene  -->
+    <!-- ========================================== -->
+    <section class="panel-column col-home">
+
+      <!-- Interactive Top-Down House Map Card (Replaces Photo Grid) -->
+      <div class="card home-overview-card">
+        <div class="home-card-header">
+          <div class="home-card-title-group">
+            <span class="home-card-icon">🧭</span>
+            <div>
+              <h2 class="home-card-title">House Map (Top-Down)</h2>
+              <p class="home-card-desc">Interactive living floorplan • Click any room to walk, or click objects to interact</p>
+            </div>
+          </div>
+          <div class="map-avatars-legend">
+            <span class="legend-badge badge-mohit"><span class="avatar-dot dot-m"></span> Mohit</span>
+            <span class="legend-badge badge-aria"><span class="avatar-dot dot-a"></span> Aria</span>
+          </div>
+        </div>
+
+        <!-- Top-Down SVG Blueprint Map -->
+        <div class="map-canvas-frame">
+          <svg id="house-map-svg" viewBox="0 0 620 400" preserveAspectRatio="xMidYMid meet" class="house-floorplan-svg">
+            <defs>
+              <!-- Floor Patterns -->
+              <pattern id="wood-pattern" width="40" height="12" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="0" x2="40" y2="0" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+                <line x1="0" y1="6" x2="40" y2="6" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+                <line x1="20" y1="0" x2="20" y2="6" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+                <line x1="10" y1="6" x2="10" y2="12" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+              </pattern>
+              <pattern id="tile-pattern" width="24" height="24" patternUnits="userSpaceOnUse">
+                <rect width="24" height="24" fill="none" stroke="rgba(56, 189, 248, 0.08)" stroke-width="1" />
+              </pattern>
+              <pattern id="granite-pattern" width="30" height="30" patternUnits="userSpaceOnUse">
+                <rect width="30" height="30" fill="none" stroke="rgba(212, 163, 89, 0.06)" stroke-width="1" />
+                <circle cx="15" cy="15" r="1" fill="rgba(212,163,89,0.15)" />
+              </pattern>
+
+              <!-- Radial glow filters -->
+              <filter id="gold-glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="6" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+              <filter id="plum-glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="6" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            <!-- Outer House Foundation Border -->
+            <rect x="12" y="12" width="596" height="376" rx="16" class="house-foundation" />
+
+            <!-- ============================== -->
+            <!-- 1. BEDROOM (Top-Left)          -->
+            <!-- ============================== -->
+            <g class="room-zone" id="map-room-bedroom" data-room="bedroom">
+              <rect x="20" y="20" width="280" height="175" rx="8" class="room-floor floor-bedroom" />
+              <rect x="20" y="20" width="280" height="175" rx="8" fill="url(#wood-pattern)" />
+              
+              <!-- North Window -->
+              <rect x="90" y="16" width="90" height="6" class="map-window" />
+              <text x="135" y="14" class="map-window-label" text-anchor="middle">🪟 WINDOW</text>
+
+              <!-- Bed (Interactive Object) -->
+              <g class="map-object interactive-obj" id="map-obj-bed" data-obj="bed_001" data-room="bedroom">
+                <rect x="36" y="36" width="105" height="135" rx="6" class="obj-bed-frame" />
+                <rect x="42" y="42" width="93" height="35" rx="4" class="obj-pillow" />
+                <rect x="42" y="82" width="93" height="82" rx="4" class="obj-blanket" />
+                <text x="88" y="126" class="obj-label" text-anchor="middle">🛏️ Bed</text>
+              </g>
+
+              <!-- Bedside Table & Lamp -->
+              <g class="map-object interactive-obj" id="map-obj-lamp" data-obj="lamp_001" data-room="bedroom">
+                <rect x="148" y="36" width="34" height="34" rx="4" class="obj-nightstand" />
+                <circle cx="165" cy="53" r="8" class="obj-lamp-light" />
+                <text x="165" y="57" class="obj-label-tiny" text-anchor="middle">💡</text>
+              </g>
+
+              <!-- Water Flask -->
+              <g class="map-object interactive-obj" id="map-obj-flask" data-obj="water_flask_001" data-room="bedroom">
+                <circle cx="165" cy="85" r="7" class="obj-flask" />
+                <text x="165" y="88" class="obj-label-tiny" text-anchor="middle">🍶</text>
+              </g>
+
+              <!-- Wardrobe -->
+              <g class="map-object interactive-obj" id="map-obj-wardrobe" data-obj="wardrobe_001" data-room="bedroom">
+                <rect x="220" y="36" width="65" height="45" rx="4" class="obj-wardrobe" />
+                <text x="252" y="63" class="obj-label" text-anchor="middle">🚪 Wardrobe</text>
+              </g>
+
+              <!-- Doorway opening to corridor -->
+              <rect x="288" y="140" width="14" height="45" class="doorway-opening" />
+
+              <!-- Room Header Tag on Top of Map -->
+              <g class="map-room-tag-group">
+                <rect x="30" y="26" width="80" height="20" rx="10" class="room-tag-pill" />
+                <text x="70" y="40" class="room-tag-text" text-anchor="middle">BEDROOM</text>
+              </g>
+            </g>
+
+            <!-- ============================== -->
+            <!-- 2. STUDY ROOM (Top-Right)      -->
+            <!-- ============================== -->
+            <g class="room-zone" id="map-room-study_room" data-room="study_room">
+              <rect x="320" y="20" width="280" height="175" rx="8" class="room-floor floor-study" />
+              <rect x="320" y="20" width="280" height="175" rx="8" fill="url(#wood-pattern)" />
+
+              <!-- East Window -->
+              <rect x="594" y="65" width="6" height="70" class="map-window" />
+              <text x="588" y="105" class="map-window-label-vert" text-anchor="middle">🪟 WINDOW</text>
+
+              <!-- Bookshelf -->
+              <g class="map-object interactive-obj" id="map-obj-bookshelf" data-obj="bookshelf_001" data-room="study_room">
+                <rect x="335" y="36" width="100" height="28" rx="4" class="obj-bookshelf" />
+                <text x="385" y="55" class="obj-label" text-anchor="middle">📚 Bookshelf</text>
+              </g>
+
+              <!-- Study Desk & Computer -->
+              <g class="map-object interactive-obj" id="map-obj-computer" data-obj="computer_001" data-room="study_room">
+                <rect x="455" y="36" width="130" height="65" rx="5" class="obj-desk" />
+                <rect x="495" y="44" width="50" height="14" rx="2" class="obj-monitor" />
+                <rect x="500" y="63" width="40" height="10" rx="1" class="obj-keyboard" />
+                <text x="520" y="93" class="obj-label" text-anchor="middle">💻 Workstation</text>
+              </g>
+
+              <!-- Study Ergonomic Chair -->
+              <g class="map-object interactive-obj" id="map-obj-chair-study" data-obj="chair_study" data-room="study_room">
+                <circle cx="520" cy="125" r="16" class="obj-chair" />
+                <text x="520" y="130" class="obj-label-tiny" text-anchor="middle">🪑</text>
+              </g>
+
+              <!-- Doorway opening to corridor -->
+              <rect x="318" y="140" width="14" height="45" class="doorway-opening" />
+
+              <!-- Room Header Tag on Top of Map -->
+              <g class="map-room-tag-group">
+                <rect x="330" y="26" width="95" height="20" rx="10" class="room-tag-pill" />
+                <text x="377" y="40" class="room-tag-text" text-anchor="middle">STUDY ROOM</text>
+              </g>
+            </g>
+
+            <!-- ============================== -->
+            <!-- 3. KITCHEN (Bottom-Left)       -->
+            <!-- ============================== -->
+            <g class="room-zone" id="map-room-kitchen" data-room="kitchen">
+              <rect x="20" y="205" width="280" height="175" rx="8" class="room-floor floor-kitchen" />
+              <rect x="20" y="205" width="280" height="175" rx="8" fill="url(#granite-pattern)" />
+
+              <!-- L-Shaped Countertop -->
+              <g class="map-object interactive-obj" id="map-obj-counter" data-obj="counter_001" data-room="kitchen">
+                <path d="M 36 365 L 36 220 L 160 220 L 160 252 L 72 252 L 72 365 Z" class="obj-counter-granite" />
+                <text x="110" y="240" class="obj-label" text-anchor="middle">Granite Counter</text>
+              </g>
+
+              <!-- Gas Stove -->
+              <g class="map-object interactive-obj" id="map-obj-stove" data-obj="stove_001" data-room="kitchen">
+                <rect x="42" y="260" width="26" height="45" rx="4" class="obj-stove" />
+                <circle cx="55" cy="272" r="5" class="obj-burner" />
+                <circle cx="55" cy="293" r="5" class="obj-burner" />
+                <text x="55" y="320" class="obj-label-tiny" text-anchor="middle">🔥</text>
+              </g>
+
+              <!-- Sink & Tap -->
+              <g class="map-object interactive-obj" id="map-obj-sink" data-obj="sink_001" data-room="kitchen">
+                <rect x="90" y="224" width="38" height="24" rx="3" class="obj-sink" />
+                <text x="109" y="240" class="obj-label-tiny" text-anchor="middle">🚰</text>
+              </g>
+
+              <!-- Refrigerator -->
+              <g class="map-object interactive-obj" id="map-obj-fridge" data-obj="fridge_001" data-room="kitchen">
+                <rect x="220" y="220" width="65" height="50" rx="4" class="obj-fridge" />
+                <line x1="220" y1="236" x2="285" y2="236" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
+                <text x="252" y="258" class="obj-label" text-anchor="middle">🧊 Fridge</text>
+              </g>
+
+              <!-- Dining Stool -->
+              <g class="map-object interactive-obj" id="map-obj-stool" data-obj="kitchen_chair_001" data-room="kitchen">
+                <circle cx="190" cy="300" r="14" class="obj-chair" />
+                <text x="190" y="304" class="obj-label-tiny" text-anchor="middle">🪑</text>
+              </g>
+
+              <!-- Doorway opening to corridor -->
+              <rect x="288" y="215" width="14" height="45" class="doorway-opening" />
+
+              <!-- Room Header Tag on Top of Map -->
+              <g class="map-room-tag-group">
+                <rect x="30" y="352" width="75" height="20" rx="10" class="room-tag-pill" />
+                <text x="67" y="366" class="room-tag-text" text-anchor="middle">KITCHEN</text>
+              </g>
+            </g>
+
+            <!-- ============================== -->
+            <!-- 4. BATHROOM (Bottom-Right)     -->
+            <!-- ============================== -->
+            <g class="room-zone" id="map-room-toilet" data-room="toilet">
+              <rect x="320" y="205" width="280" height="175" rx="8" class="room-floor floor-bathroom" />
+              <rect x="320" y="205" width="280" height="175" rx="8" fill="url(#tile-pattern)" />
+
+              <!-- Shower Stall -->
+              <g class="map-object interactive-obj" id="map-obj-shower" data-obj="shower_001" data-room="toilet">
+                <rect x="500" y="270" width="85" height="95" rx="5" class="obj-shower-stall" />
+                <circle cx="542" cy="317" r="12" class="obj-shower-head" />
+                <text x="542" y="322" class="obj-label-tiny" text-anchor="middle">🚿</text>
+              </g>
+
+              <!-- Washbasin & Mirror -->
+              <g class="map-object interactive-obj" id="map-obj-washbasin" data-obj="washbasin_001" data-room="toilet">
+                <rect x="410" y="220" width="55" height="35" rx="4" class="obj-sink" />
+                <circle cx="437" cy="237" r="10" class="obj-basin-bowl" />
+                <text x="437" y="241" class="obj-label-tiny" text-anchor="middle">🪞</text>
+              </g>
+
+              <!-- Toilet Commode -->
+              <g class="map-object interactive-obj" id="map-obj-toilet" data-obj="toilet_seat_001" data-room="toilet">
+                <rect x="335" y="220" width="38" height="20" rx="2" class="obj-toilet-tank" />
+                <ellipse cx="354" cy="254" rx="16" ry="20" class="obj-toilet-bowl" />
+                <text x="354" y="259" class="obj-label-tiny" text-anchor="middle">🚽</text>
+              </g>
+
+              <!-- Doorway opening to corridor -->
+              <rect x="318" y="215" width="14" height="45" class="doorway-opening" />
+
+              <!-- Room Header Tag on Top of Map -->
+              <g class="map-room-tag-group">
+                <rect x="510" y="220" width="80" height="20" rx="10" class="room-tag-pill" />
+                <text x="550" y="234" class="room-tag-text" text-anchor="middle">BATHROOM</text>
+              </g>
+            </g>
+
+            <!-- ============================== -->
+            <!-- 5. CENTRAL CORRIDOR & WALLS    -->
+            <!-- ============================== -->
+            <!-- Architectural dividing walls -->
+            <line x1="300" y1="20" x2="300" y2="135" class="wall-main" />
+            <line x1="300" y1="185" x2="300" y2="215" class="wall-main" />
+            <line x1="300" y1="265" x2="300" y2="380" class="wall-main" />
+
+            <line x1="20" y1="195" x2="285" y2="195" class="wall-main" />
+            <line x1="315" y1="195" x2="600" y2="195" class="wall-main" />
+
+            <!-- Corridor Label -->
+            <text x="300" y="198" class="map-corridor-label" text-anchor="middle">CONNECTING HALLWAY</text>
+
+            <!-- ============================== -->
+            <!-- 6. ROUND MOVING AVATAR TOKENS  -->
+            <!-- ============================== -->
+            
+            <!-- Mohit's Token (Transforms smoothly via JS) -->
+            <g id="token-player" class="avatar-map-token token-player" transform="translate(100, 110)">
+              <circle cx="0" cy="0" r="18" class="token-pulse" />
+              <circle cx="0" cy="0" r="14" class="token-disc disc-mohit" />
+              <text cx="0" cy="0" y="5" class="token-letter" text-anchor="middle">M</text>
+              <rect x="-24" y="18" width="48" height="15" rx="7" class="token-nametag" />
+              <text x="0" y="29" class="token-nametag-text" text-anchor="middle">Mohit</text>
+            </g>
+
+            <!-- Aria's Token (Transforms smoothly via JS) -->
+            <g id="token-ai" class="avatar-map-token token-ai" transform="translate(520, 120)">
+              <circle cx="0" cy="0" r="18" class="token-pulse pulse-aria" />
+              <circle cx="0" cy="0" r="14" class="token-disc disc-aria" />
+              <text cx="0" cy="0" y="5" class="token-letter" text-anchor="middle">A</text>
+              <rect x="-20" y="18" width="40" height="15" rx="7" class="token-nametag nametag-aria" />
+              <text x="0" y="29" class="token-nametag-text" text-anchor="middle">Aria</text>
+            </g>
+
+          </svg>
+        </div>
+      </div>
+
+      <!-- Current Room Detail Card (Location tags overlaid directly on background image) -->
+      <div class="card current-room-card">
+        <div class="room-hero-box">
+          <!-- Room background image placed in background behind text tags -->
+          <img 
+            id="room-hero-image" 
+            src="assets/rooms/bedroom.jpg" 
+            alt="Current room background" 
+            class="room-hero-img"
+            onerror="this.style.opacity='0'"
+          >
+          <div class="room-hero-scrim"></div>
+          
+          <!-- Tags and titles floating cleanly on top of the image -->
+          <div class="room-hero-overlay-content">
+            <div class="current-room-header">
+              <div class="room-title-stack">
+                <span class="eyebrow-text">CURRENT ROOM</span>
+                <h2 id="current-room-name" class="current-room-title">Bedroom</h2>
+              </div>
+              <span id="room-ambience-tag" class="time-mood-badge">☀️ Morning Light</span>
+            </div>
+
+            <p id="room-description" class="room-desc-text" data-ai-tag="room_description">
+              A quiet and cozy bedroom with a wooden bed, a study corner, and a window facing the morning sky. Soft sunlight filters through the curtains, creating a warm and calm atmosphere.
+            </p>
+
+            <p id="room-ambience" class="room-ambience-quote" data-ai-tag="room_ambience">
+              Golden morning sunlight streams through the window grill, casting warm patterns across the bed sheet.
+            </p>
+          </div>
+        </div>
+
+        <!-- Things Here (Interactive objects chips) -->
+        <div class="things-here-box">
+          <span class="section-eyebrow">INTERACTIVE OBJECTS HERE</span>
+          <div id="room-objects-list" class="things-chip-row"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- COLUMN 3: Aria Roommate Chat & Actions     -->
+    <!-- ========================================== -->
+    <section class="panel-column col-aria">
+
+      <!-- Aria Roommate Messenger Card (30% Glass) -->
+      <div class="card aria-chat-card">
+        <div class="aria-chat-header">
+          <div class="avatar-ring-sm aria-avatar-ring">
+            <span class="avatar-fallback-sm aria-fallback">A</span>
+          </div>
+          <div class="aria-meta-col">
+            <div class="aria-name-badge-row">
+              <h3 class="aria-name">Aria</h3>
+              <span class="badge-roommate">ROOMMATE</span>
+            </div>
+            <div class="aria-online-row">
+              <span class="dot-online"></span>
+              <span id="ai-location-badge" data-ai-tag="ai_location">Online · In Study Room</span>
+            </div>
+          </div>
+          <div class="aria-header-actions">
+            <button id="btn-open-conv-drawer" class="btn-chat-action" title="View all conversation history">
+              💬
+            </button>
+            <button class="btn-card-dots" title="Chat Options">•••</button>
+          </div>
+        </div>
+
+        <!-- Aria's Body Needs Panel (Equal maintenance & restrictions as player) -->
+        <div class="aria-body-needs-box" id="aria-needs-box">
+          <div class="aria-needs-title-row">
+            <span class="section-eyebrow">ARIA'S BODY NEEDS</span>
+            <span id="aria-body-status-pill" class="aria-status-pill">Satisfied &amp; Well</span>
+          </div>
+          <div class="aria-needs-compact-grid">
+            <!-- Appetite -->
+            <div class="aria-need-item" title="Aria's Appetite / Hunger">
+              <div class="aria-need-top">
+                <span class="need-icon-tiny gold">🍴</span>
+                <span class="need-name-tiny">Appetite</span>
+                <span id="aria-pct-hunger" class="need-pct-tiny">35%</span>
+              </div>
+              <div class="mini-bar-track">
+                <div id="aria-bar-hunger" class="need-bar-fill fill-appetite" style="width: 35%;"></div>
+              </div>
+            </div>
+
+            <!-- Thirst -->
+            <div class="aria-need-item" title="Aria's Thirst">
+              <div class="aria-need-top">
+                <span class="need-icon-tiny blue">💧</span>
+                <span class="need-name-tiny">Thirst</span>
+                <span id="aria-pct-thirst" class="need-pct-tiny">25%</span>
+              </div>
+              <div class="mini-bar-track">
+                <div id="aria-bar-thirst" class="need-bar-fill fill-thirst" style="width: 25%;"></div>
+              </div>
+            </div>
+
+            <!-- Energy -->
+            <div class="aria-need-item" title="Aria's Energy">
+              <div class="aria-need-top">
+                <span class="need-icon-tiny green">⚡</span>
+                <span class="need-name-tiny">Energy</span>
+                <span id="aria-pct-energy" class="need-pct-tiny">80%</span>
+              </div>
+              <div class="mini-bar-track">
+                <div id="aria-bar-energy" class="need-bar-fill fill-energy" style="width: 80%;"></div>
+              </div>
+            </div>
+
+            <!-- Drowsiness -->
+            <div class="aria-need-item" title="Aria's Drowsiness">
+              <div class="aria-need-top">
+                <span class="need-icon-tiny purple">🛏️</span>
+                <span class="need-name-tiny">Drowsiness</span>
+                <span id="aria-pct-sleepiness" class="need-pct-tiny">20%</span>
+              </div>
+              <div class="mini-bar-track">
+                <div id="aria-bar-sleepiness" class="need-bar-fill fill-sleepiness" style="width: 20%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Stream Messages Feed -->
+        <div id="chat-messages-container" class="chat-stream">
+          <!-- Dynamic message bubbles injected by app.js -->
+          <div id="aria-typing" class="aria-typing" role="status" aria-label="Aria is typing" hidden>
+            <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span>Aria is thinking</span>
+          </div>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <div class="chat-input-bar">
+          <button class="btn-chat-plus" title="Add note or action">+</button>
+          <input 
+            id="aria-message-input" 
+            type="text" 
+            class="chat-input" 
+            placeholder="Message Aria..." 
+            maxlength="1000"
+            autocomplete="off"
+          >
+          <button id="btn-talk-aria" class="btn-chat-send" title="Send message to Aria">
+            <span>➢</span>
+          </button>
+        </div>
+        <p id="ai-activity-text" class="feeling-hidden" data-ai-tag="ai_activity">Studying and taking notes</p>
+      </div>
+
+      <!-- What Would You Like To Do Card (30% Glass) -->
+      <div class="card actions-card">
+        <div class="actions-header">
+          <div class="actions-title-row">
+            <span class="actions-icon">🍃</span>
+            <h2 class="actions-heading">What would you like to do?</h2>
+          </div>
+        </div>
+
+        <!-- Category Pills -->
+        <div class="action-category-pills">
+          <button class="cat-pill active" data-category="all">Everything</button>
+          <button class="cat-pill" data-category="movement">Walk</button>
+          <button class="cat-pill" data-category="body">Body &amp; Rest</button>
+          <button class="cat-pill" data-category="daily">Daily Life</button>
+          <button class="cat-pill" data-category="interaction">Interact</button>
+        </div>
+
+        <!-- Action Cards List -->
+        <div id="actions-grid" class="action-cards-stack"></div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODALS                                      -->
+  <!-- ========================================== -->
+
+  <!-- Object Quick Interaction Modal -->
+  <dialog id="obj-interact-modal" class="modal-dialog">
+    <div class="modal-window obj-modal-window">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span id="obj-modal-icon" class="modal-icon">🪑</span>
+          <div>
+            <h3 id="obj-modal-name" class="modal-title">Object Name</h3>
+            <p id="obj-modal-desc" class="modal-subtitle">Choose an action to perform</p>
+          </div>
+        </div>
+        <button id="btn-close-obj-modal" class="btn-modal-close">✕</button>
+      </div>
+      <div id="obj-modal-actions" class="modal-body obj-actions-list">
+        <!-- Injected dynamically on object click -->
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Conversation History Selector Modal -->
+  <dialog id="conv-modal" class="modal-dialog">
+    <div class="modal-window conv-modal-window">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">💬</span>
+          <div>
+            <h3 class="modal-title">Conversation History</h3>
+            <p class="modal-subtitle">Continue an existing chat or start a fresh one</p>
+          </div>
+        </div>
+        <button id="btn-close-conv" class="btn-modal-close">✕</button>
+      </div>
+
+      <div class="conv-modal-actions">
+        <button id="btn-new-conv" class="btn-new-chat">
+          <span>➕</span>
+          <span>Start New Conversation</span>
+        </button>
+      </div>
+
+      <div class="modal-body conv-list-container">
+        <div id="conv-sessions-list" class="conv-sessions-flow">
+          <!-- Injected dynamically by app.js -->
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Authoritative World State Modal -->
+  <dialog id="json-modal" class="modal-dialog">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">📜</span>
+          <div>
+            <h3 class="modal-title">Authoritative World State (JSON)</h3>
+            <p class="modal-subtitle">The immutable mathematical truth governing every entity, room, and sensation</p>
+          </div>
+        </div>
+        <button id="btn-close-modal" class="btn-modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <pre><code id="json-code-view">Loading snapshot...</code></pre>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-copy-json" class="btn-secondary">Copy JSON Snapshot</button>
+        <button id="btn-modal-dismiss" class="btn-primary">Back to Living</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

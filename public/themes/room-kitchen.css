@@ -1,0 +1,52 @@
+/* ============================================================
+   ROOM THEME: KITCHEN (Granite, Warm Spice, Cardamom Chai Glow)
+   ============================================================ */
+
+:root {
+  --room-accent: #f59e0b;
+  --room-accent-glow: rgba(245, 158, 11, 0.35);
+  --border-active: #f59e0b;
+  --bg-card: rgba(20, 18, 16, 0.30);
+  --bg-card-hover: rgba(30, 26, 22, 0.40);
+  --bg-card-inner: rgba(28, 24, 20, 0.35);
+  --border-card: rgba(245, 158, 11, 0.16);
+}
+
+/* Clear full-page kitchen photo */
+.room-backdrop-layer {
+  filter: brightness(0.68) saturate(1.15) !important;
+  opacity: 0.88 !important;
+}
+
+.room-backdrop-scrim {
+  background: radial-gradient(circle at 40% 40%, rgba(22, 16, 12, 0.22) 0%, rgba(10, 8, 6, 0.65) 100%) !important;
+}
+
+/* Kitchen-specific card accents */
+.card {
+  box-shadow: 0 12px 40px rgba(16, 10, 6, 0.45);
+}
+
+.current-room-title {
+  color: #fef3c7;
+  text-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
+}
+
+.time-mood-badge {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #fef08a;
+}
+
+.avatar-ring {
+  border-color: #f59e0b;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.35);
+}
+
+/* Active room on top-down floorplan */
+#map-room-kitchen .room-floor {
+  stroke: #f59e0b !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.5)) !important;
+}
+

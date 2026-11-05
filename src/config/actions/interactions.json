@@ -1,0 +1,837 @@
+[
+  {
+    "id": "open_fridge",
+    "name": "Open Refrigerator",
+    "description": "Pull open the refrigerator door to inspect its contents.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "posture": ["standing"],
+      "objectState": "closed"
+    },
+    "effects": {
+      "objectState": "open"
+    },
+    "successMessage": "You pull open the fridge door. A wave of cool air pours out over your hands.",
+    "icon": "🧊"
+  },
+  {
+    "id": "close_fridge",
+    "name": "Close Refrigerator",
+    "description": "Push the refrigerator door closed with a reassuring magnetic seal.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "objectState": "open"
+    },
+    "effects": {
+      "objectState": "closed"
+    },
+    "successMessage": "You gently nudge the fridge door shut until the rubber seal clicks tight.",
+    "icon": "🚪"
+  },
+  {
+    "id": "turn_on_stove",
+    "name": "Ignite Gas Stove",
+    "description": "Twist the burner knob and click the gas lighter to start a flame.",
+    "category": "interaction",
+    "duration": 3,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "on"
+    },
+    "successMessage": "Click-click-whoosh! A clean ring of blue flame bursts to life on the burner.",
+    "icon": "🔥"
+  },
+  {
+    "id": "turn_off_stove",
+    "name": "Turn Off Gas Stove",
+    "description": "Turn off the burner completely.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "objectState": "off"
+    },
+    "successMessage": "You switch off the stove knob. The blue flame vanishes instantly.",
+    "icon": "🛑"
+  },
+  {
+    "id": "turn_on_lamp",
+    "name": "Turn On Bedside Lamp",
+    "description": "Click the switch on the bedside brass lamp.",
+    "category": "interaction",
+    "duration": 1,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "bedroom",
+      "objectState": "off"
+    },
+    "effects": {
+      "objectState": "on"
+    },
+    "successMessage": "Click. The bedside lamp fills the bedroom with a mellow golden glow.",
+    "icon": "💡"
+  },
+  {
+    "id": "turn_off_lamp",
+    "name": "Turn Off Bedside Lamp",
+    "description": "Switch off the bedside lamp.",
+    "category": "interaction",
+    "duration": 1,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "bedroom",
+      "objectState": "on"
+    },
+    "effects": {
+      "objectState": "off"
+    },
+    "successMessage": "Click. The warm light fades and the room settles into shadows.",
+    "icon": "🌑"
+  },
+  {
+    "id": "turn_on_computer",
+    "name": "Power On Computer",
+    "description": "Press the power button on the desktop tower.",
+    "category": "interaction",
+    "duration": 5,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {
+      "roomId": "study_room",
+      "objectState": "off"
+    },
+    "effects": {
+      "objectState": "on"
+    },
+    "successMessage": "The PC fans whir up, and the monitors illuminate in crisp high definition.",
+    "icon": "🖥️"
+  },
+  {
+    "id": "turn_off_computer",
+    "name": "Shut Down Computer",
+    "description": "Select Shut Down and wait for the monitors to power off.",
+    "category": "interaction",
+    "duration": 5,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {
+      "roomId": "study_room",
+      "objectState": ["on", "in_use"]
+    },
+    "effects": {
+      "objectState": "off"
+    },
+    "successMessage": "You safely shut down the system. The monitors blink off and quiet returns.",
+    "icon": "💻"
+  },
+  {
+    "id": "open_wardrobe",
+    "name": "Open Wardrobe",
+    "description": "Swing open the wardrobe doors.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
+    "preconditions": {
+      "roomId": "bedroom",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "open"
+    },
+    "successMessage": "The wooden doors creak softly open, revealing your organized clothes.",
+    "icon": "🚪"
+  },
+  {
+    "id": "close_wardrobe",
+    "name": "Close Wardrobe",
+    "description": "Shut the wardrobe doors.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
+    "preconditions": {
+      "roomId": "bedroom"
+    },
+    "effects": {
+      "objectState": "closed"
+    },
+    "successMessage": "You swing the wardrobe doors shut.",
+    "icon": "🚪"
+  },
+  {
+    "id": "fill_glass_water",
+    "name": "Fill Glass with Water",
+    "description": "Hold the glass under the kitchen tap or water filter and fill it up.",
+    "category": "interaction",
+    "duration": 4,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "objectState": ["empty", "half"]
+    },
+    "effects": {
+      "objectState": "filled_water"
+    },
+    "successMessage": "Cool, filtered water pours cleanly into the tumbler until it is full.",
+    "icon": "🚰"
+  },
+  {
+    "id": "drink_water_glass",
+    "name": "Drink Water from Glass",
+    "description": "Take a long, refreshing drink from the water glass.",
+    "category": "interaction",
+    "duration": 5,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "objectState": ["filled_water", "half"]
+    },
+    "effects": {
+      "objectState": "empty",
+      "needChanges": {
+        "thirst": -45
+      }
+    },
+    "successMessage": "Ah! You drink the cool water. Your throat feels completely refreshed.",
+    "icon": "💧"
+  },
+  {
+    "id": "drink_from_flask",
+    "name": "Drink from Copper Flask",
+    "description": "Uncap the copper flask and take a swig of naturally ionized water.",
+    "category": "interaction",
+    "duration": 4,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "objectState": ["full", "half"]
+    },
+    "effects": {
+      "objectState": "empty",
+      "needChanges": {
+        "thirst": -40
+      }
+    },
+    "successMessage": "You take a satisfying drink from the copper bottle. Crisp and thirst-quenching.",
+    "icon": "🍶"
+  },
+  {
+    "id": "flush_toilet",
+    "name": "Flush Toilet",
+    "description": "Press the chrome dual-flush button on the toilet cistern.",
+    "category": "interaction",
+    "duration": 3,
+    "requiresTarget": true,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "toilet"
+    },
+    "effects": {
+      "objectState": "clean"
+    },
+    "successMessage": "Whoosh! A strong swirl of clean water flushes through the bowl.",
+    "icon": "🚽"
+  },
+  {
+    "id": "look_in_mirror",
+    "name": "Look in Mirror",
+    "description": "Examine your face, hair, and expression in the bathroom mirror.",
+    "category": "interaction",
+    "duration": 3,
+    "requiresTarget": true,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "toilet",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "stress": -5
+      }
+    },
+    "successMessage": "You check yourself in the glass. Eyes clear, hair neat, looking ready for the day.",
+    "icon": "🪞"
+  },
+  {
+    "id": "turn_on_kitchen_tap",
+    "name": "Turn On Kitchen Tap",
+    "description": "Turn the lever faucet on the sink.",
+    "category": "interaction",
+    "duration": 1,
+    "requiresTarget": true,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "objectState": "running_tap"
+    },
+    "successMessage": "Water rushes steadily into the stainless sink basin.",
+    "icon": "🚰"
+  },
+  {
+    "id": "turn_off_kitchen_tap",
+    "name": "Turn Off Kitchen Tap",
+    "description": "Turn off the faucet completely.",
+    "category": "interaction",
+    "duration": 1,
+    "requiresTarget": true,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "objectState": "idle"
+    },
+    "successMessage": "You shut off the tap with a smooth turn. Not a single drip.",
+    "icon": "🚰"
+  },
+  {
+    "id": "pick_up_item",
+    "name": "Pick Up Item",
+    "description": "Hold the portable item in your hands.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "preconditions": {
+      "holding": "none"
+    },
+    "effects": {
+      "pickUp": true
+    },
+    "successMessage": "You pick up the item and hold it safely.",
+    "icon": "🤲"
+  },
+  {
+    "id": "pick_up_math_book",
+    "name": "Pick Math Textbook",
+    "description": "Take the mathematics textbook down from the shelf and hold it.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "holding": "none",
+      "objectState": "on_shelf"
+    },
+    "effects": {
+      "pickUp": true
+    },
+    "successMessage": "You lift the math textbook from the shelf and hold it carefully.",
+    "icon": "📘"
+  },
+  {
+    "id": "pick_up_physics_book",
+    "name": "Pick Physics Textbook",
+    "description": "Take the physics textbook down from the shelf and hold it.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "holding": "none",
+      "objectState": "on_shelf"
+    },
+    "effects": {
+      "pickUp": true
+    },
+    "successMessage": "You pull the physics textbook off the shelf and carry it in your hands.",
+    "icon": "📗"
+  },
+  {
+    "id": "pick_up_chemistry_book",
+    "name": "Pick Chemistry Textbook",
+    "description": "Take the chemistry textbook down from the shelf and hold it.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "holding": "none",
+      "objectState": "on_shelf"
+    },
+    "effects": {
+      "pickUp": true
+    },
+    "successMessage": "You take the chemistry textbook off the shelf and cradle it in your hands.",
+    "icon": "📙"
+  },
+  {
+    "id": "pick_up_psychology_book",
+    "name": "Pick Psychology Book",
+    "description": "Take the psychology book off the shelf and hold it.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "holding": "none",
+      "objectState": "on_shelf"
+    },
+    "effects": {
+      "pickUp": true
+    },
+    "successMessage": "You pick the psychology book from the shelf and carry it with you.",
+    "icon": "📕"
+  },
+  {
+    "id": "pick_up_mohit_notebook",
+    "name": "Pick Mohit's Notebook",
+    "description": "Take Mohit's notebook from the shelf and hold it.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "holding": "none",
+      "objectState": "on_shelf"
+    },
+    "effects": {
+      "pickUp": true
+    },
+    "successMessage": "You pick up Mohit's notebook and hold it carefully in your hands.",
+    "icon": "📓"
+  },
+  {
+    "id": "pick_up_aria_notebook",
+    "name": "Pick Aria's Notebook",
+    "description": "Take Aria's notebook from the shelf and hold it.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "holding": "none",
+      "objectState": "on_shelf"
+    },
+    "effects": {
+      "pickUp": true
+    },
+    "successMessage": "You take Aria's notebook off the shelf and hold it gently.",
+    "icon": "📔"
+  },
+  {
+    "id": "put_down_item",
+    "name": "Put Down Item",
+    "description": "Set down the held item onto a nearby surface.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": false,
+    "preconditions": {
+      "holding": "any"
+    },
+    "effects": {
+      "putDown": true
+    },
+    "successMessage": "You place the item down neatly.",
+    "icon": "⬇️"
+  },
+  {
+    "id": "make_bed",
+    "name": "Make the Bed",
+    "description": "Straighten the bedsheet, pull corners taut, and fluff up the pillows.",
+    "category": "interaction",
+    "duration": 60,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
+    "preconditions": {
+      "roomId": "bedroom",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "neat",
+      "needChanges": {
+        "energy": -2
+      }
+    },
+    "successMessage": "You smooth out all wrinkles and tuck in the corners. The bed looks crisp and hotel-neat.",
+    "icon": "🛏️"
+  },
+  {
+    "id": "wipe_counter",
+    "name": "Wipe Kitchen Counter",
+    "description": "Dampen a soft microfiber cloth and wipe down the black granite countertop.",
+    "category": "interaction",
+    "duration": 45,
+    "requiresTarget": true,
+    "targetTypes": ["surface", "fixture"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 8,
+        "energy": -2
+      }
+    },
+    "successMessage": "The black granite gleams smoothly in the morning light, spotless and pristine.",
+    "icon": "🧽"
+  },
+  {
+    "id": "sip_water_glass",
+    "name": "Sip Water",
+    "description": "Take a quick sip of water from the glass.",
+    "category": "interaction",
+    "duration": 3,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "objectState": "filled_water"
+    },
+    "effects": {
+      "objectState": "half",
+      "needChanges": {
+        "thirst": -18
+      }
+    },
+    "successMessage": "A cool sip wets your mouth and eases your thirst.",
+    "icon": "💧"
+  },
+  {
+    "id": "sip_from_flask",
+    "name": "Sip from Flask",
+    "description": "Take a quick sip from the copper flask.",
+    "category": "interaction",
+    "duration": 3,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "objectState": ["full", "half"]
+    },
+    "effects": {
+      "objectState": "half",
+      "needChanges": {
+        "thirst": -18
+      }
+    },
+    "successMessage": "A refreshing sip from the flask takes the edge off your thirst.",
+    "icon": "🍶"
+  },
+  {
+    "id": "browse_books",
+    "name": "Browse the Bookshelf",
+    "description": "Look over the textbooks and notebooks on the shelf.",
+    "category": "interaction",
+    "duration": 10,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
+    "preconditions": {
+      "roomId": "study_room"
+    },
+    "effects": {},
+    "successMessage": "You scan the shelf, spotting math, physics, chemistry, psychology, and two familiar notebooks.",
+    "icon": "📚"
+  },
+  {
+    "id": "browse_web",
+    "name": "Browse the Web",
+    "description": "Browse websites and read a few interesting articles.",
+    "category": "interaction",
+    "duration": 600,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {
+      "roomId": "study_room",
+      "objectState": ["on", "in_use"]
+    },
+    "effects": {
+      "objectState": "in_use",
+      "needChanges": {
+        "energy": -3,
+        "sleepiness": 2
+      }
+    },
+    "successMessage": "A few interesting pages later, you have learned something new.",
+    "icon": "🌐"
+  },
+  {
+    "id": "view_photos",
+    "name": "See Photos",
+    "description": "Open the photo gallery and look through saved pictures.",
+    "category": "interaction",
+    "duration": 300,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {
+      "roomId": "study_room",
+      "objectState": ["on", "in_use"]
+    },
+    "effects": {
+      "objectState": "in_use",
+      "needChanges": {
+        "energy": 1
+      }
+    },
+    "successMessage": "You scroll through a few familiar photos and pause on a favorite.",
+    "icon": "🖼️"
+  },
+  {
+    "id": "take_selfie",
+    "name": "Take a Selfie",
+    "description": "Use the webcam to take a quick selfie.",
+    "category": "interaction",
+    "duration": 30,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {
+      "roomId": "study_room",
+      "objectState": ["on", "in_use"]
+    },
+    "effects": {
+      "objectState": "in_use"
+    },
+    "successMessage": "The webcam captures a quick photo.",
+    "icon": "🤳"
+  },
+  {
+    "id": "record_video",
+    "name": "Record a Video",
+    "description": "Record a short video with the computer's webcam.",
+    "category": "interaction",
+    "duration": 60,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {
+      "roomId": "study_room",
+      "objectState": ["on", "in_use"]
+    },
+    "effects": {
+      "objectState": "in_use"
+    },
+    "successMessage": "You record a short clip and save it to the computer.",
+    "icon": "🎥"
+  },
+  {
+    "id": "turn_on_room_light",
+    "name": "Turn On Light",
+    "description": "Switch on the light in this room.",
+    "category": "interaction",
+    "duration": 1,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "objectState": "off"
+    },
+    "effects": {
+      "objectState": "on"
+    },
+    "successMessage": "The room light comes on.",
+    "icon": "💡"
+  },
+  {
+    "id": "turn_off_room_light",
+    "name": "Turn Off Light",
+    "description": "Switch off the light in this room.",
+    "category": "interaction",
+    "duration": 1,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "objectState": "on"
+    },
+    "effects": {
+      "objectState": "off"
+    },
+    "successMessage": "The light goes off.",
+    "icon": "🌙"
+  },
+  {
+    "id": "get_food_from_fridge",
+    "name": "Take a Snack",
+    "description": "Take a small snack from the open refrigerator.",
+    "category": "interaction",
+    "duration": 15,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "objectState": "open"
+    },
+    "effects": {
+      "needChanges": {
+        "hunger": -25
+      }
+    },
+    "successMessage": "You grab a small snack from the fridge.",
+    "icon": "🍎"
+  },
+  {
+    "id": "get_drink_from_fridge",
+    "name": "Take a Cold Drink",
+    "description": "Take a chilled drink from the open refrigerator.",
+    "category": "interaction",
+    "duration": 10,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "objectState": "open"
+    },
+    "effects": {
+      "needChanges": {
+        "thirst": -35
+      }
+    },
+    "successMessage": "A cold drink quickly refreshes you.",
+    "icon": "🥤"
+  },
+  {
+    "id": "prepare_snack",
+    "name": "Prepare a Snack",
+    "description": "Arrange a quick snack on the counter.",
+    "category": "interaction",
+    "duration": 60,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "objectState": "has_items"
+    },
+    "successMessage": "You prepare a small snack on the counter.",
+    "icon": "🥣"
+  },
+  {
+    "id": "wash_hands_kitchen",
+    "name": "Wash Hands",
+    "description": "Wash your hands at the kitchen sink.",
+    "category": "interaction",
+    "duration": 30,
+    "requiresTarget": true,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 8
+      }
+    },
+    "successMessage": "You wash your hands under cool running water.",
+    "icon": "🧼"
+  },
+  {
+    "id": "wash_dishes",
+    "name": "Wash the Dishes",
+    "description": "Wash a few dishes in the sink.",
+    "category": "interaction",
+    "duration": 180,
+    "requiresTarget": true,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 3,
+        "energy": -2
+      }
+    },
+    "successMessage": "You wash the dishes until they are clean and stacked to dry.",
+    "icon": "🍽️"
+  },
+  {
+    "id": "tidy_desk",
+    "name": "Tidy the Desk",
+    "description": "Put papers and stationery back in their places.",
+    "category": "interaction",
+    "duration": 120,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
+    "preconditions": {
+      "roomId": "study_room"
+    },
+    "effects": {
+      "objectState": "tidy",
+      "needChanges": {
+        "energy": -2
+      }
+    },
+    "successMessage": "You straighten the desk and clear a little space to work.",
+    "icon": "🧹"
+  },
+  {
+    "id": "check_phone",
+    "name": "Check Phone",
+    "description": "Pick up your phone and check for the time or new messages.",
+    "category": "interaction",
+    "duration": 30,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {
+      "roomId": "bedroom"
+    },
+    "effects": {
+      "needChanges": {
+        "boredom": -3
+      }
+    },
+    "successMessage": "You glance over your notifications and the time.",
+    "icon": "📱"
+  },
+  {
+    "id": "turn_on_shower",
+    "name": "Turn On Shower",
+    "description": "Turn on the shower and adjust the water temperature.",
+    "category": "interaction",
+    "duration": 5,
+    "requiresTarget": true,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "toilet",
+      "objectState": "off"
+    },
+    "effects": {
+      "objectState": "running"
+    },
+    "successMessage": "Warm water begins to flow from the shower.",
+    "icon": "🚿"
+  },
+  {
+    "id": "turn_off_shower",
+    "name": "Turn Off Shower",
+    "description": "Turn off the running shower.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "toilet",
+      "objectState": "running"
+    },
+    "effects": {
+      "objectState": "off"
+    },
+    "successMessage": "You turn off the shower and the water settles to a drip.",
+    "icon": "🚿"
+  }
+]

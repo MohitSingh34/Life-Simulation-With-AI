@@ -1,0 +1,52 @@
+/* ============================================================
+   ROOM THEME: BATHROOM / TOILET (Cool Ceramic Tiles, Fresh Aqua)
+   ============================================================ */
+
+:root {
+  --room-accent: #2dd4bf;
+  --room-accent-glow: rgba(45, 212, 191, 0.35);
+  --border-active: #2dd4bf;
+  --bg-card: rgba(14, 24, 28, 0.28);
+  --bg-card-hover: rgba(20, 34, 40, 0.38);
+  --bg-card-inner: rgba(18, 30, 36, 0.35);
+  --border-card: rgba(45, 212, 191, 0.16);
+}
+
+/* Clear full-page bathroom photo */
+.room-backdrop-layer {
+  filter: brightness(0.68) saturate(1.15) !important;
+  opacity: 0.88 !important;
+}
+
+.room-backdrop-scrim {
+  background: radial-gradient(circle at 60% 35%, rgba(10, 22, 26, 0.22) 0%, rgba(6, 12, 16, 0.65) 100%) !important;
+}
+
+/* Bathroom-specific card accents */
+.card {
+  box-shadow: 0 12px 40px rgba(6, 16, 20, 0.45);
+}
+
+.current-room-title {
+  color: #ccfbf1;
+  text-shadow: 0 2px 10px rgba(45, 212, 191, 0.4);
+}
+
+.time-mood-badge {
+  background: rgba(45, 212, 191, 0.22);
+  border-color: rgba(45, 212, 191, 0.5);
+  color: #99f6e4;
+}
+
+.avatar-ring {
+  border-color: #2dd4bf;
+  box-shadow: 0 0 18px rgba(45, 212, 191, 0.35);
+}
+
+/* Active room on top-down floorplan */
+#map-room-toilet .room-floor {
+  stroke: #2dd4bf !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 12px rgba(45, 212, 191, 0.5)) !important;
+}
+
