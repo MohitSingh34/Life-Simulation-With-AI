@@ -134,13 +134,26 @@ export function createServer(port = 3000) {
           };
         });
 
+        const inSameRoom = player.location.roomId === ai.location.roomId;
+        const aiAvailableActions = engine.actionEngine.getAvailableActions(ai.id);
+        const aiRoomName = engine.configLoader.getRoom(ai.location.roomId)?.name || ai.location.roomId;
+        const visibleAiBodyState = inSameRoom
+          ? engine.getCharacterBodyState(ai.id)
+          : {
+              pose: `In ${aiRoomName} (Out of sight)`,
+              description: `Aria is currently in the ${aiRoomName}, out of your line of sight. Walk to ${aiRoomName} to observe her posture and physical state.`,
+              status: "Out of sight"
+            };
+
         sendJson({
           player,
           ai,
+          inSameRoom,
           roomDetails,
           availableActions,
+          aiAvailableActions,
           playerBodyState,
-          aiBodyState,
+          aiBodyState: visibleAiBodyState,
           time: {
             full: fullTime,
             clock: clockTime,
@@ -227,6 +240,17 @@ export function createServer(port = 3000) {
         }
 
         realtimePersistence.persist();
+        const inSameRoom = player.location.roomId === ai.location.roomId;
+        const aiAvailableActions = engine.actionEngine.getAvailableActions(ai.id);
+        const aiRoomName = engine.configLoader.getRoom(ai.location.roomId)?.name || ai.location.roomId;
+        const visibleAiBodyState = inSameRoom
+          ? engine.getCharacterBodyState(ai.id)
+          : {
+              pose: `In ${aiRoomName} (Out of sight)`,
+              description: `Aria is currently in the ${aiRoomName}, out of your line of sight. Walk to ${aiRoomName} to observe her posture and physical state.`,
+              status: "Out of sight"
+            };
+
         sendJson({
           success: execution.result.status === "accepted",
           message: execution.result.message,
@@ -234,8 +258,12 @@ export function createServer(port = 3000) {
           aiUpdate: execution.aiUpdate,
           player,
           ai,
+          inSameRoom,
           roomDetails,
           availableActions,
+          aiAvailableActions,
+          playerBodyState: engine.getCharacterBodyState(player.id),
+          aiBodyState: visibleAiBodyState,
           time: {
             full: fullTime,
             clock: engine.timeEngine.getFormattedClock(),
@@ -450,6 +478,78 @@ export function createServer(port = 3000) {
       // 5. API: Snapshot
       if (req.method === "GET" && pathname === "/api/snapshot") {
         sendJson(engine.stateManager.getSnapshot());
+        return;
+      }
+
+      // 6. API: Trigger AI Action (Autonomous Decision or Direct Action)
+      if (req.method === "POST" && pathname === "/api/ai/act") {
+        const body = await parseBody<{ actionId?: string }>();
+        let aiExecution;
+        if (body.actionId) {
+          aiExecution = {
+            actionName: body.actionId,
+            actionId: body.actionId,
+            result: engine.actionEngine.executeAction({
+              actorId: "ai_001",
+              actionId: body.actionId,
+              timestamp: new Date().toISOString(),
+            }),
+            reasoning: "Player directed AI action",
+          };
+        } else {
+          aiExecution = engine.aiEngine.decideAndExecute("ai_001");
+        }
+        realtimePersistence.persist();
+        const player = engine.getPlayer();
+        const ai = engine.getAI();
+        const inSameRoom = player.location.roomId === ai.location.roomId;
+        const aiRoomName = engine.configLoader.getRoom(ai.location.roomId)?.name || ai.location.roomId;
+        const visibleAiBodyState = inSameRoom
+          ? engine.getCharacterBodyState(ai.id)
+          : {
+              pose: `In ${aiRoomName} (Out of sight)`,
+              description: `Aria is currently in the ${aiRoomName}, out of your line of sight. Walk to ${aiRoomName} to observe her posture and physical state.`,
+              status: "Out of sight"
+            };
+
+        sendJson({
+          execution: aiExecution,
+          ai,
+          inSameRoom,
+          aiBodyState: visibleAiBodyState,
+          aiAvailableActions: engine.actionEngine.getAvailableActions("ai_001"),
+          events: engine.eventManager.getRecentEvents(8),
+        });
+        return;
+      }
+
+      // 7. API: Reset Story to Fresh Day 1 State
+      if (req.method === "POST" && pathname === "/api/reset") {
+        const stateDir = path.resolve(__dirname, "../state");
+        try {
+          if (fs.existsSync(path.join(stateDir, "game-state.json"))) {
+            fs.unlinkSync(path.join(stateDir, "game-state.json"));
+          }
+          if (fs.existsSync(path.join(stateDir, "timings.txt"))) {
+            fs.unlinkSync(path.join(stateDir, "timings.txt"));
+          }
+          if (fs.existsSync(path.join(stateDir, "conversations.json"))) {
+            fs.unlinkSync(path.join(stateDir, "conversations.json"));
+          }
+        } catch (e) {
+          console.warn("Could not remove state files during reset:", e);
+        }
+
+        // Re-initialize engine and conversations
+        engine.init();
+        realtimePersistence.start();
+        conversationManager.reset();
+
+        sendJson({
+          success: true,
+          message: "Story has been reset to initial Day 1 state.",
+          activeConversation: conversationManager.getActiveConversation(),
+        });
         return;
       }
 

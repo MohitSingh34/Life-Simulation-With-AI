@@ -2,7 +2,7 @@
   {
     "id": "hunger",
     "name": "Hunger",
-    "decayPerMinute": 0.08,
+    "decayPerMinute": 0.2083,
     "warningThreshold": 65,
     "criticalThreshold": 85,
     "warningMessage": "Your stomach is rumbling quietly. Time to get something to eat.",
@@ -11,7 +11,7 @@
   {
     "id": "thirst",
     "name": "Thirst",
-    "decayPerMinute": 0.12,
+    "decayPerMinute": 0.2381,
     "warningThreshold": 60,
     "criticalThreshold": 80,
     "warningMessage": "Your throat feels dry. A glass of water would be great.",

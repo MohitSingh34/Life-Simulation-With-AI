@@ -837,7 +837,11 @@
       "roomId": "kitchen"
     },
     "effects": {
-      "objectState": "has_items"
+      "objectState": "has_items",
+      "objectStates": {
+        "plate_001": "with_food",
+        "counter_001": "has_items"
+      }
     },
     "successMessage": "You prepare a small snack on the counter.",
     "icon": "🥣"
@@ -875,7 +879,8 @@
     "effects": {
       "objectState": "empty",
       "objectStates": {
-        "plate_001": "empty"
+        "plate_001": "empty",
+        "chai_cup_001": "empty"
       },
       "needChanges": {
         "hygiene": 8,

@@ -23,8 +23,8 @@ try {
 
   const threeMinutesLater = new Date("2026-11-04T11:37:30.000Z");
   firstPersistence.update(threeMinutesLater);
-  assert.equal(firstEngine.getPlayer().needs.hunger, 45.2);
-  assert.equal(firstEngine.getAI().needs.hunger, 30.2);
+  assert.equal(firstEngine.getPlayer().needs.hunger, 45.6);
+  assert.equal(firstEngine.getAI().needs.hunger, 30.6);
   assert.equal(fs.readFileSync(path.join(temporaryDirectory, "timings.txt"), "utf8").trim().split("\n").length, 4);
 
   firstEngine.getPlayer().location.roomId = "study_room";
@@ -36,8 +36,8 @@ try {
   resumedPersistence.start(new Date("2026-11-04T11:40:30.000Z"));
 
   assert.equal(resumedEngine.getPlayer().location.roomId, "study_room");
-  assert.equal(resumedEngine.getPlayer().needs.hunger, 45.4);
-  assert.equal(resumedEngine.getAI().needs.hunger, 30.4);
+  assert.equal(resumedEngine.getPlayer().needs.hunger, 46.2);
+  assert.equal(resumedEngine.getAI().needs.hunger, 31.2);
   assert.equal(resumedEngine.timeEngine.getFormattedClock(), "17:10");
   assert.equal(fs.readFileSync(path.join(temporaryDirectory, "timings.txt"), "utf8").trim().split("\n").length, 7);
 } finally {

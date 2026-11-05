@@ -58,6 +58,10 @@
     </div>
 
     <div class="nav-right">
+      <button id="btn-reset-story" class="btn-nav-glass btn-reset-glass" title="Reset story to Day 1 Morning">
+        <span class="btn-icon">🔄</span>
+        <span>Reset Story</span>
+      </button>
       <button id="btn-conv-toggle" class="btn-nav-glass" title="Switch or continue previous conversations">
         <span class="btn-icon">💬</span>
         <span>History</span>
@@ -172,9 +176,32 @@
               <span id="label-sleepiness" class="feeling-hidden" data-ai-tag="sleepiness_feeling">Wide awake</span>
             </div>
 
-            <!-- Hidden tags for Hygiene and Bladder to maintain full tag support -->
-            <span id="label-hygiene" class="feeling-hidden" data-ai-tag="hygiene_feeling">Clean and comfortable</span>
-            <span id="label-bladder" class="feeling-hidden" data-ai-tag="bladder_feeling">Moderate</span>
+            <!-- Bladder -->
+            <div class="need-item" id="need-bladder">
+              <div class="need-label-group">
+                <span class="need-icon cyan">🚽</span>
+                <span class="need-name">Bladder</span>
+              </div>
+              <div class="need-bar-track">
+                <div id="bar-bladder" class="need-bar-fill fill-bladder" style="width: 20%;"></div>
+              </div>
+              <span id="pct-bladder" class="need-pct">20%</span>
+              <span id="label-bladder" class="feeling-hidden" data-ai-tag="bladder_feeling">Comfortable</span>
+            </div>
+
+            <!-- Hygiene -->
+            <div class="need-item" id="need-hygiene">
+              <div class="need-label-group">
+                <span class="need-icon teal">🧼</span>
+                <span class="need-name">Hygiene</span>
+              </div>
+              <div class="need-bar-track">
+                <div id="bar-hygiene" class="need-bar-fill fill-hygiene" style="width: 80%;"></div>
+              </div>
+              <span id="pct-hygiene" class="need-pct">80%</span>
+              <span id="label-hygiene" class="feeling-hidden" data-ai-tag="hygiene_feeling">Clean and comfortable</span>
+            </div>
+
             <span id="player-mood-pill" class="feeling-hidden" data-ai-tag="player_mood">😌 Calm</span>
           </div>
         </div>
@@ -207,12 +234,257 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- COLUMN 2: Top-Down House Map & Room Scene  -->
+    <!-- COLUMN 2 (MIDDLE): Room Scene & Aria Chat  -->
     <!-- ========================================== -->
-    <section class="panel-column col-home">
+    <section class="panel-column col-center">
 
-      <!-- Interactive Top-Down House Map Card (Replaces Photo Grid) -->
-      <div class="card home-overview-card">
+      <!-- Current Room Detail Card (Location tags overlaid directly on background image) -->
+      <div class="card current-room-card">
+        <div class="room-hero-box">
+          <!-- Room background image placed in background behind text tags -->
+          <img 
+            id="room-hero-image" 
+            src="assets/rooms/bedroom.jpg" 
+            alt="Current room background" 
+            class="room-hero-img"
+            onerror="this.style.opacity='0'"
+          >
+          <div class="room-hero-scrim"></div>
+          
+          <!-- Tags and titles floating cleanly on top of the image -->
+          <div class="room-hero-overlay-content">
+            <div class="current-room-header">
+              <div class="room-title-stack">
+                <span class="eyebrow-text">CURRENT ROOM</span>
+                <h2 id="current-room-name" class="current-room-title">Bedroom</h2>
+              </div>
+              <span id="room-ambience-tag" class="time-mood-badge">☀️ Morning Light</span>
+            </div>
+
+            <p id="room-description" class="room-desc-text" data-ai-tag="room_description">
+              A quiet and cozy bedroom with a wooden bed, a study corner, and a window facing the morning sky. Soft sunlight filters through the curtains, creating a warm and calm atmosphere.
+            </p>
+
+            <p id="room-ambience" class="room-ambience-quote" data-ai-tag="room_ambience">
+              Golden morning sunlight streams through the window grill, casting warm patterns across the bed sheet.
+            </p>
+          </div>
+        </div>
+
+        <!-- Things Here (Interactive objects chips) -->
+        <div class="things-here-box">
+          <span class="section-eyebrow">INTERACTIVE OBJECTS HERE</span>
+          <div id="room-objects-list" class="things-chip-row"></div>
+        </div>
+      </div>
+
+      <!-- Aria Roommate Messenger Card (30% Glass) -->
+      <div class="card aria-chat-card">
+        <div class="aria-chat-header">
+          <div class="avatar-ring-sm aria-avatar-ring">
+            <span class="avatar-fallback-sm aria-fallback">A</span>
+          </div>
+          <div class="aria-meta-col">
+            <div class="aria-name-badge-row">
+              <h3 class="aria-name">Aria</h3>
+              <span class="badge-roommate">ROOMMATE</span>
+              <span id="aria-room-badge" class="badge-room-status status-together">Together in Room</span>
+            </div>
+            <div class="aria-online-row">
+              <span class="dot-online"></span>
+              <span id="ai-location-badge" data-ai-tag="ai_location">Online · In Study Room</span>
+            </div>
+          </div>
+          <div class="aria-header-actions">
+            <button id="btn-open-conv-drawer" class="btn-chat-action" title="View all conversation history">
+              💬
+            </button>
+            <button class="btn-card-dots" title="Chat Options">•••</button>
+          </div>
+        </div>
+
+        <!-- Out of line of sight notice (Shown when in different room) -->
+        <div id="aria-out-of-sight" class="aria-out-of-sight" style="display: none;">
+          <span class="sight-icon">👁️‍🗨️</span>
+          <span id="aria-out-of-sight-text">Aria is in Study Room — physical state and needs are out of sight</span>
+        </div>
+
+        <!-- Aria's Body Needs Panel (Visible only when in the same room) -->
+        <div class="aria-body-needs-box" id="aria-needs-box">
+          <div class="aria-needs-title-row">
+            <span class="section-eyebrow">ARIA'S PHYSICAL NEEDS</span>
+            <span id="aria-body-status-pill" class="aria-status-pill">Satisfied &amp; Well</span>
+          </div>
+          <div class="aria-needs-compact-grid">
+            <!-- Appetite -->
+            <div class="aria-need-item" title="Aria's Appetite / Hunger">
+              <div class="aria-need-top">
+                <span class="need-icon-tiny gold">🍴</span>
+                <span class="need-name-tiny">Appetite</span>
+                <span id="aria-pct-hunger" class="need-pct-tiny">35%</span>
+              </div>
+              <div class="mini-bar-track">
+                <div id="aria-bar-hunger" class="need-bar-fill fill-appetite" style="width: 35%;"></div>
+              </div>
+            </div>
+
+            <!-- Thirst -->
+            <div class="aria-need-item" title="Aria's Thirst">
+              <div class="aria-need-top">
+                <span class="need-icon-tiny blue">💧</span>
+                <span class="need-name-tiny">Thirst</span>
+                <span id="aria-pct-thirst" class="need-pct-tiny">25%</span>
+              </div>
+              <div class="mini-bar-track">
+                <div id="aria-bar-thirst" class="need-bar-fill fill-thirst" style="width: 25%;"></div>
+              </div>
+            </div>
+
+            <!-- Energy -->
+            <div class="aria-need-item" title="Aria's Energy">
+              <div class="aria-need-top">
+                <span class="need-icon-tiny green">⚡</span>
+                <span class="need-name-tiny">Energy</span>
+                <span id="aria-pct-energy" class="need-pct-tiny">80%</span>
+              </div>
+              <div class="mini-bar-track">
+                <div id="aria-bar-energy" class="need-bar-fill fill-energy" style="width: 80%;"></div>
+              </div>
+            </div>
+
+            <!-- Drowsiness -->
+            <div class="aria-need-item" title="Aria's Drowsiness">
+              <div class="aria-need-top">
+                <span class="need-icon-tiny purple">🛏️</span>
+                <span class="need-name-tiny">Drowsiness</span>
+                <span id="aria-pct-sleepiness" class="need-pct-tiny">20%</span>
+              </div>
+              <div class="mini-bar-track">
+                <div id="aria-bar-sleepiness" class="need-bar-fill fill-sleepiness" style="width: 20%;"></div>
+              </div>
+            </div>
+
+            <!-- Bladder -->
+            <div class="aria-need-item" title="Aria's Bladder">
+              <div class="aria-need-top">
+                <span class="need-icon-tiny cyan">🚽</span>
+                <span class="need-name-tiny">Bladder</span>
+                <span id="aria-pct-bladder" class="need-pct-tiny">20%</span>
+              </div>
+              <div class="mini-bar-track">
+                <div id="aria-bar-bladder" class="need-bar-fill fill-bladder" style="width: 20%;"></div>
+              </div>
+            </div>
+
+            <!-- Hygiene -->
+            <div class="aria-need-item" title="Aria's Hygiene">
+              <div class="aria-need-top">
+                <span class="need-icon-tiny teal">🧼</span>
+                <span class="need-name-tiny">Hygiene</span>
+                <span id="aria-pct-hygiene" class="need-pct-tiny">85%</span>
+              </div>
+              <div class="mini-bar-track">
+                <div id="aria-bar-hygiene" class="need-bar-fill fill-hygiene" style="width: 85%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Stream Messages Feed -->
+        <div id="chat-messages-container" class="chat-stream">
+          <!-- Dynamic message bubbles injected by app.js -->
+          <div id="aria-typing" class="aria-typing" role="status" aria-label="Aria is typing" hidden>
+            <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span>Aria is thinking</span>
+          </div>
+        </div>
+
+        <!-- Available Actions For Player (Just Above Message Box) -->
+        <div class="chat-actions-deck" id="chat-actions-deck">
+          <div class="chat-actions-header">
+            <span class="chat-actions-title">⚡ Available Actions (You)</span>
+            <span class="chat-actions-count" id="player-quick-actions-count">14 ready</span>
+          </div>
+          <div class="chat-quick-actions-row" id="player-quick-actions-row">
+            <!-- Dynamic action chips injected by app.js -->
+          </div>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <div class="chat-input-bar">
+          <button class="btn-chat-plus" title="Add note or action">+</button>
+          <input 
+            id="aria-message-input" 
+            type="text" 
+            class="chat-input" 
+            placeholder="Message Aria..." 
+            maxlength="1000"
+            autocomplete="off"
+          >
+          <button id="btn-talk-aria" class="btn-chat-send" title="Send message to Aria">
+            <span>➢</span>
+          </button>
+        </div>
+        <p id="ai-activity-text" class="feeling-hidden" data-ai-tag="ai_activity">Studying and taking notes</p>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- COLUMN 3: Full Actions & AI Controls       -->
+    <!-- ========================================== -->
+    <section class="panel-column col-actions">
+
+      <!-- What Would You Like To Do Card (30% Glass) -->
+      <div class="card actions-card">
+        <div class="actions-header">
+          <div class="actions-title-row">
+            <span class="actions-icon">🍃</span>
+            <h2 class="actions-heading">What would you like to do?</h2>
+          </div>
+        </div>
+
+        <!-- Category Pills -->
+        <div class="action-category-pills">
+          <button class="cat-pill active" data-category="all">Everything</button>
+          <button class="cat-pill" data-category="movement">Walk</button>
+          <button class="cat-pill" data-category="body">Body &amp; Rest</button>
+          <button class="cat-pill" data-category="daily">Daily Life</button>
+          <button class="cat-pill" data-category="interaction">Interact</button>
+        </div>
+
+        <!-- Action Cards List -->
+        <div id="actions-grid" class="action-cards-stack"></div>
+      </div>
+
+      <!-- Aria's Available Actions Card -->
+      <div class="card ai-actions-card" id="ai-actions-card">
+        <div class="actions-header">
+          <div class="actions-title-row">
+            <span class="actions-icon">✨</span>
+            <div style="flex: 1;">
+              <h2 class="actions-heading">Aria's Available Actions</h2>
+              <span class="ai-status-subtext" id="ai-status-subtext">Autonomous AI Roommate</span>
+            </div>
+            <button id="btn-ai-act" class="btn-ai-act" title="Ask Aria to choose and execute an action now">
+              <span>⚡ Let Aria Act</span>
+            </button>
+          </div>
+        </div>
+        <div class="ai-actions-scroll-list" id="ai-available-actions-list">
+          <!-- Dynamic Aria action chips injected by app.js -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- BOTTOM: Top-Down House Map (Full Width)     -->
+    <!-- ========================================== -->
+    <section class="map-bottom-container">
+
+      <!-- Interactive Top-Down House Map Card -->
+      <div class="card home-overview-card map-bottom-card">
         <div class="home-card-header">
           <div class="home-card-title-group">
             <span class="home-card-icon">🧭</span>
@@ -408,6 +680,12 @@
               <g class="map-object interactive-obj" id="map-obj-plate" data-obj="plate_001" data-room="kitchen">
                 <circle cx="190" cy="265" r="10" class="obj-plate" fill="#475569" stroke="#cbd5e1" stroke-width="1.2" />
                 <text x="190" y="268" class="obj-label-tiny" text-anchor="middle" font-size="7">🍽️</text>
+              </g>
+
+              <!-- Hot Chai Cup -->
+              <g class="map-object interactive-obj" id="map-obj-chai" data-obj="chai_cup_001" data-room="kitchen">
+                <circle cx="215" cy="265" r="7" class="obj-chai-cup" fill="#78350f" stroke="#d97706" stroke-width="1.2" />
+                <text x="215" y="268" class="obj-label-tiny" text-anchor="middle" font-size="7">☕</text>
               </g>
 
               <!-- Doorway opening to corridor -->
@@ -649,187 +927,10 @@
                   <span class="meta-value" id="hc-details">Hands are free</span>
                 </div>
               </div>
-              <div class="hovercard-hint" id="hc-hint">Click object to interact ›</div>
+              <div class="hovercard-hint" id="hc-hint">Left-click object to interact · Esc or click outside to close</div>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Current Room Detail Card (Location tags overlaid directly on background image) -->
-      <div class="card current-room-card">
-        <div class="room-hero-box">
-          <!-- Room background image placed in background behind text tags -->
-          <img 
-            id="room-hero-image" 
-            src="assets/rooms/bedroom.jpg" 
-            alt="Current room background" 
-            class="room-hero-img"
-            onerror="this.style.opacity='0'"
-          >
-          <div class="room-hero-scrim"></div>
-          
-          <!-- Tags and titles floating cleanly on top of the image -->
-          <div class="room-hero-overlay-content">
-            <div class="current-room-header">
-              <div class="room-title-stack">
-                <span class="eyebrow-text">CURRENT ROOM</span>
-                <h2 id="current-room-name" class="current-room-title">Bedroom</h2>
-              </div>
-              <span id="room-ambience-tag" class="time-mood-badge">☀️ Morning Light</span>
-            </div>
-
-            <p id="room-description" class="room-desc-text" data-ai-tag="room_description">
-              A quiet and cozy bedroom with a wooden bed, a study corner, and a window facing the morning sky. Soft sunlight filters through the curtains, creating a warm and calm atmosphere.
-            </p>
-
-            <p id="room-ambience" class="room-ambience-quote" data-ai-tag="room_ambience">
-              Golden morning sunlight streams through the window grill, casting warm patterns across the bed sheet.
-            </p>
-          </div>
-        </div>
-
-        <!-- Things Here (Interactive objects chips) -->
-        <div class="things-here-box">
-          <span class="section-eyebrow">INTERACTIVE OBJECTS HERE</span>
-          <div id="room-objects-list" class="things-chip-row"></div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- ========================================== -->
-    <!-- COLUMN 3: Aria Roommate Chat & Actions     -->
-    <!-- ========================================== -->
-    <section class="panel-column col-aria">
-
-      <!-- Aria Roommate Messenger Card (30% Glass) -->
-      <div class="card aria-chat-card">
-        <div class="aria-chat-header">
-          <div class="avatar-ring-sm aria-avatar-ring">
-            <span class="avatar-fallback-sm aria-fallback">A</span>
-          </div>
-          <div class="aria-meta-col">
-            <div class="aria-name-badge-row">
-              <h3 class="aria-name">Aria</h3>
-              <span class="badge-roommate">ROOMMATE</span>
-            </div>
-            <div class="aria-online-row">
-              <span class="dot-online"></span>
-              <span id="ai-location-badge" data-ai-tag="ai_location">Online · In Study Room</span>
-            </div>
-          </div>
-          <div class="aria-header-actions">
-            <button id="btn-open-conv-drawer" class="btn-chat-action" title="View all conversation history">
-              💬
-            </button>
-            <button class="btn-card-dots" title="Chat Options">•••</button>
-          </div>
-        </div>
-
-        <!-- Aria's Body Needs Panel (Equal maintenance & restrictions as player) -->
-        <div class="aria-body-needs-box" id="aria-needs-box">
-          <div class="aria-needs-title-row">
-            <span class="section-eyebrow">ARIA'S BODY NEEDS</span>
-            <span id="aria-body-status-pill" class="aria-status-pill">Satisfied &amp; Well</span>
-          </div>
-          <div class="aria-needs-compact-grid">
-            <!-- Appetite -->
-            <div class="aria-need-item" title="Aria's Appetite / Hunger">
-              <div class="aria-need-top">
-                <span class="need-icon-tiny gold">🍴</span>
-                <span class="need-name-tiny">Appetite</span>
-                <span id="aria-pct-hunger" class="need-pct-tiny">35%</span>
-              </div>
-              <div class="mini-bar-track">
-                <div id="aria-bar-hunger" class="need-bar-fill fill-appetite" style="width: 35%;"></div>
-              </div>
-            </div>
-
-            <!-- Thirst -->
-            <div class="aria-need-item" title="Aria's Thirst">
-              <div class="aria-need-top">
-                <span class="need-icon-tiny blue">💧</span>
-                <span class="need-name-tiny">Thirst</span>
-                <span id="aria-pct-thirst" class="need-pct-tiny">25%</span>
-              </div>
-              <div class="mini-bar-track">
-                <div id="aria-bar-thirst" class="need-bar-fill fill-thirst" style="width: 25%;"></div>
-              </div>
-            </div>
-
-            <!-- Energy -->
-            <div class="aria-need-item" title="Aria's Energy">
-              <div class="aria-need-top">
-                <span class="need-icon-tiny green">⚡</span>
-                <span class="need-name-tiny">Energy</span>
-                <span id="aria-pct-energy" class="need-pct-tiny">80%</span>
-              </div>
-              <div class="mini-bar-track">
-                <div id="aria-bar-energy" class="need-bar-fill fill-energy" style="width: 80%;"></div>
-              </div>
-            </div>
-
-            <!-- Drowsiness -->
-            <div class="aria-need-item" title="Aria's Drowsiness">
-              <div class="aria-need-top">
-                <span class="need-icon-tiny purple">🛏️</span>
-                <span class="need-name-tiny">Drowsiness</span>
-                <span id="aria-pct-sleepiness" class="need-pct-tiny">20%</span>
-              </div>
-              <div class="mini-bar-track">
-                <div id="aria-bar-sleepiness" class="need-bar-fill fill-sleepiness" style="width: 20%;"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Chat Stream Messages Feed -->
-        <div id="chat-messages-container" class="chat-stream">
-          <!-- Dynamic message bubbles injected by app.js -->
-          <div id="aria-typing" class="aria-typing" role="status" aria-label="Aria is typing" hidden>
-            <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-            <span>Aria is thinking</span>
-          </div>
-        </div>
-
-        <!-- Chat Input Bar -->
-        <div class="chat-input-bar">
-          <button class="btn-chat-plus" title="Add note or action">+</button>
-          <input 
-            id="aria-message-input" 
-            type="text" 
-            class="chat-input" 
-            placeholder="Message Aria..." 
-            maxlength="1000"
-            autocomplete="off"
-          >
-          <button id="btn-talk-aria" class="btn-chat-send" title="Send message to Aria">
-            <span>➢</span>
-          </button>
-        </div>
-        <p id="ai-activity-text" class="feeling-hidden" data-ai-tag="ai_activity">Studying and taking notes</p>
-      </div>
-
-      <!-- What Would You Like To Do Card (30% Glass) -->
-      <div class="card actions-card">
-        <div class="actions-header">
-          <div class="actions-title-row">
-            <span class="actions-icon">🍃</span>
-            <h2 class="actions-heading">What would you like to do?</h2>
-          </div>
-        </div>
-
-        <!-- Category Pills -->
-        <div class="action-category-pills">
-          <button class="cat-pill active" data-category="all">Everything</button>
-          <button class="cat-pill" data-category="movement">Walk</button>
-          <button class="cat-pill" data-category="body">Body &amp; Rest</button>
-          <button class="cat-pill" data-category="daily">Daily Life</button>
-          <button class="cat-pill" data-category="interaction">Interact</button>
-        </div>
-
-        <!-- Action Cards List -->
-        <div id="actions-grid" class="action-cards-stack"></div>
       </div>
 
     </section>

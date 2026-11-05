@@ -491,6 +491,9 @@
       "posture": ["standing"]
     },
     "effects": {
+      "objectStates": {
+        "chai_cup_001": "steaming_chai"
+      },
       "needChanges": {
         "hunger": -10,
         "thirst": -30,
@@ -516,6 +519,9 @@
       "posture": ["standing"]
     },
     "effects": {
+      "objectStates": {
+        "chai_cup_001": "steaming_chai"
+      },
       "needChanges": {
         "hunger": -10,
         "thirst": -30,
@@ -543,7 +549,8 @@
     "effects": {
       "objectState": "cooking",
       "objectStates": {
-        "stove_001": "cooking"
+        "stove_001": "cooking",
+        "chai_cup_001": "steaming_chai"
       },
       "needChanges": {
         "hunger": -10,
@@ -563,6 +570,60 @@
     },
     "ongoingMessage": "Two cups of simple hot tea simmer together on the stove, warming the kitchen...",
     "successMessage": "You pour two steaming mugs of freshly brewed hot milk tea. Simple, warm, and deeply comforting for both of you.",
+    "icon": "☕"
+  },
+  {
+    "id": "sip_hot_chai",
+    "name": "Sip Hot Chai",
+    "description": "Take a warm, comforting sip of freshly brewed milk tea from the chai cup.",
+    "category": "daily",
+    "duration": 60,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "requiredObjectStates": {
+        "chai_cup_001": "steaming_chai"
+      }
+    },
+    "effects": {
+      "needChanges": {
+        "thirst": -15,
+        "energy": 8,
+        "happiness": 8,
+        "stress": -10
+      }
+    },
+    "successMessage": "You take a slow sip of the warm, soothing tea. Its rich aroma brings immediate comfort.",
+    "icon": "☕"
+  },
+  {
+    "id": "drink_hot_chai",
+    "name": "Drink Entire Cup of Chai",
+    "description": "Finish the entire cup of hot milk tea, relishing the spices down to the last drop.",
+    "category": "daily",
+    "duration": 180,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "requiredObjectStates": {
+        "chai_cup_001": "steaming_chai"
+      }
+    },
+    "effects": {
+      "objectStates": {
+        "chai_cup_001": "dirty"
+      },
+      "needChanges": {
+        "thirst": -35,
+        "hunger": -10,
+        "energy": 15,
+        "happiness": 15,
+        "stress": -15
+      }
+    },
+    "successMessage": "You finish the cup of tea, feeling wonderfully rejuvenated, refreshed, and warm.",
     "icon": "☕"
   },
   {

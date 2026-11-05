@@ -94,6 +94,12 @@ export class ConversationManager {
     return session;
   }
 
+  public reset(): void {
+    this.sessions.clear();
+    this.createConversation("Morning in Jabalpur");
+    this.save();
+  }
+
   public addMessage(
     sender: "player" | "aria",
     text: string,

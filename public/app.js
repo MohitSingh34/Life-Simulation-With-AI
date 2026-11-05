@@ -105,6 +105,10 @@ const barEnergy = document.getElementById('bar-energy');
 const pctEnergy = document.getElementById('pct-energy');
 const barSleepiness = document.getElementById('bar-sleepiness');
 const pctSleepiness = document.getElementById('pct-sleepiness');
+const barBladder = document.getElementById('bar-bladder');
+const pctBladder = document.getElementById('pct-bladder');
+const barHygiene = document.getElementById('bar-hygiene');
+const pctHygiene = document.getElementById('pct-hygiene');
 
 // Aria Needs (Equal Maintenance)
 const ariaBarHunger = document.getElementById('aria-bar-hunger');
@@ -115,7 +119,23 @@ const ariaBarEnergy = document.getElementById('aria-bar-energy');
 const ariaPctEnergy = document.getElementById('aria-pct-energy');
 const ariaBarSleepiness = document.getElementById('aria-bar-sleepiness');
 const ariaPctSleepiness = document.getElementById('aria-pct-sleepiness');
+const ariaBarBladder = document.getElementById('aria-bar-bladder');
+const ariaPctBladder = document.getElementById('aria-pct-bladder');
+const ariaBarHygiene = document.getElementById('aria-bar-hygiene');
+const ariaPctHygiene = document.getElementById('aria-pct-hygiene');
 const ariaBodyStatusPill = document.getElementById('aria-body-status-pill');
+
+// Aria Same-Room Visibility & Quick Actions
+const ariaRoomBadge = document.getElementById('aria-room-badge');
+const ariaOutOfSight = document.getElementById('aria-out-of-sight');
+const ariaOutOfSightText = document.getElementById('aria-out-of-sight-text');
+const ariaNeedsBox = document.getElementById('aria-needs-box');
+const playerQuickActionsRow = document.getElementById('player-quick-actions-row');
+const playerQuickActionsCount = document.getElementById('player-quick-actions-count');
+const aiAvailableActionsList = document.getElementById('ai-available-actions-list');
+const btnAiAct = document.getElementById('btn-ai-act');
+const aiStatusSubtext = document.getElementById('ai-status-subtext');
+const btnResetStory = document.getElementById('btn-reset-story');
 
 // Map Elements
 const tokenPlayer = document.getElementById('token-player');
@@ -430,8 +450,9 @@ async function talkToAria() {
 function renderAll() {
   if (!gameState) return;
 
-  const { player, ai, roomDetails, time, alerts, availableActions, narrative } = gameState;
+  const { player, ai, inSameRoom, roomDetails, time, alerts, availableActions, aiAvailableActions, narrative } = gameState;
   const narr = narrative || {};
+  const isTogether = inSameRoom !== undefined ? inSameRoom : (player.location.roomId === ai.location.roomId);
 
   // Background room scene & theme
   transitionRoomScene(player.location.roomId);
@@ -456,8 +477,8 @@ function renderAll() {
   // 3. Player Body Needs
   renderPlayerNeeds(player.needs);
 
-  // 4. Aria Body Needs (Equal Maintenance)
-  renderAriaNeeds(ai.needs);
+  // 4. Aria Body Needs (Equal Maintenance, visible only when in same room)
+  renderAriaNeeds(ai.needs, isTogether, roomDetails?.room?.name);
 
   // 5. Top-Down House Map with Animated Avatars
   renderHouseMap(player, ai);
@@ -466,12 +487,18 @@ function renderAll() {
   renderCurrentRoomScene(roomDetails, time, narr);
 
   // 7. Aria Roommate Chat Stream
-  renderAria(ai, player, narr);
+  renderAria(ai, player, narr, isTogether);
 
-  // 8. Actions Grid Deck
+  // 8. Player Quick Actions Row (Above Chat Message Box)
+  renderPlayerQuickActions(availableActions);
+
+  // 9. Full Actions Grid Deck
   renderActions(availableActions);
 
-  // 9. Alerts
+  // 10. Aria's Available Actions List
+  renderAiAvailableActions(aiAvailableActions || []);
+
+  // 11. Alerts
   renderAlerts(alerts);
 }
 
@@ -514,8 +541,9 @@ async function refreshLiveVitals() {
     const res = await fetch('/api/state');
     if (!res.ok) throw new Error('Failed to refresh live needs');
     gameState = await res.json();
+    const isTogether = gameState.inSameRoom !== undefined ? gameState.inSameRoom : (gameState.player.location.roomId === gameState.ai.location.roomId);
     renderPlayerNeeds(gameState.player.needs);
-    renderAriaNeeds(gameState.ai.needs);
+    renderAriaNeeds(gameState.ai.needs, isTogether, gameState.roomDetails?.room?.name);
     renderAlerts(gameState.alerts);
     updateLiveClock();
   } catch (err) {
@@ -524,6 +552,7 @@ async function refreshLiveVitals() {
 }
 
 function renderPlayerNeeds(needs) {
+  if (!needs) return;
   const hunger = Math.round(needs.hunger);
   barHunger.style.width = `${hunger}%`;
   pctHunger.textContent = `${hunger}%`;
@@ -539,10 +568,39 @@ function renderPlayerNeeds(needs) {
   const sleep = Math.round(needs.sleepiness);
   barSleepiness.style.width = `${sleep}%`;
   pctSleepiness.textContent = `${sleep}%`;
+
+  if (barBladder && pctBladder && needs.bladder !== undefined) {
+    const bladder = Math.round(needs.bladder);
+    barBladder.style.width = `${bladder}%`;
+    pctBladder.textContent = `${bladder}%`;
+  }
+
+  if (barHygiene && pctHygiene && needs.hygiene !== undefined) {
+    const hygiene = Math.round(needs.hygiene);
+    barHygiene.style.width = `${hygiene}%`;
+    pctHygiene.textContent = `${hygiene}%`;
+  }
 }
 
-function renderAriaNeeds(aiNeeds) {
+function renderAriaNeeds(aiNeeds, inSameRoom = true, currentRoomName = '') {
   if (!aiNeeds) return;
+
+  const aiRoomName = capitalize((gameState?.ai?.location?.roomId || 'other room').replace('_', ' '));
+
+  if (!inSameRoom) {
+    if (ariaNeedsBox) ariaNeedsBox.style.display = 'none';
+    if (ariaOutOfSight) {
+      ariaOutOfSight.style.display = 'flex';
+      if (ariaOutOfSightText) {
+        ariaOutOfSightText.textContent = `Aria is in ${aiRoomName} — physical state and needs are out of sight`;
+      }
+    }
+    return;
+  }
+
+  // Same room: display physical state and vitals
+  if (ariaOutOfSight) ariaOutOfSight.style.display = 'none';
+  if (ariaNeedsBox) ariaNeedsBox.style.display = 'block';
 
   const hunger = Math.round(aiNeeds.hunger);
   if (ariaBarHunger) ariaBarHunger.style.width = `${hunger}%`;
@@ -560,9 +618,24 @@ function renderAriaNeeds(aiNeeds) {
   if (ariaBarSleepiness) ariaBarSleepiness.style.width = `${sleep}%`;
   if (ariaPctSleepiness) ariaPctSleepiness.textContent = `${sleep}%`;
 
+  if (ariaBarBladder && ariaPctBladder && aiNeeds.bladder !== undefined) {
+    const bladder = Math.round(aiNeeds.bladder);
+    ariaBarBladder.style.width = `${bladder}%`;
+    ariaPctBladder.textContent = `${bladder}%`;
+  }
+
+  if (ariaBarHygiene && ariaPctHygiene && aiNeeds.hygiene !== undefined) {
+    const hygiene = Math.round(aiNeeds.hygiene);
+    ariaBarHygiene.style.width = `${hygiene}%`;
+    ariaPctHygiene.textContent = `${hygiene}%`;
+  }
+
   // Status Summary
   if (ariaBodyStatusPill) {
-    if (hunger >= 75) {
+    if (aiNeeds.bladder !== undefined && aiNeeds.bladder >= 75) {
+      ariaBodyStatusPill.textContent = 'Urgent: Needs Washroom';
+      ariaBodyStatusPill.style.color = '#38bdf8';
+    } else if (hunger >= 75) {
       ariaBodyStatusPill.textContent = 'Hungry & Needing Food';
       ariaBodyStatusPill.style.color = '#fbbf24';
     } else if (thirst >= 75) {
@@ -574,6 +647,9 @@ function renderAriaNeeds(aiNeeds) {
     } else if (sleep >= 75) {
       ariaBodyStatusPill.textContent = 'Sleepy & Ready for Rest';
       ariaBodyStatusPill.style.color = '#c084fc';
+    } else if (aiNeeds.hygiene !== undefined && aiNeeds.hygiene <= 30) {
+      ariaBodyStatusPill.textContent = 'Wants to Freshen Up';
+      ariaBodyStatusPill.style.color = '#2dd4bf';
     } else {
       ariaBodyStatusPill.textContent = 'Satisfied & Well';
       ariaBodyStatusPill.style.color = '#34d399';
@@ -729,37 +805,69 @@ function showHovercardForTarget(targetElem, e) {
     const char = isPlayer ? gameState.player : gameState.ai;
     if (!char) return;
 
+    const isTogether = isPlayer ? true : (gameState.inSameRoom !== undefined ? gameState.inSameRoom : (gameState.ai.location.roomId === gameState.player.location.roomId));
+
     hcIcon.textContent = isPlayer ? '👤' : '✨';
     hcTitle.textContent = isPlayer ? `${char.name || 'Mohit'} (You)` : `${char.name || 'Aria'} (Roommate)`;
     hcCategory.textContent = isPlayer ? 'PROTAGONIST' : 'AI COMPANION';
-    hcStatus.textContent = char.body.posture;
-    hcStatus.className = `hovercard-status-badge ${getStatusBadgeClass(char.body.posture)}`;
 
-    const derivedBody = isPlayer
-      ? (gameState.narrative?.player_body || getDetailedPhysicalDescription(char))
-      : 'Perceptive, gentle Jabalpur engineering roommate. Always studying, reflecting, or sharing warm moments.';
-    hcDesc.textContent = derivedBody;
-
-    hcLocationRow.style.display = 'flex';
-    hcLocation.textContent = `${capitalize(char.location.roomId.replace('_', ' '))} (${char.location.positionId})`;
-
-    hcPresenceRow.style.display = 'flex';
     if (isPlayer) {
+      hcStatus.textContent = char.body.posture;
+      hcStatus.className = `hovercard-status-badge ${getStatusBadgeClass(char.body.posture)}`;
+
+      const derivedBody = gameState.narrative?.player_body || getDetailedPhysicalDescription(char);
+      hcDesc.textContent = derivedBody;
+
+      hcLocationRow.style.display = 'flex';
+      hcLocation.textContent = `${capitalize(char.location.roomId.replace('_', ' '))} (${char.location.positionId})`;
+
+      hcPresenceRow.style.display = 'flex';
       hcPresence.textContent = `Facing ${char.body.orientation || 'front'} · Mood: ${gameState.mood || 'Calm'}`;
+
+      hcActionsRow.style.display = 'flex';
+      const attireUpper = char.clothing?.upper || 'Comfortable Kurta';
+      const attireLower = char.clothing?.lower || 'Track Pants';
+      hcActions.textContent = `👔 Wearing: ${attireUpper}, ${attireLower}`;
+
+      hcDetailsRow.style.display = 'flex';
+      const bladderStr = char.needs.bladder !== undefined ? ` · 🚽 Bladder: ${Math.round(char.needs.bladder)}%` : '';
+      hcDetails.textContent = `⚡ Energy: ${Math.round(char.needs.energy)}% · 🍽️ Hunger: ${Math.round(char.needs.hunger)}% · 🧼 Hygiene: ${Math.round(char.needs.hygiene)}%${bladderStr}`;
+
+      hcHint.textContent = 'Active character · Left-click objects to command';
     } else {
-      const isTogether = gameState.ai.location.roomId === gameState.player.location.roomId;
-      hcPresence.textContent = isTogether ? 'Together in same room (Companionship active)' : 'In separate room';
+      // Aria
+      if (isTogether) {
+        hcStatus.textContent = char.body.posture;
+        hcStatus.className = `hovercard-status-badge ${getStatusBadgeClass(char.body.posture)}`;
+        hcDesc.textContent = gameState.aiBodyState?.description || 'Perceptive, gentle Jabalpur engineering roommate. Always studying, reflecting, or sharing warm moments.';
+        hcLocationRow.style.display = 'flex';
+        hcLocation.textContent = `${capitalize(char.location.roomId.replace('_', ' '))} (${char.location.positionId})`;
+        hcPresenceRow.style.display = 'flex';
+        hcPresence.textContent = 'Together in same room (Companionship active)';
+        hcActionsRow.style.display = 'flex';
+        const attireUpper = char.clothing?.upper || 'Chikan Kurti';
+        const attireLower = char.clothing?.lower || 'Palazzo';
+        hcActions.textContent = `👔 Wearing: ${attireUpper}, ${attireLower}`;
+        hcDetailsRow.style.display = 'flex';
+        const bladderStr = char.needs.bladder !== undefined ? ` · 🚽 Bladder: ${Math.round(char.needs.bladder)}%` : '';
+        hcDetails.textContent = `⚡ Energy: ${Math.round(char.needs.energy)}% · 🍽️ Hunger: ${Math.round(char.needs.hunger)}% · 🧼 Hygiene: ${Math.round(char.needs.hygiene)}%${bladderStr}`;
+        hcHint.textContent = 'Roommate · Left-click talk button to converse ›';
+      } else {
+        const roomName = capitalize(char.location.roomId.replace('_', ' '));
+        hcStatus.textContent = 'Out of sight';
+        hcStatus.className = 'hovercard-status-badge status-separate';
+        hcDesc.textContent = `Aria is in ${roomName}. Because you are in different rooms, her physical posture, body state, and vitals are out of your line of sight.`;
+        hcLocationRow.style.display = 'flex';
+        hcLocation.textContent = `${roomName} (Separate Room)`;
+        hcPresenceRow.style.display = 'flex';
+        hcPresence.textContent = 'Separate room · Physical state hidden';
+        hcActionsRow.style.display = 'flex';
+        hcActions.textContent = '👔 Attire: (Out of sight)';
+        hcDetailsRow.style.display = 'flex';
+        hcDetails.textContent = 'Physical vitals: Hidden from view';
+        hcHint.textContent = `Walk to ${roomName} to observe Aria and converse ›`;
+      }
     }
-
-    hcActionsRow.style.display = 'flex';
-    const attireUpper = char.clothing?.upper || 'Comfortable Kurta';
-    const attireLower = char.clothing?.lower || 'Track Pants';
-    hcActions.textContent = `👔 Wearing: ${attireUpper}, ${attireLower}`;
-
-    hcDetailsRow.style.display = 'flex';
-    hcDetails.textContent = `⚡ Energy: ${Math.round(char.needs.energy)}% · 🍽️ Hunger: ${Math.round(char.needs.hunger)}% · 🧼 Hygiene: ${Math.round(char.needs.hygiene)}%`;
-
-    hcHint.textContent = isPlayer ? 'Active character · Left-click objects to command' : 'Roommate · Left-click talk button to converse ›';
 
     mapHovercard.classList.add('is-visible');
     mapHovercard.setAttribute('aria-hidden', 'false');
@@ -865,7 +973,7 @@ function showHovercardForTarget(targetElem, e) {
     } else if (hasPlayer) {
       hcPresence.textContent = `Mohit (${gameState.player.body.posture})`;
     } else if (hasAi) {
-      hcPresence.textContent = `Aria (${gameState.ai.body.posture})`;
+      hcPresence.textContent = 'Aria (Out of sight)';
     } else {
       hcPresence.textContent = 'Unoccupied right now';
     }
@@ -1123,12 +1231,21 @@ function openObjectModal(objectId) {
 // 8. ARIA CHAT STREAM & ACTIONS LIST
 // ============================================================
 
-function renderAria(ai, player, narr = {}) {
+function renderAria(ai, player, narr = {}, isTogether = false) {
   const roomName = capitalize(ai.location.roomId.replace('_', ' '));
   aiLocationBadge.textContent = narr.ai_location || `Online · In ${roomName}`;
   aiActivityText.textContent = narr.ai_activity || formatAiActivity(ai.activity.current);
 
-  const isTogether = ai.location.roomId === player.location.roomId;
+  if (ariaRoomBadge) {
+    if (isTogether) {
+      ariaRoomBadge.textContent = 'Together in Room';
+      ariaRoomBadge.className = 'badge-room-status status-together';
+    } else {
+      ariaRoomBadge.textContent = `In ${roomName} · Out of sight`;
+      ariaRoomBadge.className = 'badge-room-status status-separate';
+    }
+  }
+
   btnTalkAria.disabled = sendingMessage || !isTogether;
   ariaMessageInput.disabled = !isTogether;
   btnTalkAria.style.opacity = isTogether ? '1' : '0.5';
@@ -1234,6 +1351,133 @@ function handleActionClick(act) {
     if (match) targetObjectId = match.id;
   }
   submitAction(act.id, targetObjectId);
+}
+
+function renderPlayerQuickActions(actions) {
+  if (!playerQuickActionsRow) return;
+  playerQuickActionsRow.innerHTML = '';
+  const acts = actions || [];
+  if (playerQuickActionsCount) {
+    playerQuickActionsCount.textContent = `${acts.length} ready`;
+  }
+
+  if (acts.length === 0) {
+    playerQuickActionsRow.innerHTML = '<span style="font-size: 11px; color: var(--text-faint); padding: 4px;">No quick actions available</span>';
+    return;
+  }
+
+  for (const act of acts) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chat-action-chip';
+    chip.title = act.description || act.name;
+    chip.innerHTML = `<span class="chip-icon">${act.icon || '⚡'}</span><span class="chip-text">${act.name}</span>`;
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleActionClick(act);
+    });
+    playerQuickActionsRow.appendChild(chip);
+  }
+}
+
+function renderAiAvailableActions(actions) {
+  if (!aiAvailableActionsList) return;
+  aiAvailableActionsList.innerHTML = '';
+  const acts = actions || [];
+
+  if (aiStatusSubtext) {
+    aiStatusSubtext.textContent = `${acts.length} actions available · Autonomous AI`;
+  }
+
+  if (acts.length === 0) {
+    aiAvailableActionsList.innerHTML = '<div style="font-size: 12px; color: var(--text-faint); padding: 12px; text-align: center;">No actions available for Aria right now.</div>';
+    return;
+  }
+
+  for (const act of acts) {
+    const item = document.createElement('div');
+    item.className = 'ai-action-item';
+    item.title = `Ask Aria to perform: ${act.name}`;
+    item.innerHTML = `
+      <div class="ai-action-left">
+        <span class="ai-act-icon">${act.icon || '✨'}</span>
+        <div class="ai-act-meta">
+          <div class="ai-act-name">${act.name}</div>
+          <div class="ai-act-cat">${(act.category || 'general').toUpperCase()} · ${act.durationMinutes || 10}m</div>
+        </div>
+      </div>
+      <button type="button" class="btn-ai-act-chip" title="Direct Aria to perform this">Act ›</button>
+    `;
+    item.addEventListener('click', () => {
+      triggerAiAction(act.id);
+    });
+    aiAvailableActionsList.appendChild(item);
+  }
+}
+
+async function triggerAiAction(actionId) {
+  if (btnAiAct) {
+    btnAiAct.disabled = true;
+    btnAiAct.classList.add('loading');
+  }
+  try {
+    const payload = actionId ? { actionId } : {};
+    const res = await fetch('/api/ai/act', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to trigger AI action');
+
+    const exec = data.execution;
+    const actName = exec?.actionName || exec?.actionId || 'Autonomous Action';
+    const reason = exec?.reasoning ? ` (${exec.reasoning})` : '';
+    showToast(`✨ Aria: ${actName}${reason}`);
+
+    if (exec?.result?.edits) {
+      applyAiEdits(exec.result.edits, true);
+    }
+
+    await fetchState();
+  } catch (err) {
+    console.error('Trigger AI action error:', err);
+    showToast('Aria could not perform action right now');
+  } finally {
+    if (btnAiAct) {
+      btnAiAct.disabled = false;
+      btnAiAct.classList.remove('loading');
+    }
+  }
+}
+
+async function resetStory() {
+  const confirmed = window.confirm('Reset story and game state back to Day 1 Morning fresh state?');
+  if (!confirmed) return;
+
+  try {
+    if (btnResetStory) {
+      btnResetStory.disabled = true;
+      btnResetStory.textContent = 'Resetting...';
+    }
+    const res = await fetch('/api/reset', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to reset story');
+
+    showToast('🔄 Story reset to Day 1 Morning!');
+    if (data.activeConversation) {
+      activeConversation = data.activeConversation;
+    }
+    await fetchState();
+  } catch (err) {
+    console.error('Reset story error:', err);
+    showToast('Failed to reset story');
+  } finally {
+    if (btnResetStory) {
+      btnResetStory.disabled = false;
+      btnResetStory.textContent = '🔄 Reset Story';
+    }
+  }
 }
 
 function renderAlerts(alerts) {
@@ -1562,6 +1806,13 @@ btnConvToggle.addEventListener('click', openConversationModal);
 btnOpenConvDrawer.addEventListener('click', openConversationModal);
 btnCloseConv.addEventListener('click', () => convModal.close());
 btnNewConv.addEventListener('click', startNewConversation);
+
+if (btnAiAct) {
+  btnAiAct.addEventListener('click', () => triggerAiAction());
+}
+if (btnResetStory) {
+  btnResetStory.addEventListener('click', resetStory);
+}
 
 if (btnCloseObjModal) {
   btnCloseObjModal.addEventListener('click', () => objInteractModal.close());

@@ -242,7 +242,7 @@
     "defaultState": "clear",
     "possibleStates": ["clear", "has_items", "clean"],
     "interactions": ["prepare_snack", "wipe_counter"],
-    "containedObjectIds": ["drinking_glass_001", "plate_001", "spice_box_001"],
+    "containedObjectIds": ["drinking_glass_001", "plate_001", "chai_cup_001", "spice_box_001"],
     "description": "A gleaming black granite slab used for chopping and meal preparation.",
     "portable": false,
     "icon": "🥣"
@@ -311,6 +311,24 @@
     },
     "portable": true,
     "icon": "🍽️"
+  },
+  {
+    "id": "chai_cup_001",
+    "name": "Hot Chai Cup",
+    "type": "item",
+    "roomId": "kitchen",
+    "positionId": "counter_area",
+    "defaultState": "empty",
+    "possibleStates": ["empty", "steaming_chai", "dirty"],
+    "interactions": ["pick_up_item", "put_down_item", "sip_hot_chai", "drink_hot_chai", "wash_dishes"],
+    "description": "A traditional ceramic chai cup for hot, comforting everyday milk tea.",
+    "stateDescriptions": {
+      "empty": "The ceramic tea cup is dry, clean, and resting on the counter.",
+      "steaming_chai": "Steaming hot, fragrant milk tea with rich Assam leaves is served in the cup, ready to drink.",
+      "dirty": "The empty chai cup has leftover tea marks at the rim, waiting to be washed."
+    },
+    "portable": true,
+    "icon": "☕"
   },
   {
     "id": "spice_box_001",
