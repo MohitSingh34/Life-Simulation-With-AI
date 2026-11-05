@@ -1,4 +1,4 @@
-# Jabalpur Life Simulation
+# Life Simulation
 
 A cozy, parameter-driven life simulation where a human player and an AI roommate live together in the same home. The game tracks needs, time, room states, object interactions, and daily routines in a structured simulation loop instead of treating the AI as the source of truth.
 
