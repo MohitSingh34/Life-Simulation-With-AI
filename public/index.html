@@ -218,7 +218,7 @@
             <span class="home-card-icon">🧭</span>
             <div>
               <h2 class="home-card-title">House Map (Top-Down)</h2>
-              <p class="home-card-desc">Interactive living floorplan • Click any room to walk, or click objects to interact</p>
+              <p class="home-card-desc">Interactive living floorplan • Right-click any object to inspect • Left-click to interact</p>
             </div>
           </div>
           <div class="map-avatars-legend">
@@ -618,8 +618,8 @@
 
           </svg>
 
-          <!-- Floating Hovercard Info Card for Map Elements (Objects, Rooms, Tokens) -->
-          <div id="map-hovercard" class="map-hovercard" role="tooltip" aria-hidden="true">
+          <!-- Context Info Card for Map Elements (Objects, Rooms, Tokens) -->
+          <div id="map-hovercard" class="map-hovercard" role="region" aria-label="Map Element Information" aria-hidden="true">
             <div class="hovercard-header">
               <span class="hovercard-icon" id="hc-icon">🛏️</span>
               <div class="hovercard-title-group">
@@ -627,6 +627,7 @@
                 <span class="hovercard-category" id="hc-category">FURNITURE</span>
               </div>
               <span class="hovercard-status-badge" id="hc-status">neat</span>
+              <button type="button" id="hc-close-btn" class="hovercard-close-btn" aria-label="Close info card">✕</button>
             </div>
             <div class="hovercard-body">
               <p class="hovercard-desc" id="hc-desc">A spacious solid wood bed with a firm cotton mattress and clean linens.</p>

@@ -1317,7 +1317,7 @@ body.weather-foggy .sky-cloud {
   top: 0;
   left: 0;
   z-index: 120;
-  pointer-events: none;
+  pointer-events: auto;
   width: 290px;
   max-width: calc(100% - 24px);
   background: rgba(13, 17, 26, 0.94);
@@ -1338,6 +1338,35 @@ body.weather-foggy .sky-cloud {
               transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
               visibility 0.18s;
   will-change: transform, opacity;
+}
+
+.hovercard-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 6px;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.hovercard-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.hovercard-close-btn:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
 }
 
 .map-hovercard.is-visible {

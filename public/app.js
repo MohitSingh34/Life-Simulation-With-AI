@@ -677,23 +677,38 @@ function hideHovercard() {
   }
 }
 
-function updateHovercardPosition(e) {
+function updateHovercardPosition(e, targetElem) {
   if (!mapHovercard || !mapCanvasFrame) return;
   const frameRect = mapCanvasFrame.getBoundingClientRect();
   const cardWidth = mapHovercard.offsetWidth || 290;
   const cardHeight = mapHovercard.offsetHeight || 190;
 
+  let clientX = e?.clientX;
+  let clientY = e?.clientY;
+
+  // Fallback for keyboard contextmenu (Shift+F10) or missing coordinates
+  if (clientX === undefined || clientY === undefined || (clientX === 0 && clientY === 0)) {
+    if (targetElem) {
+      const targetRect = targetElem.getBoundingClientRect();
+      clientX = targetRect.left + targetRect.width / 2;
+      clientY = targetRect.top + targetRect.height / 2;
+    } else {
+      clientX = frameRect.left + frameRect.width / 2;
+      clientY = frameRect.top + frameRect.height / 2;
+    }
+  }
+
   // Pointer position relative to frame container
-  let x = e.clientX - frameRect.left + 16;
-  let y = e.clientY - frameRect.top + 16;
+  let x = clientX - frameRect.left + 14;
+  let y = clientY - frameRect.top + 14;
 
   // Horizontal collision check: if card overflows right edge, flip to left of cursor
   if (x + cardWidth > frameRect.width - 12) {
-    x = e.clientX - frameRect.left - cardWidth - 16;
+    x = clientX - frameRect.left - cardWidth - 14;
   }
   // Vertical collision check: if card overflows bottom edge, flip above cursor
   if (y + cardHeight > frameRect.height - 12) {
-    y = e.clientY - frameRect.top - cardHeight - 16;
+    y = clientY - frameRect.top - cardHeight - 14;
   }
 
   // Bounds clamping to stay strictly inside map frame
@@ -744,11 +759,11 @@ function showHovercardForTarget(targetElem, e) {
     hcDetailsRow.style.display = 'flex';
     hcDetails.textContent = `⚡ Energy: ${Math.round(char.needs.energy)}% · 🍽️ Hunger: ${Math.round(char.needs.hunger)}% · 🧼 Hygiene: ${Math.round(char.needs.hygiene)}%`;
 
-    hcHint.textContent = isPlayer ? 'Active character · Use action deck to command' : 'Click talk button to converse with Aria ›';
+    hcHint.textContent = isPlayer ? 'Active character · Left-click objects to command' : 'Roommate · Left-click talk button to converse ›';
 
     mapHovercard.classList.add('is-visible');
     mapHovercard.setAttribute('aria-hidden', 'false');
-    updateHovercardPosition(e);
+    updateHovercardPosition(e, targetElem);
     return;
   }
 
@@ -812,11 +827,11 @@ function showHovercardForTarget(targetElem, e) {
     }
 
     const isInSameRoom = gameState.player.location.roomId === (obj?.roomId || objElem.dataset.room);
-    hcHint.textContent = isInSameRoom ? 'Click object to open action modal ›' : `Click to walk to ${roomName} first ›`;
+    hcHint.textContent = isInSameRoom ? 'Left-click object to interact · Esc to close' : `Walk to ${roomName} first · Esc to close`;
 
     mapHovercard.classList.add('is-visible');
     mapHovercard.setAttribute('aria-hidden', 'false');
-    updateHovercardPosition(e);
+    updateHovercardPosition(e, targetElem);
     return;
   }
 
@@ -858,14 +873,14 @@ function showHovercardForTarget(targetElem, e) {
     hcActionsRow.style.display = 'flex';
     const allObjects = gameState.world?.objects || [];
     const roomObjCount = allObjects.filter(o => o.roomId === roomId).length;
-    hcActions.textContent = `${roomObjCount} Interactive objects · Click floor to navigate`;
+    hcActions.textContent = `${roomObjCount} Interactive objects · Left-click floor to navigate`;
 
     hcDetailsRow.style.display = 'none';
-    hcHint.textContent = isCurrent ? 'You are currently inside this room' : `Click floor to walk to ${roomName} ›`;
+    hcHint.textContent = isCurrent ? 'You are currently inside this room · Esc to close' : `Left-click floor to walk to ${roomName} ›`;
 
     mapHovercard.classList.add('is-visible');
     mapHovercard.setAttribute('aria-hidden', 'false');
-    updateHovercardPosition(e);
+    updateHovercardPosition(e, targetElem);
     return;
   }
 
@@ -883,11 +898,11 @@ function showHovercardForTarget(targetElem, e) {
     hcPresenceRow.style.display = 'none';
     hcActionsRow.style.display = 'none';
     hcDetailsRow.style.display = 'none';
-    hcHint.textContent = 'Natural light and ventilation';
+    hcHint.textContent = 'Natural light & ventilation · Esc to close';
 
     mapHovercard.classList.add('is-visible');
     mapHovercard.setAttribute('aria-hidden', 'false');
-    updateHovercardPosition(e);
+    updateHovercardPosition(e, targetElem);
     return;
   }
 
@@ -905,11 +920,11 @@ function showHovercardForTarget(targetElem, e) {
     hcPresenceRow.style.display = 'none';
     hcActionsRow.style.display = 'none';
     hcDetailsRow.style.display = 'none';
-    hcHint.textContent = 'Step through doors to transition rooms';
+    hcHint.textContent = 'Step through doors to transition rooms · Esc to close';
 
     mapHovercard.classList.add('is-visible');
     mapHovercard.setAttribute('aria-hidden', 'false');
-    updateHovercardPosition(e);
+    updateHovercardPosition(e, targetElem);
     return;
   }
 
@@ -920,7 +935,16 @@ function showHovercardForTarget(targetElem, e) {
 function initMapHovercard() {
   if (!houseMapSvg || !mapCanvasFrame || !mapHovercard) return;
 
-  houseMapSvg.addEventListener('pointermove', (e) => {
+  const hcCloseBtn = document.getElementById('hc-close-btn');
+  if (hcCloseBtn) {
+    hcCloseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hideHovercard();
+    });
+  }
+
+  // Right-click on map elements reveals the info card
+  houseMapSvg.addEventListener('contextmenu', (e) => {
     const target = e.target.closest('.interactive-obj') ||
                    e.target.closest('.avatar-map-token') ||
                    e.target.closest('.map-window') ||
@@ -930,23 +954,29 @@ function initMapHovercard() {
                    e.target.closest('.map-corridor-label') ||
                    e.target.closest('.room-zone');
 
-    if (!target) {
-      hideHovercard();
-      return;
-    }
-
-    if (currentHoverTarget !== target) {
+    if (target) {
+      e.preventDefault();
+      e.stopPropagation();
       currentHoverTarget = target;
       showHovercardForTarget(target, e);
-    } else {
-      updateHovercardPosition(e);
     }
   });
 
-  houseMapSvg.addEventListener('pointerleave', hideHovercard);
-  mapCanvasFrame.addEventListener('pointerleave', hideHovercard);
+  // Light dismiss: clicking anywhere outside the info card closes it
+  document.addEventListener('pointerdown', (e) => {
+    if (mapHovercard && mapHovercard.classList.contains('is-visible')) {
+      if (!mapHovercard.contains(e.target)) {
+        hideHovercard();
+      }
+    }
+  });
 
-  // WCAG 1.4.13: Allow Escape key to dismiss hovercard
+  // Prevent interactions inside the card from bubbling to document pointerdown
+  mapHovercard.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+  });
+
+  // Keyboard accessibility: Escape key dismisses the info card
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && mapHovercard.classList.contains('is-visible')) {
       hideHovercard();
