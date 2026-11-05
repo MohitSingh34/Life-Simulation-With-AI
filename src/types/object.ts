@@ -6,7 +6,7 @@
 export interface ObjectConfig {
   id: string;
   name: string;
-  type: string;
+  type: string | string[];
   roomId: string;
   positionId: string;
   /** Current state */

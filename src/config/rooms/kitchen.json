@@ -1,9 +1,9 @@
 {
   "id": "kitchen",
   "name": "Kitchen",
-  "description": "A well-organized Indian kitchen with polished black granite countertops, a stainless steel sink, a modern two-burner gas stove, and a stainless steel spice rack. A medium-sized refrigerator hums gently against the wall.",
+  "description": "A well-organized Indian kitchen with polished black granite countertops, a stainless steel sink, a modern two-burner gas stove, and a gleaming brass masala dabba. A medium-sized refrigerator hums gently against the wall.",
   "ambience": {
-    "morning": "Morning light shines over the steel utensils drying on the rack. The aroma of freshly brewed chai and roasted spices still lingers faintly in the air.",
+    "morning": "Morning light shines over the steel utensils drying on the rack and the brass masala dabba on the counter. The aroma of freshly brewed chai and roasted spices still lingers faintly in the air.",
     "afternoon": "The kitchen is quiet and clean. A gentle warm breeze comes through the ventilator. The refrigerator hums faithfully in the silence.",
     "evening": "The overhead warm bulb lights up the cooking counter. Everything is ready for a warm evening dinner.",
     "night": "The kitchen is dark except for the quiet LED indicator on the refrigerator. Everything is cleaned and put away for the night."
@@ -53,6 +53,14 @@
       "id": "kitchen_door_area",
       "name": "Near Kitchen Doorway",
       "objectId": null,
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "kitchen_trash_area",
+      "name": "By the Kitchen Trash Bin",
+      "objectId": "trash_bin_001",
       "standable": true,
       "sittable": false,
       "lieable": false

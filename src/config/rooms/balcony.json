@@ -1,0 +1,46 @@
+{
+  "id": "balcony",
+  "name": "Balcony",
+  "description": "An airy open-air verandah overlooking the tranquil residential streets of Jabalpur. Potted hibiscus, money plants, and flowering bougainvillea line the terracotta railing, with a comfortable cane armchair inviting you to sit and feel the breeze.",
+  "ambience": {
+    "morning": "Crisp, invigorating morning air sweeps across the terrace with the scent of night-blooming jasmine and damp earth. Distant temple bells and morning birds chime gently.",
+    "afternoon": "A warm afternoon breeze rustles the lush leaves in the planters. The shaded cane chair provides a breezy vantage point over the quiet neighborhood.",
+    "evening": "The golden hour sky turns lavender and amber over the Jabalpur rooftops. Evening street murmurs and the faint, nostalgic aroma of roasted corn drift up from below.",
+    "night": "Cool night air brings the soothing calm of Jabalpur under the stars. Gentle crickets chirp softly among the potted foliage as petrichor rises from the evening-watered soil."
+  },
+  "positions": [
+    {
+      "id": "balcony_railing",
+      "name": "At the Balcony Railing",
+      "objectId": null,
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "planters_area",
+      "name": "By the Balcony Planters",
+      "objectId": "balcony_plants_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "balcony_door_area",
+      "name": "At the Balcony Doorway",
+      "objectId": null,
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "cane_chair",
+      "name": "On the Cane Armchair",
+      "objectId": "cane_chair_001",
+      "standable": false,
+      "sittable": true,
+      "lieable": false
+    }
+  ]
+}
+

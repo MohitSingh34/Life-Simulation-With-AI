@@ -19,6 +19,8 @@ const ROOM_SCENES = {
   study_room: 'assets/rooms/study-room.jpg',
   kitchen: 'assets/rooms/kitchen.jpg',
   toilet: 'assets/rooms/bathroom.jpg',
+  living_room: 'assets/rooms/living_room.jpg',
+  balcony: 'assets/rooms/balcony.jpg',
 };
 
 // Top-Down Map Position Coordinates (SVG X, Y)
@@ -50,6 +52,20 @@ const MAP_COORDINATES = {
     washbasin_area: { x: 435, y: 265 },
     toilet_door_area: { x: 350, y: 235 },
     default: { x: 450, y: 290 },
+  },
+  living_room: {
+    sofa_area: { x: 170, y: 450 },
+    coffee_table_area: { x: 170, y: 505 },
+    tv_cabinet_area: { x: 75, y: 470 },
+    entrance_door_area: { x: 280, y: 415 },
+    default: { x: 170, y: 470 },
+  },
+  balcony: {
+    balcony_railing: { x: 490, y: 510 },
+    planters_area: { x: 480, y: 535 },
+    balcony_door_area: { x: 405, y: 450 },
+    cane_chair: { x: 540, y: 460 },
+    default: { x: 480, y: 480 },
   },
 };
 
@@ -571,7 +587,7 @@ function renderAriaNeeds(aiNeeds) {
 
 function renderHouseMap(player, ai) {
   // 1. Highlight Active Room Zone
-  const rooms = ['bedroom', 'study_room', 'kitchen', 'toilet'];
+  const rooms = ['bedroom', 'study_room', 'kitchen', 'toilet', 'living_room', 'balcony'];
   for (const r of rooms) {
     const zone = document.getElementById(`map-room-${r}`);
     if (zone) {
@@ -992,6 +1008,8 @@ function applyRoomTheme(roomId) {
     study_room: 'themes/room-study.css',
     kitchen: 'themes/room-kitchen.css',
     toilet: 'themes/room-bathroom.css',
+    living_room: 'themes/room-living_room.css',
+    balcony: 'themes/room-balcony.css',
   };
   const themePath = map[roomId] || map.bedroom;
   const link = document.getElementById('room-theme-link');

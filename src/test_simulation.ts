@@ -100,6 +100,120 @@ function runAutomatedTest() {
   console.log("Body pose:", state.pose);
   console.log("Body description:", state.body);
 
+  // Step 10: Verify Autonomous AI Pathfinding & Configurable Heartbeat Ping
+  console.log("\n[STEP 10] Verifying Autonomous AI Navigation & 10-Minute Ping System...");
+  const path = engine.movementEngine.findPathToRoom("study_room", "toilet");
+  if (!path || path.length !== 2 || path[1] !== "toilet") {
+    throw new Error(`Expected BFS path from study_room to toilet, got: ${JSON.stringify(path)}`);
+  }
+  console.log("BFS Multi-room path (study_room -> toilet):", path);
+
+  const pingInterval = engine.getAriaPingIntervalMinutes();
+  if (pingInterval !== 10) {
+    throw new Error(`Expected default Aria ping interval of 10 minutes, got: ${pingInterval}`);
+  }
+  console.log("Configured Aria idle ping interval:", `${pingInterval} minutes`);
+
+  const autonomousStep = engine.tickAutonomousAI();
+  if (!autonomousStep) {
+    throw new Error("Autonomous AI tick returned null");
+  }
+  console.log("Autonomous tick performed action:", autonomousStep.actionName, `(${autonomousStep.result.status})`);
+
+  const recentEvents = engine.eventManager.getRecentEvents(5);
+  const aiEvent = recentEvents.find((e) => e.actorId === "ai_001" && e.type === "ai_decision");
+  if (!aiEvent) {
+    throw new Error("Autonomous AI tick was not logged to EventManager");
+  }
+  console.log("Verified autonomous EventManager log for Aria:", (aiEvent.data as any).actionId);
+
+  // Step 11: Verify Living Room & Balcony Expansion (Agent 2)
+  console.log("\n[STEP 11] Verifying Living Room & Balcony Expansion (Agent 2)...");
+  
+  // Player is standing in study_room, walks to living_room
+  const walkLiving = engine.submitPlayerAction("walk_to_living_room");
+  if (walkLiving.result.status !== "accepted") {
+    throw new Error(`Failed to walk to living_room: ${walkLiving.result.message}`);
+  }
+  if (player.location.roomId !== "living_room") {
+    throw new Error(`Expected player in living_room, but got ${player.location.roomId}`);
+  }
+  console.log("✓ Walked to living_room successfully.");
+
+  // Sit on sofa
+  const sitSofa = engine.submitPlayerAction("sit_on_sofa");
+  if (sitSofa.result.status !== "accepted" || player.body.posture !== "sitting" || player.location.positionId !== "sofa_area") {
+    throw new Error(`Failed to sit on sofa: ${JSON.stringify(sitSofa)}`);
+  }
+  console.log("✓ Sat down on comfortable sofa.");
+
+  // Relax on sofa
+  const preRelaxStress = player.emotions.stress;
+  const preRelaxHappiness = player.emotions.happiness;
+  const relaxSofa = engine.submitPlayerAction("relax_on_sofa");
+  if (relaxSofa.result.status !== "accepted") {
+    throw new Error(`Failed to relax on sofa: ${relaxSofa.result.message}`);
+  }
+  if (player.emotions.stress > preRelaxStress || player.emotions.happiness < preRelaxHappiness) {
+    throw new Error(`Expected stress reduction & happiness boost, got stress: ${player.emotions.stress}, happiness: ${player.emotions.happiness}`);
+  }
+  console.log(`✓ Relaxed on sofa. Stress: ${preRelaxStress} -> ${player.emotions.stress}, Happiness: ${preRelaxHappiness} -> ${player.emotions.happiness}`);
+
+  // Stand up from sofa
+  const standUp = engine.submitPlayerAction("stand_up");
+  if (standUp.result.status !== "accepted" || (player.body.posture as string) !== "standing") {
+    throw new Error(`Failed to stand up from sofa: ${JSON.stringify(standUp)}`);
+  }
+  console.log("✓ Stood up from sofa.");
+
+  // Walk to balcony
+  const walkBalcony = engine.submitPlayerAction("walk_to_balcony");
+  if (walkBalcony.result.status !== "accepted" || (player.location.roomId as string) !== "balcony") {
+    throw new Error(`Failed to walk to balcony: ${walkBalcony.result.message}`);
+  }
+  console.log("✓ Stepped out onto the balcony.");
+
+  // Water plants (+10 happiness, -10 stress)
+  const preWaterHappiness = player.emotions.happiness;
+  const preWaterStress = player.emotions.stress;
+  const waterAction = engine.submitPlayerAction("water_plants");
+  if (waterAction.result.status !== "accepted") {
+    throw new Error(`Failed to water plants: ${waterAction.result.message}`);
+  }
+  if (player.emotions.happiness < preWaterHappiness || player.emotions.stress > preWaterStress) {
+    throw new Error(`Water plants emotion changes mismatch. Expected happiness boost & stress reduction. Got happiness: ${player.emotions.happiness}, stress: ${player.emotions.stress}`);
+  }
+  console.log(`✓ Watered plants. Happiness: ${preWaterHappiness} -> ${player.emotions.happiness}, Stress: ${preWaterStress} -> ${player.emotions.stress}`);
+
+  // Lean on railing
+  const leanRailing = engine.submitPlayerAction("lean_on_balcony_railing");
+  if (leanRailing.result.status !== "accepted" || (player.location.positionId as string) !== "balcony_railing") {
+    throw new Error(`Failed to lean on balcony railing: ${JSON.stringify(leanRailing)}`);
+  }
+  console.log("✓ Leaned on balcony railing looking over Jabalpur street.");
+
+  // Sit on cane chair
+  const sitCane = engine.submitPlayerAction("sit_on_cane_chair");
+  if (sitCane.result.status !== "accepted" || (player.body.posture as string) !== "sitting" || (player.location.positionId as string) !== "cane_chair") {
+    throw new Error(`Failed to sit on cane chair: ${JSON.stringify(sitCane)}`);
+  }
+  console.log("✓ Sat comfortably on balcony cane chair.");
+
+  // Stand up and walk back to living room
+  engine.submitPlayerAction("stand_up");
+  const returnLiving = engine.submitPlayerAction("walk_to_living_room");
+  if (returnLiving.result.status !== "accepted" || (player.location.roomId as string) !== "living_room") {
+    throw new Error("Failed to walk back to living room from balcony");
+  }
+  console.log("✓ Walked back into living room.");
+
+  // Verify BFS pathfinding from balcony to bedroom
+  const balconyToBedroom = engine.movementEngine.findPathToRoom("balcony", "bedroom");
+  if (!balconyToBedroom || balconyToBedroom[0] !== "living_room" || balconyToBedroom[1] !== "bedroom") {
+    throw new Error(`Unexpected path from balcony to bedroom: ${JSON.stringify(balconyToBedroom)}`);
+  }
+  console.log("✓ BFS Path from balcony to bedroom:", balconyToBedroom);
+
   console.log("\n=== ALL AUTOMATED TESTS PASSED WITH 100% SUCCESS! ===");
 }
 

@@ -19,6 +19,25 @@
     "icon": "🧍"
   },
   {
+    "id": "sit_up_in_bed",
+    "name": "Sit Up in Bed",
+    "description": "Push yourself upright and sit propped up comfortably against the headboard while staying on the bed.",
+    "category": "body",
+    "duration": 2,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "positionId": "bed_center",
+      "posture": ["lying"]
+    },
+    "effects": {
+      "posture": "sitting",
+      "moveToPosition": "bed_center"
+    },
+    "successMessage": "You push yourself upright, leaning comfortably against the pillows and headboard.",
+    "icon": "🧘"
+  },
+  {
     "id": "stand_up",
     "name": "Stand Up",
     "description": "Stand up on your feet from your current seated or resting position.",
@@ -26,7 +45,7 @@
     "duration": 2,
     "requiresTarget": false,
     "preconditions": {
-      "posture": ["sitting", "kneeling", "squatting"]
+      "posture": ["sitting", "kneeling", "squatting", "lying"]
     },
     "effects": {
       "posture": "standing"
@@ -133,6 +152,60 @@
     },
     "successMessage": "You turn toward the right.",
     "icon": "🔄"
+  },
+  {
+    "id": "sit_on_sofa",
+    "name": "Sit on Sofa",
+    "description": "Take a comfortable seat on the living room sofa.",
+    "category": "body",
+    "duration": 2,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "living_room",
+      "posture": ["standing", "lying"]
+    },
+    "effects": {
+      "moveToPosition": "sofa_area",
+      "posture": "sitting"
+    },
+    "successMessage": "You sink into the plush, welcoming cushions of the sofa.",
+    "icon": "🛋️"
+  },
+  {
+    "id": "lie_down_sofa",
+    "name": "Lie Down on Sofa",
+    "description": "Stretch your legs out and lie down across the sofa cushions.",
+    "category": "body",
+    "duration": 3,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "living_room",
+      "posture": ["standing", "sitting"]
+    },
+    "effects": {
+      "moveToPosition": "sofa_area",
+      "posture": "lying"
+    },
+    "successMessage": "You stretch out completely across the sofa, resting your head comfortably on the soft throw pillow.",
+    "icon": "🛋️"
+  },
+  {
+    "id": "sit_on_cane_chair",
+    "name": "Sit on Cane Chair",
+    "description": "Sit comfortably on the outdoor wicker cane armchair.",
+    "category": "body",
+    "duration": 2,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "balcony",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToPosition": "cane_chair",
+      "posture": "sitting"
+    },
+    "successMessage": "You settle down into the woven cane chair, feeling the cool breeze on your face.",
+    "icon": "🪑"
   }
 ]
 

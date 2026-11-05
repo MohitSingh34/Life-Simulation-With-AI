@@ -1134,6 +1134,8 @@ body.weather-foggy .sky-cloud {
 .floor-study { fill: rgba(20, 32, 48, 0.45); }
 .floor-kitchen { fill: rgba(28, 28, 34, 0.50); }
 .floor-bathroom { fill: rgba(18, 36, 42, 0.45); }
+.floor-living { fill: rgba(38, 26, 18, 0.48); }
+.floor-balcony { fill: rgba(14, 34, 26, 0.45); }
 
 .room-zone:hover .room-floor {
   filter: brightness(1.25);
@@ -1221,6 +1223,17 @@ body.weather-foggy .sky-cloud {
 .obj-toilet-tank { fill: #e2e8f0; stroke: #94a3b8; stroke-width: 1; }
 .obj-toilet-bowl { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1; }
 .obj-basin-bowl { fill: #f8fafc; }
+.obj-sofa { fill: #2c221a; stroke: #ea580c; stroke-width: 1.5; }
+.obj-sofa-cushion { fill: #3f2e22; stroke: #5c442c; stroke-width: 1; }
+.obj-coffee-table { fill: #382416; stroke: #6b4423; stroke-width: 1.2; }
+.obj-tv-cabinet { fill: #1c1d22; stroke: #3f4452; stroke-width: 1.2; }
+.obj-tv-screen { fill: #0b0f19; stroke: #60a5fa; stroke-width: 1.2; }
+.obj-plant-pot { fill: #854d0e; stroke: #a16207; stroke-width: 1; }
+.obj-plant-leaf { fill: #22c55e; }
+.obj-balcony-railing { stroke: #b45309; stroke-width: 3; stroke-linecap: round; }
+.obj-balcony-planter { fill: #78350f; stroke: #9a3412; stroke-width: 1.2; }
+.obj-cane-chair { fill: #451a03; stroke: #92400e; stroke-width: 1.5; }
+.obj-watering-can { fill: #15803d; stroke: #22c55e; stroke-width: 1; }
 
 .obj-label {
   font-size: 9px;

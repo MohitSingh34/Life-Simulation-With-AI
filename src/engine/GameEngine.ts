@@ -48,7 +48,9 @@ export class GameEngine {
     this.aiEngine = new AIDecisionEngine(
       this.stateManager,
       this.actionEngine,
-      this.configLoader
+      this.configLoader,
+      this.movementEngine,
+      this.timeEngine
     );
 
     // Initialize state
@@ -102,6 +104,53 @@ export class GameEngine {
       alerts,
       aiUpdate,
     };
+  }
+
+  /**
+   * Retrieves the configured idle ping interval for Aria in minutes.
+   * Checks process.env.ARIA_PING_INTERVAL_MINUTES -> world.json simulationConfig -> character_template -> default 10.
+   */
+  public getAriaPingIntervalMinutes(): number {
+    if (process.env.ARIA_PING_INTERVAL_MINUTES) {
+      const parsed = parseInt(process.env.ARIA_PING_INTERVAL_MINUTES, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    const worldConfig = this.configLoader.getWorld() as any;
+    if (worldConfig.simulationConfig?.ariaPingIntervalMinutes) {
+      return worldConfig.simulationConfig.ariaPingIntervalMinutes;
+    }
+    const aiTemplate = this.configLoader.getCharacterTemplates().find((t) => t.id === "ai_001");
+    if (aiTemplate?.pingIntervalMinutes) {
+      return aiTemplate.pingIntervalMinutes;
+    }
+    return 10;
+  }
+
+  /**
+   * Executes an autonomous heartbeat tick for Aria.
+   */
+  public tickAutonomousAI(): {
+    actionName: string;
+    result: ActionResult;
+    dialogue?: string;
+  } | null {
+    const aiStep = this.aiEngine.decideAndExecute("ai_001");
+    if (aiStep) {
+      if (aiStep.result.status === "accepted") {
+        this.emotionEngine.evaluateEmotions("ai_001");
+      }
+      this.eventManager.recordEvent({
+        actorId: "ai_001",
+        timestamp: this.timeEngine.getFormattedClock(),
+        type: "ai_decision",
+        data: {
+          actionId: aiStep.actionName,
+          dialogue: aiStep.dialogue,
+          result: aiStep.result,
+        },
+      });
+    }
+    return aiStep;
   }
 
   public getCurrentRoomDetails(): {

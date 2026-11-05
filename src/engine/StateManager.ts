@@ -67,6 +67,7 @@ export class StateManager {
           stress: 15,
           loneliness: 10,
           boredom: 15,
+          confidence: 60,
         },
         clothing: t.clothing,
         activity: {
@@ -136,6 +137,24 @@ export class StateManager {
   public getObjectState(id: string): ObjectState {
     let state = this.objectStates.get(id);
     if (!state) {
+      if (id === "mirror_bathroom_001" && this.objectStates.has("mirror_001")) {
+        return this.objectStates.get("mirror_001")!;
+      }
+      if (id === "mirror_001" && this.objectStates.has("mirror_bathroom_001")) {
+        return this.objectStates.get("mirror_bathroom_001")!;
+      }
+      if (id === "lamp_bedroom_001" && this.objectStates.has("lamp_001")) {
+        return this.objectStates.get("lamp_001")!;
+      }
+      if (id === "lamp_001" && this.objectStates.has("lamp_bedroom_001")) {
+        return this.objectStates.get("lamp_bedroom_001")!;
+      }
+      if (id === "sink_kitchen_001" && this.objectStates.has("sink_001")) {
+        return this.objectStates.get("sink_001")!;
+      }
+      if (id === "sink_001" && this.objectStates.has("sink_kitchen_001")) {
+        return this.objectStates.get("sink_kitchen_001")!;
+      }
       state = { id, state: "normal", occupiedBy: null };
       this.objectStates.set(id, state);
     }
@@ -152,6 +171,28 @@ export class StateManager {
   ): ObjectState {
     const obj = this.getObjectState(id);
     updater(obj);
+
+    // Keep mirror and lamp aliases synchronized
+    if (id === "mirror_001" && this.objectStates.has("mirror_bathroom_001")) {
+      const mirrorAlt = this.objectStates.get("mirror_bathroom_001");
+      if (mirrorAlt) updater(mirrorAlt);
+    } else if (id === "mirror_bathroom_001" && this.objectStates.has("mirror_001")) {
+      const mirrorAlt = this.objectStates.get("mirror_001");
+      if (mirrorAlt) updater(mirrorAlt);
+    } else if (id === "lamp_001" && this.objectStates.has("lamp_bedroom_001")) {
+      const lampAlt = this.objectStates.get("lamp_bedroom_001");
+      if (lampAlt) updater(lampAlt);
+    } else if (id === "lamp_bedroom_001" && this.objectStates.has("lamp_001")) {
+      const lampAlt = this.objectStates.get("lamp_001");
+      if (lampAlt) updater(lampAlt);
+    } else if (id === "sink_001" && this.objectStates.has("sink_kitchen_001")) {
+      const sinkAlt = this.objectStates.get("sink_kitchen_001");
+      if (sinkAlt) updater(sinkAlt);
+    } else if (id === "sink_kitchen_001" && this.objectStates.has("sink_001")) {
+      const sinkAlt = this.objectStates.get("sink_001");
+      if (sinkAlt) updater(sinkAlt);
+    }
+
     return obj;
   }
 

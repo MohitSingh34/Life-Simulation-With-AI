@@ -11,7 +11,9 @@
         "bedroom",
         "study_room",
         "kitchen",
-        "toilet"
+        "toilet",
+        "living_room",
+        "balcony"
       ]
     }
   ],
@@ -50,6 +52,37 @@
       "roomA": "bedroom",
       "roomB": "toilet",
       "defaultState": "closed"
+    },
+    {
+      "id": "door_bedroom_living",
+      "name": "Door between Bedroom and Living Room",
+      "roomA": "bedroom",
+      "roomB": "living_room",
+      "defaultState": "open"
+    },
+    {
+      "id": "door_kitchen_living",
+      "name": "Archway between Kitchen and Living Room",
+      "roomA": "kitchen",
+      "roomB": "living_room",
+      "defaultState": "open"
+    },
+    {
+      "id": "door_study_living",
+      "name": "Doorway between Study Room and Living Room",
+      "roomA": "study_room",
+      "roomB": "living_room",
+      "defaultState": "open"
+    },
+    {
+      "id": "door_living_balcony",
+      "name": "French Glass Doors to Balcony",
+      "roomA": "living_room",
+      "roomB": "balcony",
+      "defaultState": "open"
     }
-  ]
+  ],
+  "simulationConfig": {
+    "ariaPingIntervalMinutes": 10
+  }
 }

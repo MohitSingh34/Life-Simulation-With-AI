@@ -274,6 +274,128 @@
     "icon": "🪞"
   },
   {
+    "id": "wipe_mirror",
+    "name": "Wipe Steamy Mirror",
+    "description": "Wipe away condensation from the bathroom mirror with a towel or your hand.",
+    "category": "interaction",
+    "duration": 5,
+    "requiresTarget": false,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "toilet",
+      "positionId": ["washbasin_area", "mirror_area"],
+      "posture": ["standing"],
+      "objectState": "foggy"
+    },
+    "effects": {
+      "objectState": "clear",
+      "objectStates": {
+        "mirror_001": "clear",
+        "mirror_bathroom_001": "clear"
+      },
+      "needChanges": {
+        "happiness": 5
+      }
+    },
+    "successMessage": "With a smooth, sweeping motion, you wipe away the condensation from the mirror. Your clear reflection beams back at you, crisp and bright.",
+    "icon": "🪞"
+  },
+  {
+    "id": "throw_trash",
+    "name": "Throw Away Trash",
+    "description": "Dispose of waste or scraps into the room's trash bin.",
+    "category": "interaction",
+    "duration": 3,
+    "requiresTarget": false,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": ["kitchen", "toilet"],
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "has_trash",
+      "needChanges": {
+        "hygiene": 5,
+        "happiness": 2
+      }
+    },
+    "successMessage": "You step on the pedal and toss the waste cleanly into the trash bin.",
+    "icon": "🗑️"
+  },
+  {
+    "id": "empty_bin",
+    "name": "Empty Trash Bin",
+    "description": "Tie up the full trash bag and replace it with a fresh clean liner.",
+    "category": "interaction",
+    "duration": 20,
+    "requiresTarget": false,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": ["kitchen", "toilet"],
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "empty",
+      "needChanges": {
+        "hygiene": 10,
+        "happiness": 5,
+        "stress": -5
+      }
+    },
+    "successMessage": "You bundle up the rubbish bag, carry it to the disposal point, and line the bin with a clean sheet. Pristine and sanitary.",
+    "icon": "🗑️"
+  },
+  {
+    "id": "put_clothes_in_laundry",
+    "name": "Put Clothes in Laundry Basket",
+    "description": "Place soiled garments and used towels into the woven laundry hamper.",
+    "category": "interaction",
+    "duration": 5,
+    "requiresTarget": false,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "toilet",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "has_clothes",
+      "objectStates": {
+        "laundry_basket_001": "has_clothes"
+      },
+      "needChanges": {
+        "hygiene": 5,
+        "happiness": 5
+      }
+    },
+    "successMessage": "You drop your worn clothes and damp towel into the woven laundry hamper. The bathroom looks clean and tidy.",
+    "icon": "🧺"
+  },
+  {
+    "id": "empty_laundry",
+    "name": "Empty Laundry Basket",
+    "description": "Take out the accumulated laundry hamper bundle to prepare for washing.",
+    "category": "interaction",
+    "duration": 15,
+    "requiresTarget": false,
+    "targetTypes": ["fixture"],
+    "preconditions": {
+      "roomId": "toilet",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "empty",
+      "objectStates": {
+        "laundry_basket_001": "empty"
+      },
+      "needChanges": {
+        "happiness": 5,
+        "stress": -5
+      }
+    },
+    "successMessage": "You gather the full basket of laundry for washing, leaving the hamper empty and fresh.",
+    "icon": "🧺"
+  },
+  {
     "id": "turn_on_kitchen_tap",
     "name": "Turn On Kitchen Tap",
     "description": "Turn the lever faucet on the sink.",
@@ -481,7 +603,7 @@
     "category": "interaction",
     "duration": 45,
     "requiresTarget": true,
-    "targetTypes": ["surface", "fixture"],
+    "targetTypes": ["surface", "fixture", "furniture"],
     "preconditions": {
       "roomId": "kitchen",
       "posture": ["standing"]
@@ -742,21 +864,26 @@
   {
     "id": "wash_dishes",
     "name": "Wash the Dishes",
-    "description": "Wash a few dishes in the sink.",
+    "description": "Wash dirty plates and utensils with dish soap at the kitchen sink.",
     "category": "interaction",
     "duration": 180,
     "requiresTarget": true,
-    "targetTypes": ["fixture"],
+    "targetTypes": ["fixture", "item"],
     "preconditions": {
       "roomId": "kitchen"
     },
     "effects": {
+      "objectState": "empty",
+      "objectStates": {
+        "plate_001": "empty"
+      },
       "needChanges": {
-        "hygiene": 3,
-        "energy": -2
+        "hygiene": 8,
+        "energy": -2,
+        "happiness": 5
       }
     },
-    "successMessage": "You wash the dishes until they are clean and stacked to dry.",
+    "successMessage": "You scrub the plates with dish soap under running tap water and rinse away all grease. The steel plate sparkles, clean and stacked to dry.",
     "icon": "🍽️"
   },
   {
@@ -787,16 +914,75 @@
     "duration": 30,
     "requiresTarget": true,
     "targetTypes": ["electronics"],
-    "preconditions": {
-      "roomId": "bedroom"
-    },
+    "preconditions": {},
     "effects": {
       "needChanges": {
         "boredom": -3
       }
     },
-    "successMessage": "You glance over your notifications and the time.",
+    "successMessage": "You glance over your notifications and the time on your phone screen.",
     "icon": "📱"
+  },
+  {
+    "id": "check_messages",
+    "name": "Check Messages",
+    "description": "Open chat applications and catch up on messages from friends and family.",
+    "category": "interaction",
+    "duration": 60,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {},
+    "effects": {
+      "needChanges": {
+        "boredom": -10,
+        "loneliness": -10
+      },
+      "emotionChanges": {
+        "happiness": 5,
+        "loneliness": -10
+      }
+    },
+    "successMessage": "You scroll through your unread messages and reply to friends, feeling warmly connected.",
+    "icon": "💬"
+  },
+  {
+    "id": "play_alarm",
+    "name": "Play Alarm",
+    "description": "Sound a test alarm chime on your phone to wake up or check volume.",
+    "category": "interaction",
+    "duration": 15,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {},
+    "effects": {
+      "needChanges": {
+        "sleepiness": -15
+      }
+    },
+    "successMessage": "A brisk, bright alarm tone rings out from your phone, snapping you to attention.",
+    "icon": "⏰"
+  },
+  {
+    "id": "listen_music_phone",
+    "name": "Listen to Music on Phone",
+    "description": "Play favorite acoustic melodies or soothing tracks on your phone.",
+    "category": "interaction",
+    "duration": 300,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {},
+    "effects": {
+      "needChanges": {
+        "boredom": -15,
+        "stress": -10
+      },
+      "emotionChanges": {
+        "happiness": 10,
+        "stress": -10
+      }
+    },
+    "successMessage": "Gentle acoustic tunes play softly from your phone speakers, filling the air with soothing rhythm.",
+    "icon": "🎵"
   },
   {
     "id": "turn_on_shower",
@@ -833,5 +1019,374 @@
     },
     "successMessage": "You turn off the shower and the water settles to a drip.",
     "icon": "🚿"
+  },
+  {
+    "id": "turn_on_tv",
+    "name": "Turn On TV",
+    "description": "Power on the living room smart television.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "living_room",
+      "objectState": "off"
+    },
+    "effects": {
+      "objectState": "on"
+    },
+    "successMessage": "The smart TV powers on with a crisp chime, displaying the home dashboard.",
+    "icon": "📺"
+  },
+  {
+    "id": "turn_off_tv",
+    "name": "Turn Off TV",
+    "description": "Power down the television display.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "living_room",
+      "objectStateNot": "off"
+    },
+    "effects": {
+      "objectState": "off"
+    },
+    "successMessage": "You click the power button and the screen gently fades to black.",
+    "icon": "🛑"
+  },
+  {
+    "id": "play_music_speaker",
+    "name": "Play Music on Soundbar",
+    "description": "Stream relaxing classical and acoustic indie melodies through the soundbar.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "living_room"
+    },
+    "effects": {
+      "objectState": "playing_music",
+      "needChanges": {
+        "stress": -15,
+        "happiness": 15
+      }
+    },
+    "successMessage": "Warm, mellow acoustic guitar and sitar melodies flow smoothly through the room.",
+    "icon": "🎵"
+  },
+  {
+    "id": "stop_music_speaker",
+    "name": "Stop Speaker Music",
+    "description": "Pause or stop music playback on the soundbar.",
+    "category": "interaction",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "living_room",
+      "objectState": "playing_music"
+    },
+    "effects": {
+      "objectState": "off"
+    },
+    "successMessage": "The music gracefully fades out, leaving peaceful silence in the living room.",
+    "icon": "⏸️"
+  },
+  {
+    "id": "wipe_coffee_table",
+    "name": "Wipe Coffee Table",
+    "description": "Wipe down the coffee table surface with a clean cloth.",
+    "category": "interaction",
+    "duration": 60,
+    "requiresTarget": true,
+    "targetTypes": ["surface", "furniture"],
+    "preconditions": {
+      "roomId": "living_room",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "clean",
+      "needChanges": {
+        "stress": -5
+      }
+    },
+    "successMessage": "You buff the polished sheesham tabletop until the warm wood gleams.",
+    "icon": "✨"
+  },
+  {
+    "id": "inspect_plant",
+    "name": "Inspect Money Plant",
+    "description": "Check the soil moisture and leaves of the indoor potted plant.",
+    "category": "interaction",
+    "duration": 30,
+    "requiresTarget": true,
+    "targetTypes": ["plant"],
+    "preconditions": {
+      "roomId": "living_room"
+    },
+    "effects": {
+      "needChanges": {
+        "stress": -5,
+        "happiness": 5
+      }
+    },
+    "successMessage": "You check the money plant. Its trailing vines and leaves are healthy and vibrant.",
+    "icon": "🪴"
+  },
+  {
+    "id": "wipe_plant_leaves",
+    "name": "Wipe Plant Leaves",
+    "description": "Gently dust off the glossy leaves with a soft damp cloth.",
+    "category": "interaction",
+    "duration": 60,
+    "requiresTarget": true,
+    "targetTypes": ["plant"],
+    "preconditions": {
+      "roomId": "living_room",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "thriving",
+      "needChanges": {
+        "stress": -5,
+        "happiness": 8
+      }
+    },
+    "successMessage": "You gently wipe each leaf until the money plant glows with a deep emerald shine.",
+    "icon": "🍃"
+  },
+  {
+    "id": "refill_watering_can",
+    "name": "Refill Watering Can",
+    "description": "Refill the watering can at the balcony utility tap.",
+    "category": "interaction",
+    "duration": 30,
+    "requiresTarget": true,
+    "targetTypes": ["tool"],
+    "preconditions": {
+      "roomId": "balcony",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "full"
+    },
+    "successMessage": "You top up the watering can with cool fresh water from the brass tap.",
+    "icon": "🚰"
+  },
+  {
+    "id": "read_math_book",
+    "name": "Study Math Textbook",
+    "description": "Work through calculus theorems, linear algebra matrices, and complex problem sets.",
+    "category": "daily",
+    "duration": 1800,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["sitting", "standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "studiousness": 15,
+        "energy": 5,
+        "boredom": -10
+      },
+      "activity": "read_math_book"
+    },
+    "successMessage": "You work through calculus problems and matrix transformations. The equations click into place with clear logic (+15 studiousness, +5 mental energy, -10 boredom).",
+    "icon": "📘"
+  },
+  {
+    "id": "read_physics_book",
+    "name": "Study Physics Textbook",
+    "description": "Study classical mechanics, energy balance equations, and thermodynamics theory.",
+    "category": "daily",
+    "duration": 1800,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["sitting", "standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "studiousness": 15,
+        "boredom": -10
+      },
+      "activity": "read_physics_book"
+    },
+    "successMessage": "You study classical mechanics and thermodynamics, diagramming force vectors and thermodynamic cycles (+15 studiousness, -10 boredom).",
+    "icon": "📗"
+  },
+  {
+    "id": "read_chemistry_book",
+    "name": "Study Chemistry Textbook",
+    "description": "Review organic reaction mechanisms, molecular orbitals, and solution stoichiometry.",
+    "category": "daily",
+    "duration": 1800,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["sitting", "standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "studiousness": 15,
+        "boredom": -10
+      },
+      "activity": "read_chemistry_book"
+    },
+    "successMessage": "You review organic chemistry pathways and molecular structures with keen curiosity (+15 studiousness, -10 boredom).",
+    "icon": "📙"
+  },
+  {
+    "id": "read_psychology_book",
+    "name": "Read Psychology Book",
+    "description": "Read underlined chapters on human behavior, perception, and emotional empathy.",
+    "category": "daily",
+    "duration": 1500,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["sitting", "standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "sociability": 15,
+        "stress": -10
+      },
+      "activity": "read_psychology_book"
+    },
+    "successMessage": "You read insightful passages on cognitive empathy, perception, and human behavior, gaining a richer understanding of people (+15 sociability, -10 stress).",
+    "icon": "📕"
+  },
+  {
+    "id": "read_mohit_notebook",
+    "name": "Read Mohit's Notebook",
+    "description": "Reflect on your personal journal entries, brainstorms, and creative project sketches.",
+    "category": "daily",
+    "duration": 1200,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["sitting", "standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "happiness": 10,
+        "stress": -15
+      },
+      "activity": "read_mohit_notebook"
+    },
+    "successMessage": "You flip through your personal journal, revisiting sketches, reflections, and future goals. A reassuring calm sets in (+10 happiness, -15 stress).",
+    "icon": "📓"
+  },
+  {
+    "id": "read_aria_notebook",
+    "name": "Read Aria's Notebook",
+    "description": "Open Aria's private cloth-bound notebook resting on the shelf.",
+    "category": "daily",
+    "duration": 600,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["sitting", "standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "stress": 20
+      },
+      "activity": "read_aria_notebook"
+    },
+    "successMessage": "You peek into Aria's private notebook. An immediate pang of guilt and acute tension grips your chest (+20 stress).",
+    "icon": "📔"
+  },
+  {
+    "id": "open_spice_box",
+    "name": "Open Brass Masala Dabba",
+    "description": "Lift the engraved brass lid off the traditional spice container.",
+    "category": "interaction",
+    "duration": 5,
+    "requiresTarget": true,
+    "targetTypes": ["item", "surface"],
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "objectState": "open",
+      "objectStates": {
+        "spice_box_001": "open"
+      }
+    },
+    "successMessage": "You lift the heavy brass lid. The aromatic fragrance of cloves, cardamom, turmeric, and mustard seeds drifts into the air.",
+    "icon": "✨"
+  },
+  {
+    "id": "close_spice_box",
+    "name": "Close Brass Masala Dabba",
+    "description": "Place the brass lid securely back onto the masala dabba.",
+    "category": "interaction",
+    "duration": 5,
+    "requiresTarget": true,
+    "targetTypes": ["item", "surface"],
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "objectState": "closed",
+      "objectStates": {
+        "spice_box_001": "closed"
+      }
+    },
+    "successMessage": "You press the brass lid closed with a gentle clink, sealing in the freshness of the whole spices.",
+    "icon": "✨"
+  },
+  {
+    "id": "inspect_spices",
+    "name": "Inspect Masala Dabba Spices",
+    "description": "Look into the circular brass katoris holding cloves (laung), cardamom (elaichi), turmeric (haldi), and mustard seeds (rai).",
+    "category": "interaction",
+    "duration": 15,
+    "requiresTarget": true,
+    "targetTypes": ["item", "surface"],
+    "preconditions": {
+      "roomId": "kitchen"
+    },
+    "effects": {
+      "needChanges": {
+        "stress": -5,
+        "happiness": 5
+      }
+    },
+    "successMessage": "You examine the seven brass compartments: shiny black mustard seeds (rai), fragrant green cardamoms (elaichi), pungent whole cloves (laung), and bright yellow turmeric (haldi) — all neatly arranged for everyday cooking.",
+    "icon": "🔍"
+  },
+  {
+    "id": "pinch_spices",
+    "name": "Pinch Spices for Cooking",
+    "description": "Take a pinch of mustard seeds and turmeric from the masala dabba to temper in hot oil on the stove.",
+    "category": "interaction",
+    "duration": 10,
+    "requiresTarget": true,
+    "targetTypes": ["item", "surface"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "stress": -3,
+        "happiness": 5
+      }
+    },
+    "successMessage": "You pinch a spoonful of mustard seeds and golden turmeric from the brass dabba, ready to sizzle in the hot pan.",
+    "icon": "🧂"
   }
 ]

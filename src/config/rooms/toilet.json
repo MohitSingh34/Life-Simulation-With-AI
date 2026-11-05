@@ -48,6 +48,38 @@
       "standable": true,
       "sittable": false,
       "lieable": false
+    },
+    {
+      "id": "towel_rack_area",
+      "name": "At the Towel Rack",
+      "objectId": "towel_rack_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "laundry_corner",
+      "name": "At the Laundry Basket",
+      "objectId": "laundry_basket_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "toilet_trash_area",
+      "name": "By the Bathroom Trash Bin",
+      "objectId": "trash_bin_toilet_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "toilet_utility_corner",
+      "name": "At the Utility Corner",
+      "objectId": "broom_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
     }
   ]
 }

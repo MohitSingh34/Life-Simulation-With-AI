@@ -12,7 +12,7 @@ export interface SimulationEvent {
   actorId: string;
   type: "action_completed" | "action_failed" | "need_warning" | "need_critical" |
         "location_changed" | "object_state_changed" | "time_advanced" |
-        "emotion_changed" | "ai_decision" | "conversation";
+        "emotion_changed" | "ai_decision" | "conversation" | "social_encounter" | "roommate_friction";
   data: Record<string, unknown>;
 }
 

@@ -229,7 +229,7 @@
 
         <!-- Top-Down SVG Blueprint Map -->
         <div class="map-canvas-frame">
-          <svg id="house-map-svg" viewBox="0 0 620 400" preserveAspectRatio="xMidYMid meet" class="house-floorplan-svg">
+          <svg id="house-map-svg" viewBox="0 0 620 595" preserveAspectRatio="xMidYMid meet" class="house-floorplan-svg">
             <defs>
               <!-- Floor Patterns -->
               <pattern id="wood-pattern" width="40" height="12" patternUnits="userSpaceOnUse">
@@ -258,7 +258,7 @@
             </defs>
 
             <!-- Outer House Foundation Border -->
-            <rect x="12" y="12" width="596" height="376" rx="16" class="house-foundation" />
+            <rect x="12" y="12" width="596" height="570" rx="16" class="house-foundation" />
 
             <!-- ============================== -->
             <!-- 1. BEDROOM (Top-Left)          -->
@@ -438,7 +438,106 @@
             </g>
 
             <!-- ============================== -->
-            <!-- 5. CENTRAL CORRIDOR & WALLS    -->
+            <!-- 5. LIVING ROOM (Bottom-Left)   -->
+            <!-- ============================== -->
+            <g class="room-zone" id="map-room-living_room" data-room="living_room">
+              <rect x="20" y="390" width="345" height="185" rx="8" class="room-floor floor-living" />
+              <rect x="20" y="390" width="345" height="185" rx="8" fill="url(#wood-pattern)" />
+
+              <!-- West Window -->
+              <rect x="16" y="440" width="6" height="70" class="map-window" />
+              <text x="24" y="480" class="map-window-label-vert" text-anchor="middle">🪟 WINDOW</text>
+
+              <!-- Comfortable Sofa -->
+              <g class="map-object interactive-obj" id="map-obj-sofa" data-obj="sofa_001" data-room="living_room">
+                <rect x="110" y="420" width="120" height="50" rx="6" class="obj-sofa" />
+                <rect x="116" y="426" width="34" height="38" rx="4" class="obj-sofa-cushion" />
+                <rect x="153" y="426" width="34" height="38" rx="4" class="obj-sofa-cushion" />
+                <rect x="190" y="426" width="34" height="38" rx="4" class="obj-sofa-cushion" />
+                <text x="170" y="450" class="obj-label" text-anchor="middle">🛋️ Plush Sofa</text>
+              </g>
+
+              <!-- Teakwood Coffee Table -->
+              <g class="map-object interactive-obj" id="map-obj-coffee-table" data-obj="coffee_table_001" data-room="living_room">
+                <rect x="125" y="490" width="90" height="32" rx="4" class="obj-coffee-table" />
+                <text x="170" y="510" class="obj-label" text-anchor="middle">☕ Coffee Table</text>
+              </g>
+
+              <!-- Indoor Money Plant -->
+              <g class="map-object interactive-obj" id="map-obj-plant" data-obj="house_plant_001" data-room="living_room">
+                <circle cx="235" cy="505" r="14" class="obj-plant-pot" />
+                <circle cx="235" cy="505" r="9" class="obj-plant-leaf" />
+                <text x="235" y="509" class="obj-label-tiny" text-anchor="middle">🪴</text>
+              </g>
+
+              <!-- Smart TV & Soundbar Console -->
+              <g class="map-object interactive-obj" id="map-obj-tv-speaker" data-obj="tv_speaker_001" data-room="living_room">
+                <rect x="36" y="430" width="22" height="85" rx="3" class="obj-tv-cabinet" />
+                <rect x="42" y="440" width="8" height="65" rx="2" class="obj-tv-screen" />
+                <text x="47" y="475" class="obj-label-tiny" text-anchor="middle">📺</text>
+              </g>
+
+              <!-- Doorway opening between Kitchen and Living Room -->
+              <rect x="140" y="380" width="55" height="14" class="doorway-opening" />
+
+              <!-- Doorway opening to Balcony -->
+              <rect x="358" y="435" width="14" height="60" class="doorway-opening" />
+
+              <!-- Room Header Tag on Top of Map -->
+              <g class="map-room-tag-group">
+                <rect x="30" y="396" width="95" height="20" rx="10" class="room-tag-pill" />
+                <text x="77" y="410" class="room-tag-text" text-anchor="middle">LIVING ROOM</text>
+              </g>
+            </g>
+
+            <!-- ============================== -->
+            <!-- 6. BALCONY (Bottom-Right)      -->
+            <!-- ============================== -->
+            <g class="room-zone" id="map-room-balcony" data-room="balcony">
+              <rect x="375" y="390" width="225" height="185" rx="8" class="room-floor floor-balcony" />
+              <rect x="375" y="390" width="225" height="185" rx="8" fill="url(#granite-pattern)" />
+
+              <!-- Open Balcony Railings -->
+              <line x1="380" y1="570" x2="595" y2="570" class="obj-balcony-railing" />
+              <line x1="595" y1="395" x2="595" y2="570" class="obj-balcony-railing" />
+              <text x="490" y="566" class="map-window-label" text-anchor="middle">🌳 OPEN BALCONY VIEW</text>
+
+              <!-- Balcony Planters -->
+              <g class="map-object interactive-obj" id="map-obj-balcony-plants" data-obj="balcony_plants_001" data-room="balcony">
+                <rect x="410" y="535" width="140" height="18" rx="4" class="obj-balcony-planter" />
+                <circle cx="430" cy="544" r="5" fill="#ef4444" />
+                <circle cx="455" cy="544" r="5" fill="#f43f5e" />
+                <circle cx="480" cy="544" r="5" fill="#22c55e" />
+                <circle cx="505" cy="544" r="5" fill="#facc15" />
+                <circle cx="530" cy="544" r="5" fill="#ec4899" />
+                <text x="480" y="547" class="obj-label-tiny" text-anchor="middle">🌺</text>
+              </g>
+
+              <!-- Watering Can -->
+              <g class="map-object interactive-obj" id="map-obj-watering-can" data-obj="watering_can_001" data-room="balcony">
+                <rect x="390" y="515" width="22" height="16" rx="3" class="obj-watering-can" />
+                <text x="401" y="527" class="obj-label-tiny" text-anchor="middle">🚿</text>
+              </g>
+
+              <!-- Balcony Cane Chair -->
+              <g class="map-object interactive-obj" id="map-obj-cane-chair" data-obj="cane_chair_001" data-room="balcony">
+                <circle cx="540" cy="455" r="18" class="obj-cane-chair" />
+                <circle cx="540" cy="455" r="12" fill="#78350f" />
+                <text x="540" y="460" class="obj-label-tiny" text-anchor="middle">🪑</text>
+              </g>
+
+              <!-- Doorway opening from Living Room -->
+              <rect x="368" y="435" width="14" height="60" class="doorway-opening" />
+
+              <!-- Room Header Tag on Top of Map -->
+              <g class="map-room-tag-group">
+                <rect x="520" y="396" width="70" height="20" rx="10" class="room-tag-pill" />
+                <text x="555" y="410" class="room-tag-text" text-anchor="middle">BALCONY</text>
+              </g>
+            </g>
+
+            <!-- ============================== -->
+            <!-- 7. CENTRAL CORRIDOR & WALLS    -->
             <!-- ============================== -->
             <!-- Architectural dividing walls -->
             <line x1="300" y1="20" x2="300" y2="135" class="wall-main" />
@@ -447,6 +546,15 @@
 
             <line x1="20" y1="195" x2="285" y2="195" class="wall-main" />
             <line x1="315" y1="195" x2="600" y2="195" class="wall-main" />
+
+            <!-- Row 2 to Row 3 horizontal walls -->
+            <line x1="20" y1="385" x2="135" y2="385" class="wall-main" />
+            <line x1="195" y1="385" x2="275" y2="385" class="wall-main" />
+            <line x1="325" y1="385" x2="600" y2="385" class="wall-main" />
+
+            <!-- Living Room to Balcony vertical wall -->
+            <line x1="370" y1="385" x2="370" y2="430" class="wall-main" />
+            <line x1="370" y1="500" x2="370" y2="575" class="wall-main" />
 
             <!-- Corridor Label -->
             <text x="300" y="198" class="map-corridor-label" text-anchor="middle">CONNECTING HALLWAY</text>

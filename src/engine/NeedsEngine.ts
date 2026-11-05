@@ -60,8 +60,40 @@ export class NeedsEngine {
     if (!char) return;
 
     for (const [key, delta] of Object.entries(changes)) {
-      if (delta !== undefined && key in char.needs) {
-        this.adjustNeed(char.needs, key as keyof CharacterNeeds, delta);
+      if (delta !== undefined) {
+        if (key in char.needs) {
+          this.adjustNeed(char.needs, key as keyof CharacterNeeds, delta);
+        } else if (key in char.emotions) {
+          const emotionKey = key as keyof typeof char.emotions;
+          const current = char.emotions[emotionKey] ?? 50;
+          const updated = Math.min(100, Math.max(0, current + delta));
+          char.emotions[emotionKey] = Math.round(updated * 10) / 10;
+        } else if (
+          key === "sociability" ||
+          key === "tidiness" ||
+          key === "studiousness" ||
+          key === "laziness" ||
+          key === "foodLove" ||
+          (char.personality && key in char.personality)
+        ) {
+          if (!char.personality) {
+            char.personality = {
+              sociability: 50,
+              tidiness: 50,
+              studiousness: 50,
+              laziness: 50,
+              foodLove: 50,
+            };
+          }
+          const persKey = key as keyof typeof char.personality;
+          const current = char.personality[persKey] ?? 50;
+          const updated = Math.min(100, Math.max(0, current + delta));
+          char.personality[persKey] = Math.round(updated * 10) / 10;
+        } else if (key === "comfort") {
+          // Comfort promotes contentment: boosts happiness and mitigates stress
+          char.emotions.happiness = Math.min(100, Math.max(0, Math.round((char.emotions.happiness + delta) * 10) / 10));
+          char.emotions.stress = Math.min(100, Math.max(0, Math.round((char.emotions.stress - delta) * 10) / 10));
+        }
       }
     }
   }

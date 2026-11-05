@@ -8,6 +8,7 @@ interface PersistedGame {
   version: 1;
   lastNeedsCheckpoint: string;
   lastLocalDate: string;
+  lastAiPingCheckpoint?: string;
   snapshot: SimulationSnapshot;
 }
 
@@ -19,6 +20,7 @@ export class RealtimePersistence {
   private readonly statePath: string;
   private readonly timingsPath: string;
   private lastNeedsCheckpointMs = 0;
+  private lastAiPingCheckpointMs = 0;
   private lastLocalDate = "";
   private lastLoggedMinuteMs: number | null = null;
 
@@ -41,11 +43,15 @@ export class RealtimePersistence {
       this.engine.stateManager.loadSnapshot(saved.snapshot);
       this.lastNeedsCheckpointMs = Date.parse(saved.lastNeedsCheckpoint);
       this.lastLocalDate = saved.lastLocalDate;
+      this.lastAiPingCheckpointMs = saved.lastAiPingCheckpoint
+        ? Date.parse(saved.lastAiPingCheckpoint)
+        : this.lastNeedsCheckpointMs;
       this.update(now);
       return;
     }
 
     this.lastNeedsCheckpointMs = this.floorToMinute(now.getTime());
+    this.lastAiPingCheckpointMs = this.lastNeedsCheckpointMs;
     this.lastLocalDate = this.engine.timeEngine.getLocalDateKey(now);
     this.engine.timeEngine.syncToWallClock(now);
     this.writeSnapshot();
@@ -64,6 +70,24 @@ export class RealtimePersistence {
     const localDate = this.engine.timeEngine.getLocalDateKey(now);
     const daysPassed = Math.max(0, this.calendarDaysBetween(this.lastLocalDate, localDate));
     const checkpointChanged = elapsedMinutes > 0 || daysPassed > 0;
+
+    // Check if autonomous AI heartbeat (Aria ping) is due
+    const pingInterval = this.engine.getAriaPingIntervalMinutes();
+    const elapsedSinceAiPing = Math.max(
+      0,
+      Math.floor((now.getTime() - this.lastAiPingCheckpointMs) / MINUTE_MS)
+    );
+
+    let aiPingTriggered = false;
+    if (elapsedSinceAiPing >= pingInterval) {
+      try {
+        this.engine.tickAutonomousAI();
+        aiPingTriggered = true;
+      } catch (err) {
+        console.warn("Autonomous AI tick failed:", err);
+      }
+      this.lastAiPingCheckpointMs += Math.floor(elapsedSinceAiPing / pingInterval) * pingInterval * MINUTE_MS;
+    }
 
     if (checkpointChanged) {
       const previousSnapshot = this.engine.stateManager.getSnapshot();
@@ -87,6 +111,9 @@ export class RealtimePersistence {
       }
     } else {
       this.engine.timeEngine.syncToWallClock(now);
+      if (aiPingTriggered) {
+        this.writeSnapshot();
+      }
     }
 
     this.writeTimingLogThroughCheckpoint();
@@ -138,6 +165,7 @@ export class RealtimePersistence {
       version: 1,
       lastNeedsCheckpoint: new Date(this.lastNeedsCheckpointMs).toISOString(),
       lastLocalDate: this.lastLocalDate,
+      lastAiPingCheckpoint: new Date(this.lastAiPingCheckpointMs).toISOString(),
       snapshot: this.engine.stateManager.getSnapshot(),
     };
     const temporaryPath = `${this.statePath}.tmp`;

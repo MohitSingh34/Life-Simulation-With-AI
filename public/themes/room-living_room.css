@@ -1,0 +1,56 @@
+/* ============================================================
+   ROOM THEME: LIVING ROOM (Warm Terracotta, Amber Glow & Comfort)
+   ============================================================ */
+
+:root {
+  --room-accent: #f97316;
+  --room-accent-glow: rgba(249, 115, 22, 0.35);
+  --border-active: #f97316;
+  --bg-card: rgba(24, 18, 14, 0.28);
+  --bg-card-hover: rgba(34, 25, 20, 0.38);
+  --bg-card-inner: rgba(32, 24, 18, 0.35);
+  --border-card: rgba(249, 115, 22, 0.18);
+}
+
+/* Clear full-page living room photo */
+.room-backdrop-layer {
+  filter: brightness(0.70) saturate(1.15) !important;
+  opacity: 0.88 !important;
+}
+
+.room-backdrop-scrim {
+  background: radial-gradient(circle at 45% 35%, rgba(26, 18, 12, 0.22) 0%, rgba(10, 8, 6, 0.65) 100%) !important;
+}
+
+/* Living room-specific card accents */
+.card {
+  box-shadow: 0 12px 40px rgba(22, 14, 8, 0.45);
+}
+
+.current-room-title {
+  color: #ffedd5;
+  text-shadow: 0 2px 10px rgba(249, 115, 22, 0.4);
+}
+
+.time-mood-badge {
+  background: rgba(249, 115, 22, 0.25);
+  border-color: rgba(249, 115, 22, 0.5);
+  color: #fed7aa;
+}
+
+.profile-name {
+  color: #fff;
+}
+
+.avatar-ring {
+  border-color: #f97316;
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.35);
+}
+
+/* Active room on top-down floorplan */
+#map-room-living_room .room-floor {
+  stroke: #f97316 !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 12px rgba(249, 115, 22, 0.5)) !important;
+}
+

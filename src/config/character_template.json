@@ -35,7 +35,8 @@
       "studiousness": 60,
       "laziness": 40,
       "foodLove": 65
-    }
+    },
+    "pingIntervalMinutes": 10
   }
 ]
 

@@ -106,7 +106,28 @@ export class ConfigLoader {
   }
 
   public getObject(id: string): ObjectConfig | undefined {
-    return this.objects.get(id);
+    let obj = this.objects.get(id);
+    if (!obj) {
+      if (id === "mirror_bathroom_001" && this.objects.has("mirror_001")) {
+        return this.objects.get("mirror_001");
+      }
+      if (id === "mirror_001" && this.objects.has("mirror_bathroom_001")) {
+        return this.objects.get("mirror_bathroom_001");
+      }
+      if (id === "lamp_bedroom_001" && this.objects.has("lamp_001")) {
+        return this.objects.get("lamp_001");
+      }
+      if (id === "lamp_001" && this.objects.has("lamp_bedroom_001")) {
+        return this.objects.get("lamp_bedroom_001");
+      }
+      if (id === "sink_kitchen_001" && this.objects.has("sink_001")) {
+        return this.objects.get("sink_001");
+      }
+      if (id === "sink_001" && this.objects.has("sink_kitchen_001")) {
+        return this.objects.get("sink_kitchen_001");
+      }
+    }
+    return obj;
   }
 
   public getAllObjects(): ObjectConfig[] {

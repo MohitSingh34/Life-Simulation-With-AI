@@ -58,5 +58,33 @@ export class MovementEngine {
 
     return { allowed: true };
   }
+
+  /**
+   * Breadth-First Search (BFS) to find the shortest list of rooms connecting fromRoomId to toRoomId.
+   * Returns an array of room IDs to visit (excluding fromRoomId, including toRoomId), or null if unreachable.
+   */
+  public findPathToRoom(fromRoomId: string, toRoomId: string): string[] | null {
+    if (fromRoomId === toRoomId) return [];
+
+    const queue: string[][] = [[fromRoomId]];
+    const visited = new Set<string>([fromRoomId]);
+
+    while (queue.length > 0) {
+      const path = queue.shift()!;
+      const current = path[path.length - 1];
+
+      for (const next of this.getReachableRooms(current)) {
+        if (next === toRoomId) {
+          return [...path.slice(1), next];
+        }
+        if (!visited.has(next)) {
+          visited.add(next);
+          queue.push([...path, next]);
+        }
+      }
+    }
+
+    return null;
+  }
 }
 

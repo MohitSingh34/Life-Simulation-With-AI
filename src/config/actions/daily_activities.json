@@ -58,13 +58,105 @@
       "posture": ["standing"]
     },
     "effects": {
+      "objectState": "cooking",
+      "objectStates": {
+        "stove_001": "cooking"
+      },
       "needChanges": {
         "hunger": 10,
+        "stress": -10,
+        "happiness": 5
+      }
+    },
+    "successMessage": "The kitchen fills with mouthwatering aromas! A steaming hot pot of dal and fresh rotis are bubbling on the stove.",
+    "icon": "🍲"
+  },
+  {
+    "id": "serve_meal",
+    "name": "Serve Meal onto Plate",
+    "description": "Ladle hot dal, rice, and fresh rotis from the stove onto your steel plate.",
+    "category": "daily",
+    "duration": 60,
+    "requiresTarget": true,
+    "targetTypes": ["item", "appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "positionId": ["stove_area", "counter_area", "kitchen_door_area"],
+      "posture": ["standing"],
+      "holding": "plate_001",
+      "requiredObjectStates": {
+        "stove_001": ["cooking", "on"]
+      }
+    },
+    "effects": {
+      "objectStates": {
+        "plate_001": "with_food",
+        "stove_001": "idle"
+      },
+      "needChanges": {
+        "hunger": -5,
+        "happiness": 5
+      }
+    },
+    "successMessage": "You ladle steaming fragrant dal, fluffy rice, and warm soft phulkas onto the steel thali plate. A complete, wholesome meal is ready to be enjoyed.",
+    "icon": "🍛"
+  },
+  {
+    "id": "eat_meal_from_plate",
+    "name": "Eat Meal from Plate",
+    "description": "Sit comfortably on the kitchen dining stool and enjoy your home-cooked meal from the plate.",
+    "category": "daily",
+    "duration": 600,
+    "requiresTarget": true,
+    "targetTypes": ["item"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "positionId": "dining_chair",
+      "posture": ["sitting"],
+      "requiredObjectStates": {
+        "plate_001": "with_food"
+      }
+    },
+    "effects": {
+      "objectStates": {
+        "plate_001": "dirty"
+      },
+      "needChanges": {
+        "hunger": -50,
+        "energy": 15,
+        "happiness": 10
+      }
+    },
+    "successMessage": "You enjoy every bite of the hot dal, rice, and freshly puffed rotis. Warmth and contentment spread through you as your hunger is completely satisfied.",
+    "icon": "🍽️"
+  },
+  {
+    "id": "cook_breakfast",
+    "name": "Cook Breakfast (Poha & Aloo Paratha)",
+    "description": "Prepare a classic Jabalpur morning breakfast: temper mustard seeds, curry leaves, and crunchy peanuts for soft lemon poha, or griddle crisp golden aloo parathas on the tawa.",
+    "category": "daily",
+    "duration": 600,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "cooking",
+      "objectStates": {
+        "stove_001": "cooking"
+      },
+      "needChanges": {
+        "hunger": -35,
+        "energy": 15,
+        "happiness": 15,
         "stress": -10
       }
     },
-    "successMessage": "The kitchen fills with mouthwatering aromas! A steaming hot plate of home-cooked food is ready.",
-    "icon": "🍲"
+    "ongoingMessage": "Mustard seeds splutter cheerfully in hot oil with curry leaves, spreading the appetizing morning aroma of fresh breakfast...",
+    "successMessage": "You slide fragrant, turmeric-golden poha onto the counter, topped with crisp sev, finely chopped onions, and a squeeze of fresh lemon. Breakfast is served!",
+    "icon": "🥞"
   },
   {
     "id": "eat_meal",
@@ -130,16 +222,17 @@
   {
     "id": "read_book",
     "name": "Read Book",
-    "description": "Pick a book from the shelf and immerse yourself in captivating pages.",
+    "description": "Pick a book from the shelf or read your carried book in bed under the lamp.",
     "category": "daily",
     "duration": 1500,
     "requiresTarget": false,
     "preconditions": {
-      "roomId": "study_room"
+      "roomId": ["study_room", "bedroom"]
     },
     "effects": {
       "needChanges": {
-        "energy": -5
+        "energy": -5,
+        "stress": -5
       }
     },
     "successMessage": "You read several illuminating chapters. A peaceful, enriching escape.",
@@ -186,19 +279,22 @@
   {
     "id": "brush_teeth",
     "name": "Brush Teeth",
-    "description": "Brush your teeth with minty toothpaste.",
+    "description": "Brush your teeth thoroughly with minty herbal toothpaste.",
     "category": "daily",
     "duration": 180,
     "requiresTarget": false,
     "preconditions": {
-      "roomId": "toilet"
+      "roomId": "toilet",
+      "posture": ["standing"]
     },
     "effects": {
       "needChanges": {
-        "hygiene": 20
+        "hygiene": 25,
+        "happiness": 5,
+        "stress": -5
       }
     },
-    "successMessage": "You brush thoroughly until every tooth feels slick and your breath smells fresh mint.",
+    "successMessage": "You brush thoroughly until every tooth feels smooth and clean, rinsing your mouth with cool water. Your breath is delightfully minty and fresh.",
     "icon": "🪥"
   },
   {
@@ -216,11 +312,152 @@
       "needChanges": {
         "hygiene": 65,
         "stress": -25,
-        "energy": 15
+        "energy": 15,
+        "happiness": 10
+      },
+      "objectStates": {
+        "mirror_001": "foggy",
+        "mirror_bathroom_001": "foggy"
       }
     },
-    "successMessage": "Warm streams of water massage your shoulders and wash away all tiredness. You feel spotless and reborn.",
+    "successMessage": "Warm streams of water massage your shoulders and wash away all tiredness. Thick steam rises and blankets the mirror in a warm haze. You feel spotless and reborn.",
     "icon": "🚿"
+  },
+  {
+    "id": "take_hot_shower",
+    "name": "Take a Steaming Hot Shower",
+    "description": "Turn up the geyser and soak under a deeply relaxing, hot rain shower.",
+    "category": "daily",
+    "duration": 600,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "toilet",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 70,
+        "stress": -30,
+        "energy": 10,
+        "comfort": 15,
+        "happiness": 15
+      },
+      "objectStates": {
+        "mirror_001": "foggy",
+        "mirror_bathroom_001": "foggy"
+      }
+    },
+    "successMessage": "Luxuriously hot water envelops your body in comforting steam, turning the bathroom mirror completely foggy and melting away every muscle ache.",
+    "icon": "🚿"
+  },
+  {
+    "id": "take_cold_shower",
+    "name": "Take a Brisk Cold Shower",
+    "description": "Step under the cold shower to wake up your body and sharpen your senses.",
+    "category": "daily",
+    "duration": 300,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "toilet",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 65,
+        "stress": -10,
+        "energy": 25,
+        "sleepiness": -30,
+        "happiness": 5
+      }
+    },
+    "successMessage": "The sharp, cold torrent shocks your skin in the best way possible! An electric jolt of alertness surges through your veins.",
+    "icon": "🚿"
+  },
+  {
+    "id": "dry_with_towel",
+    "name": "Dry Off with Towel",
+    "description": "Use the soft cotton bath towel from the rack to dry yourself thoroughly from head to toe.",
+    "category": "daily",
+    "duration": 60,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "toilet",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 10,
+        "comfort": 10,
+        "happiness": 10,
+        "stress": -5
+      }
+    },
+    "successMessage": "You wrap yourself in the soft cotton towel, patting your skin completely dry. The warmth and cleanliness feel wonderfully comforting.",
+    "icon": "🧖"
+  },
+  {
+    "id": "apply_moisturizer",
+    "name": "Apply Moisturizer",
+    "description": "Gently massage soothing herbal moisturizer across your face and neck.",
+    "category": "daily",
+    "duration": 90,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "toilet",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 10,
+        "comfort": 10,
+        "happiness": 10,
+        "stress": -5
+      }
+    },
+    "successMessage": "You massage a dab of cooling moisturizer into your face and neck. Your skin feels nourished, supple, and refreshed.",
+    "icon": "🧴"
+  },
+  {
+    "id": "wash_hair",
+    "name": "Wash Hair",
+    "description": "Lather your hair with nourishing herbal shampoo and rinse thoroughly with clean water.",
+    "category": "daily",
+    "duration": 240,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "toilet",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 30,
+        "happiness": 10,
+        "stress": -15
+      }
+    },
+    "successMessage": "You massage herbal shampoo into a rich lather, washing away dirt and oils before rinsing clean. Your scalp feels cool and invigorated.",
+    "icon": "🫧"
+  },
+  {
+    "id": "sweep_floor",
+    "name": "Sweep Floor",
+    "description": "Use the grass broom to sweep away dust, lint, and debris across the room.",
+    "category": "daily",
+    "duration": 180,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hygiene": 10,
+        "stress": -15,
+        "happiness": 10,
+        "energy": -5
+      }
+    },
+    "successMessage": "You sweep the floor with smooth, rhythmic strokes of the grass broom, gathering all dust into a neat pile. The room looks spotless and peaceful.",
+    "icon": "🧹"
   },
   {
     "id": "meditate",
@@ -243,8 +480,8 @@
   },
   {
     "id": "make_masala_chai",
-    "name": "Brew Masala Chai",
-    "description": "Simmer fresh ginger, crushed cardamom, tea leaves and creamy milk over the gas flame.",
+    "name": "Brew Fresh Hot Tea",
+    "description": "Simmer classic Assam tea leaves, fresh milk, and a spoonful of sugar over the gas flame for a simple, comforting cup of everyday normal tea.",
     "category": "daily",
     "duration": 360,
     "requiresTarget": true,
@@ -258,11 +495,74 @@
         "hunger": -10,
         "thirst": -30,
         "energy": 18,
-        "stress": -15
+        "stress": -15,
+        "happiness": 15
       }
     },
-    "ongoingMessage": "The kitchen fills with the heavenly aroma of crushed cardamom and boiled milk...",
-    "successMessage": "You strain the golden, piping-hot masala chai into a clay kulhad. The warm sip awakens every sense.",
+    "ongoingMessage": "The pot gently bubbles on the stove as regular tea leaves simmer into creamy milk...",
+    "successMessage": "You strain the steaming, comforting cup of fresh hot tea. Clean, sweet, and perfectly simple.",
+    "icon": "☕"
+  },
+  {
+    "id": "brew_tea",
+    "name": "Brew Normal Tea",
+    "description": "Brew a straightforward, hot cup of everyday milk tea with Assam tea leaves, milk, and sugar.",
+    "category": "daily",
+    "duration": 360,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "hunger": -10,
+        "thirst": -30,
+        "energy": 18,
+        "stress": -15,
+        "happiness": 15
+      }
+    },
+    "ongoingMessage": "The pot bubbles gently on the stove as regular tea leaves simmer into creamy milk...",
+    "successMessage": "You pour a hot, soothing cup of normal milk tea. Familiar, simple, and satisfying.",
+    "icon": "☕"
+  },
+  {
+    "id": "brew_chai_duo",
+    "name": "Brew Hot Tea for Two",
+    "description": "Brew two classic cups of steaming milk tea with rich Assam leaves, fresh milk, and sugar to share with Aria in the kitchen.",
+    "category": "daily",
+    "duration": 420,
+    "requiresTarget": true,
+    "targetTypes": ["appliance"],
+    "preconditions": {
+      "roomId": "kitchen",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "objectState": "cooking",
+      "objectStates": {
+        "stove_001": "cooking"
+      },
+      "needChanges": {
+        "hunger": -10,
+        "thirst": -30,
+        "energy": 20,
+        "stress": -20,
+        "happiness": 20,
+        "loneliness": -25
+      },
+      "companionNeedChanges": {
+        "thirst": -25,
+        "energy": 15,
+        "stress": -15,
+        "happiness": 20,
+        "loneliness": -20
+      }
+    },
+    "ongoingMessage": "Two cups of simple hot tea simmer together on the stove, warming the kitchen...",
+    "successMessage": "You pour two steaming mugs of freshly brewed hot milk tea. Simple, warm, and deeply comforting for both of you.",
     "icon": "☕"
   },
   {
@@ -323,5 +623,468 @@
     },
     "successMessage": "Everything looks neat, balanced, and orderly now. The room breathes easier.",
     "icon": "🧹"
+  },
+  {
+    "id": "relax_on_sofa",
+    "name": "Relax on Sofa",
+    "description": "Rest peacefully on the living room sofa, letting go of all the day's tension.",
+    "category": "daily",
+    "duration": 600,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "living_room",
+      "positionId": "sofa_area",
+      "posture": ["sitting", "lying"]
+    },
+    "effects": {
+      "needChanges": {
+        "energy": 10,
+        "stress": -15,
+        "happiness": 10,
+        "sleepiness": 5
+      }
+    },
+    "successMessage": "You lean back into the deep cushions, closing your eyes and savoring the quiet calm.",
+    "icon": "🛋️"
+  },
+  {
+    "id": "watch_tv",
+    "name": "Watch TV",
+    "description": "Watch an engaging travel show or movie on the living room television.",
+    "category": "daily",
+    "duration": 1800,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "living_room",
+      "posture": ["sitting", "lying"]
+    },
+    "effects": {
+      "needChanges": {
+        "stress": -15,
+        "happiness": 12,
+        "sleepiness": 5,
+        "energy": -2
+      }
+    },
+    "successMessage": "You enjoy an engrossing show on the screen, losing yourself in the story.",
+    "icon": "📺"
+  },
+  {
+    "id": "step_out_balcony",
+    "name": "Step Out onto Balcony",
+    "description": "Walk up to the balcony railing to take in the open air.",
+    "category": "daily",
+    "duration": 60,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "balcony",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToPosition": "balcony_railing",
+      "needChanges": {
+        "stress": -10,
+        "energy": 5
+      }
+    },
+    "successMessage": "You step right up to the railing. A gust of fresh breeze greets you warmly.",
+    "icon": "🍃"
+  },
+  {
+    "id": "lean_on_balcony_railing",
+    "name": "Lean on Balcony Railing",
+    "description": "Rest your elbows on the cool balcony railing and watch the Jabalpur skyline.",
+    "category": "daily",
+    "duration": 300,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "balcony",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToPosition": "balcony_railing",
+      "needChanges": {
+        "stress": -15,
+        "happiness": 10
+      }
+    },
+    "successMessage": "You lean over the railing, observing the treetops swaying in the breeze and taking in the peaceful neighborhood views.",
+    "icon": "🏙️"
+  },
+  {
+    "id": "water_plants",
+    "name": "Water Balcony Plants",
+    "description": "Use the watering can to generously hydrate the thirsty potted plants.",
+    "category": "daily",
+    "duration": 180,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "balcony",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "happiness": 10,
+        "stress": -10
+      }
+    },
+    "successMessage": "You pour gentle showers of water over each planter. The soil turns dark and moist, releasing a wonderful earthy petrichor aroma.",
+    "icon": "🌱"
+  },
+  {
+    "id": "smell_flowers",
+    "name": "Smell Jasmine Flowers",
+    "description": "Lean in and take in the delicate, sweet fragrance of the blooming flowers.",
+    "category": "daily",
+    "duration": 30,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "balcony",
+      "posture": ["standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "happiness": 8,
+        "stress": -8
+      }
+    },
+    "successMessage": "The sweet, calming perfume of fresh jasmine fills your lungs, instantly soothing your mind.",
+    "icon": "🌸"
+  },
+  {
+    "id": "change_clothes",
+    "name": "Change Clothes",
+    "description": "Select an outfit from the open wardrobe and change into fresh clothes.",
+    "category": "daily",
+    "duration": 60,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "positionId": "wardrobe_area",
+      "posture": ["standing"],
+      "objectState": "open"
+    },
+    "effects": {
+      "clothing": {
+        "upper": "Comfortable T-Shirt",
+        "lower": "Grey Track Pants",
+        "footwear": "Slip-on Sandals"
+      },
+      "needChanges": {
+        "stress": -5
+      },
+      "emotionChanges": {
+        "confidence": 10,
+        "stress": -5
+      }
+    },
+    "successMessage": "You change into fresh clothes from the wardrobe. You feel composed, confident, and refreshed.",
+    "icon": "👔"
+  },
+  {
+    "id": "wear_sleepwear",
+    "name": "Change into Sleepwear",
+    "description": "Change into a soft cotton kurta-pyjama or shorts, ideal for sleeping and lounging.",
+    "category": "daily",
+    "duration": 60,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "positionId": "wardrobe_area",
+      "posture": ["standing"],
+      "objectState": "open"
+    },
+    "effects": {
+      "clothing": {
+        "upper": "Soft Cotton Kurta",
+        "lower": "Soft Cotton Pyjama",
+        "footwear": "Barefoot"
+      },
+      "needChanges": {
+        "stress": -5
+      },
+      "emotionChanges": {
+        "confidence": 10,
+        "stress": -5
+      }
+    },
+    "successMessage": "You slip into the soft cotton kurta-pyjama. It feels wonderfully light and comforting.",
+    "icon": "🥼"
+  },
+  {
+    "id": "wear_casual",
+    "name": "Change into Casual Loungewear",
+    "description": "Change into a comfortable t-shirt and track pants for relaxing around the house.",
+    "category": "daily",
+    "duration": 60,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "positionId": "wardrobe_area",
+      "posture": ["standing"],
+      "objectState": "open"
+    },
+    "effects": {
+      "clothing": {
+        "upper": "Comfortable T-Shirt",
+        "lower": "Grey Track Pants",
+        "footwear": "Slip-on Sandals"
+      },
+      "needChanges": {
+        "stress": -5
+      },
+      "emotionChanges": {
+        "confidence": 10,
+        "stress": -5
+      }
+    },
+    "successMessage": "You put on a fresh comfortable t-shirt and grey track pants. Ready for relaxed hours at home.",
+    "icon": "👕"
+  },
+  {
+    "id": "wear_work_wear",
+    "name": "Change into Outdoor / Work Wear",
+    "description": "Change into a crisp linen shirt and tailored trousers, sharp and presentable for work or going out.",
+    "category": "daily",
+    "duration": 60,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "positionId": "wardrobe_area",
+      "posture": ["standing"],
+      "objectState": "open"
+    },
+    "effects": {
+      "clothing": {
+        "upper": "Crisp Linen Shirt",
+        "lower": "Tailored Trousers",
+        "footwear": "Leather Loafers"
+      },
+      "needChanges": {
+        "stress": -5
+      },
+      "emotionChanges": {
+        "confidence": 10,
+        "stress": -5
+      }
+    },
+    "successMessage": "You button up the crisp linen shirt and slip into tailored trousers. You look sharp and feel confident.",
+    "icon": "👔"
+  },
+  {
+    "id": "bedtime_reading",
+    "name": "Bedtime Reading",
+    "description": "Read your carried book while resting in bed under the warm golden glow of the bedside lamp.",
+    "category": "daily",
+    "duration": 1200,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "bedroom",
+      "positionId": "bed_center",
+      "posture": ["lying", "sitting"],
+      "holding": "any"
+    },
+    "effects": {
+      "needChanges": {
+        "energy": -5,
+        "sleepiness": 10,
+        "stress": -10,
+        "boredom": -20
+      },
+      "emotionChanges": {
+        "stress": -10,
+        "happiness": 10
+      }
+    },
+    "successMessage": "You read peacefully in bed under the bedside lamp's mellow glow. The words soothe your thoughts as the bedroom settles into late night calm.",
+    "icon": "📖"
+  },
+  {
+    "id": "code_project",
+    "name": "Work on Coding Project",
+    "description": "Develop software projects—writing clean code, solving algorithmic bugs, and compiling builds.",
+    "category": "daily",
+    "duration": 2400,
+    "requiresTarget": true,
+    "targetTypes": ["electronics"],
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["sitting", "standing"],
+      "objectState": ["on", "in_use"]
+    },
+    "effects": {
+      "objectState": "in_use",
+      "needChanges": {
+        "studiousness": 20,
+        "energy": 10,
+        "boredom": -15
+      },
+      "activity": "code_project"
+    },
+    "successMessage": "You dive deep into the codebase. Terminal tests run green, architecture aligns cleanly, and you feel a profound rush of productive satisfaction (+20 studiousness, +10 energy satisfaction, -15 boredom).",
+    "icon": "💻"
+  },
+  {
+    "id": "listen_lofi_music",
+    "name": "Listen to Lo-Fi Music",
+    "description": "Stream mellow, nostalgic lo-fi study beats to enhance focus and wash away fatigue.",
+    "category": "daily",
+    "duration": 1800,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": "study_room",
+      "posture": ["sitting", "standing"]
+    },
+    "effects": {
+      "needChanges": {
+        "stress": -15,
+        "happiness": 10
+      },
+      "activity": "listen_lofi_music"
+    },
+    "successMessage": "Warm, crackling lo-fi jazz beats drift gently around your desk, creating an oasis of calm that melts away tension (-15 stress, +10 happiness).",
+    "icon": "🎧"
+  },
+  {
+    "id": "offer_chai",
+    "name": "Offer Cup of Chai to Roommate",
+    "description": "Share a warm, aromatic cup of freshly brewed ginger-cardamom chai with Aria.",
+    "category": "social",
+    "duration": 600,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": ["kitchen", "living_room", "study_room"],
+      "requiresSharedRoom": true
+    },
+    "effects": {
+      "needChanges": {
+        "stress": -15,
+        "happiness": 15,
+        "loneliness": -20,
+        "sociability": 10
+      },
+      "roommateChanges": {
+        "stress": -15,
+        "happiness": 15,
+        "loneliness": -20,
+        "sociability": 5
+      },
+      "activity": "offer_chai"
+    },
+    "successMessage": "You hand a steaming, fragrant cup of freshly made chai to Aria. She takes a comforting sip with a grateful smile: 'Thank you, Mohit! Exactly what I needed.' Roommate rapport deepens warmly.",
+    "icon": "☕"
+  },
+  {
+    "id": "ask_about_day",
+    "name": "Ask Aria About Her Day",
+    "description": "Check in warmly with your roommate about how her studies, projects, and day have been unfolding.",
+    "category": "social",
+    "duration": 480,
+    "requiresTarget": false,
+    "preconditions": {
+      "requiresSharedRoom": true
+    },
+    "effects": {
+      "needChanges": {
+        "loneliness": -15,
+        "happiness": 10,
+        "sociability": 5,
+        "stress": -5
+      },
+      "roommateChanges": {
+        "loneliness": -15,
+        "happiness": 10,
+        "stress": -5
+      },
+      "activity": "ask_about_day"
+    },
+    "successMessage": "You take a moment to ask Aria about her day. She relaxes her posture, shares little highlights, and listens attentively to yours. A natural bond of easy camaraderie settles in.",
+    "icon": "💬"
+  },
+  {
+    "id": "play_chess",
+    "name": "Play Chess with Aria",
+    "description": "Sit down across the Sheesham wooden board for a quiet, tactical game of chess.",
+    "category": "social",
+    "duration": 1800,
+    "requiresTarget": false,
+    "preconditions": {
+      "roomId": ["study_room", "living_room"],
+      "posture": ["sitting"],
+      "requiresSharedRoom": true
+    },
+    "effects": {
+      "needChanges": {
+        "boredom": -25,
+        "happiness": 15,
+        "studiousness": 10,
+        "sociability": 10,
+        "stress": -10
+      },
+      "roommateChanges": {
+        "boredom": -25,
+        "happiness": 15,
+        "studiousness": 10,
+        "sociability": 10,
+        "stress": -10
+      },
+      "activity": "play_chess"
+    },
+    "successMessage": "Pawns clash in the center, rooks slide open files, and a quiet, respectful battle of minds unfolds across the wooden board. Aria laughs when you counter her queen flank attack: 'Well played!'",
+    "icon": "♟️"
+  },
+  {
+    "id": "discuss_book",
+    "name": "Discuss Book with Aria",
+    "description": "Exchange thoughts and intriguing insights from your recent reading.",
+    "category": "social",
+    "duration": 600,
+    "requiresTarget": false,
+    "preconditions": {
+      "requiresSharedRoom": true
+    },
+    "effects": {
+      "needChanges": {
+        "studiousness": 10,
+        "sociability": 10,
+        "boredom": -15,
+        "loneliness": -10
+      },
+      "roommateChanges": {
+        "studiousness": 10,
+        "sociability": 10,
+        "boredom": -10
+      },
+      "activity": "discuss_book"
+    },
+    "successMessage": "You discuss chapter themes and conceptual ideas with Aria. Her analytical perspective adds fascinating new angles to what you've read (+10 studiousness, +10 sociability, -15 boredom).",
+    "icon": "📚"
+  },
+  {
+    "id": "discuss_code",
+    "name": "Discuss Code Architecture with Aria",
+    "description": "Share ideas on software design, algorithms, and system architecture with your roommate.",
+    "category": "social",
+    "duration": 600,
+    "requiresTarget": false,
+    "preconditions": {
+      "requiresSharedRoom": true
+    },
+    "effects": {
+      "needChanges": {
+        "studiousness": 10,
+        "sociability": 10,
+        "boredom": -15,
+        "happiness": 10
+      },
+      "roommateChanges": {
+        "studiousness": 5,
+        "sociability": 10,
+        "boredom": -10
+      },
+      "activity": "discuss_code"
+    },
+    "successMessage": "You whiteboard a module structure and walk Aria through your code design. Her feedback is sharp and insightful, sparking fresh enthusiasm for your work (+10 studiousness, +10 sociability).",
+    "icon": "💻"
   }
 ]

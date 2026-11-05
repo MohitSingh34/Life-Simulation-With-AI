@@ -18,6 +18,7 @@ export class BodyStateEngine {
     study_room: { label: "study room" },
     toilet: { label: "bathroom" },
     living_room: { label: "living room" },
+    balcony: { label: "balcony" },
   };
 
   private readonly positionProfiles: Record<string, { hint: string; posePrefix?: string }> = {
@@ -25,6 +26,13 @@ export class BodyStateEngine {
     bedside: { hint: "by the bedside", posePrefix: "beside the bed" },
     desk: { hint: "at the desk" },
     chair: { hint: "at the seat" },
+    cane_chair: { hint: "on the cane chair" },
+    sofa: { hint: "on the sofa" },
+    table: { hint: "by the table" },
+    railing: { hint: "at the balcony railing" },
+    planter: { hint: "by the potted plants" },
+    planters: { hint: "by the potted plants" },
+    balcony: { hint: "on the balcony" },
     door: { hint: "by the doorway" },
     doorway: { hint: "by the doorway" },
     counter: { hint: "beside the counter" },

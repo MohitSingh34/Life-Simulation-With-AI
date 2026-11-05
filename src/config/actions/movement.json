@@ -70,6 +70,42 @@
     },
     "successMessage": "You step into the clean, pale-green tiled bathroom.",
     "icon": "🚿"
+  },
+  {
+    "id": "walk_to_living_room",
+    "name": "Walk to Living Room",
+    "description": "Walk into the welcoming living room to relax, listen to music, or socialize.",
+    "category": "movement",
+    "duration": 5,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToRoom": "living_room",
+      "moveToPosition": "entrance_door_area",
+      "posture": "standing"
+    },
+    "successMessage": "You step into the spacious, comfortable living room.",
+    "icon": "🛋️"
+  },
+  {
+    "id": "walk_to_balcony",
+    "name": "Walk to Balcony",
+    "description": "Step out onto the open balcony to enjoy the fresh breeze and check the plants.",
+    "category": "movement",
+    "duration": 5,
+    "requiresTarget": false,
+    "preconditions": {
+      "posture": ["standing"]
+    },
+    "effects": {
+      "moveToRoom": "balcony",
+      "moveToPosition": "balcony_door_area",
+      "posture": "standing"
+    },
+    "successMessage": "You open the glass doors and step out into the refreshing balcony air.",
+    "icon": "🪴"
   }
 ]
 

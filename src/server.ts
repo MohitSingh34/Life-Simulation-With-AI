@@ -181,9 +181,12 @@ export function createServer(port = 3000) {
         // Key actions trigger AI to generate fresh physical body & room descriptions
         const KEY_ACTIONS = [
           "get_up", "lie_down_bed", "sit_down_bed", "sit_down_study_chair",
-          "sit_down_kitchen_stool", "stand_up", "sleep", "nap", "cook_meal",
+          "sit_down_kitchen_stool", "sit_on_sofa", "relax_on_sofa", "watch_tv",
+          "play_music_speaker", "stand_up", "sleep", "nap", "cook_meal",
           "take_shower", "walk_to_bedroom", "walk_to_study_room",
-          "walk_to_kitchen", "walk_to_toilet"
+          "walk_to_kitchen", "walk_to_toilet", "walk_to_living_room",
+          "walk_to_balcony", "water_plants", "step_out_balcony",
+          "lean_on_balcony_railing", "sit_on_cane_chair"
         ];
 
         if (execution.result.status === "accepted" && gemini.isConfigured && KEY_ACTIONS.includes(body.actionId)) {

@@ -2,14 +2,14 @@
 // ACTION TYPES — What characters can do
 // ============================================================
 
-import { Posture } from "./character.js";
+import { Posture, CharacterClothing } from "./character.js";
 
 /** A condition that must be true for an action to be available */
 export interface ActionPrecondition {
-  /** Character must be in this room (or null = any room) */
-  roomId?: string | null;
-  /** Character must be at this position (or null = any position) */
-  positionId?: string | null;
+  /** Character must be in this room (or null = any room, or list of rooms) */
+  roomId?: string | string[] | null;
+  /** Character must be at this position (or null = any position, or list of positions) */
+  positionId?: string | string[] | null;
   /** Character must have this posture */
   posture?: Posture | Posture[];
   /** Character must be holding nothing (or a specific item) */
@@ -18,9 +18,13 @@ export interface ActionPrecondition {
   objectState?: string | string[];
   /** Target object must NOT be in this state */
   objectStateNot?: string | string[];
+  /** Specific objects in world must be in these states */
+  requiredObjectStates?: Record<string, string | string[]>;
   /** A specific need must be above/below a threshold */
   needAbove?: { need: string; value: number };
   needBelow?: { need: string; value: number };
+  /** Requires roommate or another character to be in the same room */
+  requiresSharedRoom?: boolean;
 }
 
 /** Effects an action has on character/world state */
@@ -35,12 +39,24 @@ export interface ActionEffect {
   moveToRoom?: string;
   /** Change an object's state */
   objectState?: string;
+  /** Multiple object state changes by ID */
+  objectStates?: Record<string, string>;
   /** Pick up an object */
   pickUp?: boolean;
   /** Put down held object */
   putDown?: boolean;
   /** Need changes (positive = increase, negative = decrease) */
   needChanges?: Partial<Record<string, number>>;
+  /** Emotion changes (e.g. confidence, stress, happiness) */
+  emotionChanges?: Partial<Record<string, number>>;
+  /** Personality changes (studiousness, sociability, tidiness, etc.) */
+  personalityChanges?: Partial<Record<string, number>>;
+  /** Need and mood changes for other characters in the same room */
+  companionNeedChanges?: Partial<Record<string, number>>;
+  /** Roommate need and emotion changes */
+  roommateChanges?: Partial<Record<string, number>>;
+  /** Change character clothing */
+  clothing?: Partial<CharacterClothing>;
   /** Activity to set */
   activity?: string;
 }

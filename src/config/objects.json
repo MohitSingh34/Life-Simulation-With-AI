@@ -7,7 +7,7 @@
     "positionId": "bed_center",
     "defaultState": "neat",
     "possibleStates": ["neat", "rumpled", "occupied_lying", "occupied_sitting"],
-    "interactions": ["lie_down_bed", "sit_down_bed", "get_up", "make_bed"],
+    "interactions": ["lie_down_bed", "sit_down_bed", "sit_up_in_bed", "get_up", "make_bed"],
     "description": "A spacious solid wood bed with a firm cotton mattress, crisp bedsheet, and soft pillows.",
     "stateDescriptions": {
       "neat": "The bedsheet is smoothly pulled tight with the pillows fluffed up neatly.",
@@ -26,7 +26,7 @@
     "positionId": "bedside",
     "defaultState": "normal",
     "possibleStates": ["normal"],
-    "interactions": ["check_phone"],
+    "interactions": [],
     "description": "A small wooden nightstand supporting a brass lamp and personal items.",
     "portable": false,
     "icon": "🪵"
@@ -56,7 +56,36 @@
     "positionId": "wardrobe_area",
     "defaultState": "closed",
     "possibleStates": ["closed", "open"],
-    "interactions": ["open_wardrobe", "close_wardrobe"],
+    "interactions": ["open_wardrobe", "close_wardrobe", "change_clothes", "wear_sleepwear", "wear_casual", "wear_work_wear"],
+    "clothingSets": {
+      "sleepwear": {
+        "name": "Sleepwear / Nightwear",
+        "description": "Soft cotton kurta-pyjama or shorts.",
+        "clothing": {
+          "upper": "Soft Cotton Kurta",
+          "lower": "Soft Cotton Pyjama",
+          "footwear": "Barefoot"
+        }
+      },
+      "casual": {
+        "name": "Casual Loungewear",
+        "description": "Comfortable t-shirt and track pants.",
+        "clothing": {
+          "upper": "Comfortable T-Shirt",
+          "lower": "Grey Track Pants",
+          "footwear": "Slip-on Sandals"
+        }
+      },
+      "work": {
+        "name": "Outdoor / Work Wear",
+        "description": "Crisp linen shirt and tailored trousers.",
+        "clothing": {
+          "upper": "Crisp Linen Shirt",
+          "lower": "Tailored Trousers",
+          "footwear": "Leather Loafers"
+        }
+      }
+    },
     "description": "A large double-door wardrobe smelling faintly of camphor and fresh cotton.",
     "stateDescriptions": {
       "closed": "The twin wooden doors are shut tight.",
@@ -91,8 +120,8 @@
     "positionId": "desk_area",
     "defaultState": "tidy",
     "possibleStates": ["tidy", "cluttered"],
-    "interactions": ["tidy_desk"],
-    "description": "A heavy wooden work desk with pen stands, a notebook, and adequate workspace.",
+    "interactions": ["tidy_desk", "listen_lofi_music", "play_chess"],
+    "description": "A heavy wooden work desk with pen stands, a notebook, a Sheesham chess set, and adequate workspace.",
     "portable": false,
     "icon": "🖥️"
   },
@@ -121,15 +150,38 @@
     "positionId": "computer_area",
     "defaultState": "off",
     "possibleStates": ["off", "on", "in_use"],
-    "interactions": ["turn_on_computer", "turn_off_computer", "use_computer", "browse_web", "view_photos", "take_selfie", "record_video"],
+    "interactions": [
+      "turn_on_computer",
+      "turn_off_computer",
+      "use_computer",
+      "browse_web",
+      "view_photos",
+      "take_selfie",
+      "record_video",
+      "code_project",
+      "listen_lofi_music"
+    ],
     "description": "A dual-monitor workstation with a mechanical keyboard and quiet PC tower.",
     "stateDescriptions": {
       "off": "The dark monitors reflect the quiet room.",
-      "on": "The wallpaper glows invitingly, ready for work or gaming.",
-      "in_use": "Code, articles, and media flicker across the glowing monitors."
+      "on": "The wallpaper glows invitingly, ready for work, code development, or music.",
+      "in_use": "Code, terminals, and ambient media flicker across the glowing monitors."
     },
     "portable": false,
     "icon": "💻"
+  },
+  {
+    "id": "chess_set_001",
+    "name": "Handcrafted Wooden Chess Set",
+    "type": "item",
+    "roomId": "study_room",
+    "positionId": "desk_area",
+    "defaultState": "arranged",
+    "possibleStates": ["arranged", "in_play"],
+    "interactions": ["play_chess", "pick_up_item", "put_down_item"],
+    "description": "A polished Sheesham wood chessboard with carved pieces, perfect for slow evenings and quiet tactical matches.",
+    "portable": true,
+    "icon": "♟️"
   },
   {
     "id": "bookshelf_001",
@@ -152,13 +204,14 @@
     "roomId": "kitchen",
     "positionId": "stove_area",
     "defaultState": "off",
-    "possibleStates": ["off", "on", "cooking"],
-    "interactions": ["turn_on_stove", "turn_off_stove", "cook_meal"],
+    "possibleStates": ["off", "on", "cooking", "idle"],
+    "interactions": ["turn_on_stove", "turn_off_stove", "cook_meal", "make_masala_chai", "brew_tea", "cook_breakfast", "brew_chai_duo"],
     "description": "A two-burner stainless steel stove connected to a domestic gas cylinder.",
     "stateDescriptions": {
       "off": "The stove burners are cool and extinguished.",
       "on": "A steady blue ring of flame hisses softly.",
-      "cooking": "A pan is sizzling pleasantly, releasing delicious aromas."
+      "cooking": "A pan is sizzling pleasantly, releasing delicious aromas.",
+      "idle": "The stove burners are cool and clean, ready for cooking."
     },
     "portable": false,
     "icon": "🔥"
@@ -183,12 +236,13 @@
   {
     "id": "counter_001",
     "name": "Granite Countertop",
-    "type": "furniture",
+    "type": ["furniture", "surface"],
     "roomId": "kitchen",
     "positionId": "counter_area",
     "defaultState": "clear",
-    "possibleStates": ["clear", "has_items"],
-    "interactions": ["prepare_snack"],
+    "possibleStates": ["clear", "has_items", "clean"],
+    "interactions": ["prepare_snack", "wipe_counter"],
+    "containedObjectIds": ["drinking_glass_001", "plate_001", "spice_box_001"],
     "description": "A gleaming black granite slab used for chopping and meal preparation.",
     "portable": false,
     "icon": "🥣"
@@ -247,15 +301,33 @@
     "roomId": "kitchen",
     "positionId": "counter_area",
     "defaultState": "empty",
-    "possibleStates": ["empty", "with_food"],
-    "interactions": ["pick_up_item", "put_down_item", "serve_meal", "eat_meal_from_plate"],
+    "possibleStates": ["empty", "with_food", "dirty"],
+    "interactions": ["pick_up_item", "put_down_item", "serve_meal", "eat_meal_from_plate", "wash_dishes"],
     "description": "A traditional polished stainless steel thali plate.",
     "stateDescriptions": {
-      "empty": "The steel plate shines brightly.",
-      "with_food": "A freshly cooked warm meal of dal, rice, warm rotis and sabzi is arranged on the plate."
+      "empty": "The polished steel plate shines brightly, clean and ready for a meal.",
+      "with_food": "A freshly cooked warm meal of dal, rice, warm rotis and sabzi is arranged on the plate.",
+      "dirty": "The steel plate has leftover traces of dal and spices, waiting to be washed at the sink."
     },
     "portable": true,
     "icon": "🍽️"
+  },
+  {
+    "id": "spice_box_001",
+    "name": "Brass Masala Dabba",
+    "type": ["item", "surface"],
+    "roomId": "kitchen",
+    "positionId": "counter_area",
+    "defaultState": "closed",
+    "possibleStates": ["closed", "open"],
+    "interactions": ["open_spice_box", "close_spice_box", "inspect_spices", "pinch_spices", "pick_up_item", "put_down_item"],
+    "description": "A traditional heavy brass masala dabba with an engraved floral lid and seven individual circular katoris holding everyday Indian whole spices.",
+    "stateDescriptions": {
+      "closed": "The snug brass lid is closed tight, preserving the rich, pungent aromas of spices within.",
+      "open": "The lid is open, displaying brass cups filled with cloves (laung), green cardamom (elaichi), golden turmeric (haldi), dark mustard seeds (rai), cumin (jeera), and red chili powder."
+    },
+    "portable": true,
+    "icon": "✨"
   },
   {
     "id": "toilet_seat_001",
@@ -283,7 +355,7 @@
     "positionId": "washbasin_area",
     "defaultState": "idle",
     "possibleStates": ["idle", "running_tap"],
-    "interactions": ["wash_face", "brush_teeth"],
+    "interactions": ["wash_face", "brush_teeth", "apply_moisturizer", "wipe_mirror", "wash_hair"],
     "description": "A ceramic sink with chrome faucet, soap dispenser, and toothbrush stand.",
     "portable": false,
     "icon": "🧼"
@@ -296,7 +368,24 @@
     "positionId": "mirror_area",
     "defaultState": "clear",
     "possibleStates": ["clear", "foggy"],
-    "interactions": ["look_in_mirror"],
+    "interactions": ["look_in_mirror", "wipe_mirror"],
+    "description": "A frameless glass mirror mounted over the washbasin.",
+    "stateDescriptions": {
+      "clear": "The mirror gives a crisp, true reflection.",
+      "foggy": "Warm steam blankets the mirror surface in a hazy mist."
+    },
+    "portable": false,
+    "icon": "🪞"
+  },
+  {
+    "id": "mirror_bathroom_001",
+    "name": "Bathroom Mirror",
+    "type": "fixture",
+    "roomId": "toilet",
+    "positionId": "mirror_area",
+    "defaultState": "clear",
+    "possibleStates": ["clear", "foggy"],
+    "interactions": ["look_in_mirror", "wipe_mirror"],
     "description": "A frameless glass mirror mounted over the washbasin.",
     "stateDescriptions": {
       "clear": "The mirror gives a crisp, true reflection.",
@@ -313,7 +402,7 @@
     "positionId": "shower_area",
     "defaultState": "off",
     "possibleStates": ["off", "running"],
-    "interactions": ["take_shower", "turn_on_shower", "turn_off_shower"],
+    "interactions": ["take_shower", "take_hot_shower", "take_cold_shower", "wash_hair", "turn_on_shower", "turn_off_shower"],
     "description": "An overhead chrome rain shower head mounted above tiled flooring with drainage.",
     "stateDescriptions": {
       "off": "The shower is off.",
@@ -323,6 +412,90 @@
     "icon": "🚿"
   },
   {
+    "id": "towel_rack_001",
+    "name": "Towel Rack",
+    "type": "fixture",
+    "roomId": "toilet",
+    "positionId": "towel_rack_area",
+    "defaultState": "hanging_towel",
+    "possibleStates": ["hanging_towel", "empty"],
+    "interactions": ["dry_with_towel"],
+    "description": "A wall-mounted chrome towel rack holding a soft, plush cotton bath towel.",
+    "stateDescriptions": {
+      "hanging_towel": "A clean, fluffy cotton bath towel hangs neatly on the rail.",
+      "empty": "The towel rail is empty."
+    },
+    "portable": false,
+    "icon": "🧖"
+  },
+  {
+    "id": "laundry_basket_001",
+    "name": "Woven Laundry Basket",
+    "type": "fixture",
+    "roomId": "toilet",
+    "positionId": "laundry_corner",
+    "defaultState": "empty",
+    "possibleStates": ["empty", "has_clothes", "full"],
+    "interactions": ["put_clothes_in_laundry", "empty_laundry"],
+    "description": "A breathable woven cane laundry hamper kept in the bathroom corner for soiled clothes.",
+    "stateDescriptions": {
+      "empty": "The woven basket sits empty in the corner.",
+      "has_clothes": "A pile of worn clothes and towels rests inside.",
+      "full": "The basket is overflowing with laundry."
+    },
+    "portable": false,
+    "icon": "🧺"
+  },
+  {
+    "id": "trash_bin_toilet_001",
+    "name": "Bathroom Trash Bin",
+    "type": "fixture",
+    "roomId": "toilet",
+    "positionId": "toilet_trash_area",
+    "defaultState": "empty",
+    "possibleStates": ["empty", "has_trash", "full"],
+    "interactions": ["throw_trash", "empty_bin"],
+    "description": "A compact pedal bin standing discreetly beside the washbasin.",
+    "stateDescriptions": {
+      "empty": "The small bin is clean and empty.",
+      "has_trash": "The bin holds used tissues and cotton pads.",
+      "full": "The bin is full and should be emptied."
+    },
+    "portable": false,
+    "icon": "🗑️"
+  },
+  {
+    "id": "broom_001",
+    "name": "Grass Broom (Phool Jhadu)",
+    "type": "item",
+    "roomId": "toilet",
+    "positionId": "toilet_utility_corner",
+    "defaultState": "idle",
+    "possibleStates": ["idle", "sweeping"],
+    "interactions": ["pick_up_item", "put_down_item", "sweep_floor"],
+    "description": "A traditional Indian soft grass broom (phool jhadu) neatly bound with twine, perfect for sweeping indoor floors.",
+    "portable": true,
+    "icon": "🧹"
+  },
+  {
+    "id": "trash_bin_001",
+    "name": "Kitchen Trash Bin",
+    "type": "fixture",
+    "roomId": "kitchen",
+    "positionId": "kitchen_trash_area",
+    "defaultState": "empty",
+    "possibleStates": ["empty", "has_trash", "full"],
+    "interactions": ["throw_trash", "empty_bin"],
+    "description": "A stainless steel pedal trash bin under the kitchen counter with a fresh liner.",
+    "stateDescriptions": {
+      "empty": "The bin is empty and fitted with a clean liner.",
+      "has_trash": "The bin contains discarded kitchen scraps and wrappers.",
+      "full": "The bin is full and ready to be taken out."
+    },
+    "portable": false,
+    "icon": "🗑️"
+  },
+  {
     "id": "phone_001",
     "name": "Mohit's Phone",
     "type": "electronics",
@@ -330,7 +503,7 @@
     "positionId": "bedside",
     "defaultState": "on",
     "possibleStates": ["on", "off"],
-    "interactions": ["check_phone"],
+    "interactions": ["pick_up_item", "put_down_item", "check_phone", "check_messages", "play_alarm", "listen_music_phone"],
     "description": "A smartphone charging beside the bed, with familiar photos and messages.",
     "portable": true,
     "icon": "📱"
@@ -382,7 +555,7 @@
     "positionId": "bookshelf_area",
     "defaultState": "on_shelf",
     "possibleStates": ["on_shelf"],
-    "interactions": ["pick_up_math_book", "pick_up_item", "put_down_item", "read_book"],
+    "interactions": ["pick_up_math_book", "pick_up_item", "put_down_item", "read_book", "read_math_book"],
     "description": "Mohit's mathematics textbook, filled with worked examples and dog-eared pages.",
     "portable": true,
     "icon": "📘"
@@ -395,7 +568,7 @@
     "positionId": "bookshelf_area",
     "defaultState": "on_shelf",
     "possibleStates": ["on_shelf"],
-    "interactions": ["pick_up_physics_book", "pick_up_item", "put_down_item", "read_book"],
+    "interactions": ["pick_up_physics_book", "pick_up_item", "put_down_item", "read_book", "read_physics_book"],
     "description": "A physics textbook with diagrams of motion, light, and electricity.",
     "portable": true,
     "icon": "📗"
@@ -408,7 +581,7 @@
     "positionId": "bookshelf_area",
     "defaultState": "on_shelf",
     "possibleStates": ["on_shelf"],
-    "interactions": ["pick_up_chemistry_book", "pick_up_item", "put_down_item", "read_book"],
+    "interactions": ["pick_up_chemistry_book", "pick_up_item", "put_down_item", "read_book", "read_chemistry_book"],
     "description": "A chemistry text with colorful molecular drawings and handwritten notes.",
     "portable": true,
     "icon": "📙"
@@ -421,7 +594,7 @@
     "positionId": "bookshelf_area",
     "defaultState": "on_shelf",
     "possibleStates": ["on_shelf"],
-    "interactions": ["pick_up_psychology_book", "pick_up_item", "put_down_item", "read_book"],
+    "interactions": ["pick_up_psychology_book", "pick_up_item", "put_down_item", "read_book", "read_psychology_book"],
     "description": "An introductory psychology book, underlined and bookmarked by Aria.",
     "portable": true,
     "icon": "📕"
@@ -434,7 +607,7 @@
     "positionId": "bookshelf_area",
     "defaultState": "on_shelf",
     "possibleStates": ["on_shelf"],
-    "interactions": ["pick_up_mohit_notebook", "pick_up_item", "put_down_item", "read_book"],
+    "interactions": ["pick_up_mohit_notebook", "pick_up_item", "put_down_item", "read_book", "read_mohit_notebook"],
     "description": "Mohit's personal notebook with a few folded corners and private notes.",
     "portable": true,
     "icon": "📓"
@@ -447,9 +620,137 @@
     "positionId": "bookshelf_area",
     "defaultState": "on_shelf",
     "possibleStates": ["on_shelf"],
-    "interactions": ["pick_up_aria_notebook", "pick_up_item", "put_down_item", "read_book"],
+    "interactions": ["pick_up_aria_notebook", "pick_up_item", "put_down_item", "read_book", "read_aria_notebook"],
     "description": "Aria's private notebook with a cloth cover and small handwriting.",
     "portable": true,
     "icon": "📔"
+  },
+  {
+    "id": "sofa_001",
+    "name": "Comfortable Sofa",
+    "type": "furniture",
+    "roomId": "living_room",
+    "positionId": "sofa_area",
+    "defaultState": "neat",
+    "possibleStates": ["neat", "occupied_sitting", "occupied_lying"],
+    "interactions": ["sit_on_sofa", "relax_on_sofa", "lie_down_sofa", "stand_up"],
+    "description": "A deep, plush three-seater fabric sofa with hand-woven cushions and a soft throw blanket.",
+    "stateDescriptions": {
+      "neat": "The sofa cushions are fluffed up and orderly, ready for someone to sit down.",
+      "occupied_sitting": "Someone is sitting comfortably on the sofa cushions.",
+      "occupied_lying": "Someone is stretched out comfortably across the length of the sofa."
+    },
+    "portable": false,
+    "icon": "🛋️"
+  },
+  {
+    "id": "coffee_table_001",
+    "name": "Coffee Table",
+    "type": "surface",
+    "roomId": "living_room",
+    "positionId": "coffee_table_area",
+    "defaultState": "clean",
+    "possibleStates": ["clean", "cluttered"],
+    "interactions": ["wipe_coffee_table", "put_down_item", "play_chess"],
+    "description": "A low solid sheesham wood coffee table with a natural polished grain, perfect for mugs of tea and books.",
+    "stateDescriptions": {
+      "clean": "The wooden surface is wiped clean and reflects the room's gentle lighting.",
+      "cluttered": "There are cups, coasters, and magazines resting on the tabletop."
+    },
+    "portable": false,
+    "icon": "☕"
+  },
+  {
+    "id": "tv_speaker_001",
+    "name": "Smart TV & Soundbar",
+    "type": "appliance",
+    "roomId": "living_room",
+    "positionId": "tv_cabinet_area",
+    "defaultState": "off",
+    "possibleStates": ["off", "on", "playing_music"],
+    "interactions": [
+      "turn_on_tv",
+      "watch_tv",
+      "play_music_speaker",
+      "stop_music_speaker",
+      "turn_off_tv"
+    ],
+    "description": "A 43-inch wall-mounted 4K smart television paired with a warm-toned acoustic soundbar speaker.",
+    "stateDescriptions": {
+      "off": "The TV screen is a glossy dark rectangle, and the soundbar indicator is dark.",
+      "on": "The display is on, streaming an interesting documentary show.",
+      "playing_music": "The soundbar LED glows soft blue, filling the room with soothing classical and acoustic tunes."
+    },
+    "portable": false,
+    "icon": "📺"
+  },
+  {
+    "id": "house_plant_001",
+    "name": "Indoor Potted Money Plant",
+    "type": "plant",
+    "roomId": "living_room",
+    "positionId": "coffee_table_area",
+    "defaultState": "thriving",
+    "possibleStates": ["thriving", "needs_water"],
+    "interactions": ["inspect_plant", "wipe_plant_leaves"],
+    "description": "A flourishing pothos money plant cascading gracefully down a ceramic glazed pot on a wooden pedestal.",
+    "stateDescriptions": {
+      "thriving": "Lush emerald leaves with light golden variegation look glossy and healthy.",
+      "needs_water": "The leaves are slightly drooping, waiting for a fresh drink of water."
+    },
+    "portable": false,
+    "icon": "🪴"
+  },
+  {
+    "id": "balcony_plants_001",
+    "name": "Balcony Planters",
+    "type": "plant",
+    "roomId": "balcony",
+    "positionId": "planters_area",
+    "defaultState": "blooming",
+    "possibleStates": ["blooming", "watered", "dry"],
+    "interactions": ["water_plants", "smell_flowers"],
+    "description": "A charming row of terracotta planter boxes blooming with vibrant red hibiscus, fragrant jasmine, and fresh mint.",
+    "stateDescriptions": {
+      "blooming": "Vibrant flowers are open to the sky and sweet nectar aroma wafts in the breeze.",
+      "watered": "Dark, rich damp soil glistens under the green leaves, radiating a refreshing earthy petrichor scent.",
+      "dry": "The potting soil feels parched and dry to the touch, longing for water."
+    },
+    "portable": false,
+    "icon": "🌺"
+  },
+  {
+    "id": "watering_can_001",
+    "name": "Balcony Watering Can",
+    "type": "tool",
+    "roomId": "balcony",
+    "positionId": "planters_area",
+    "defaultState": "full",
+    "possibleStates": ["full", "empty"],
+    "interactions": ["pick_up_item", "water_plants", "refill_watering_can"],
+    "description": "A classic sage green watering can with an ergonomic arch handle and brass rosette shower nozzle.",
+    "stateDescriptions": {
+      "full": "The watering can is filled with fresh water, ready to nourish the plants.",
+      "empty": "The can is light and hollow, waiting to be refilled at the tap."
+    },
+    "portable": true,
+    "icon": "🚿"
+  },
+  {
+    "id": "cane_chair_001",
+    "name": "Balcony Cane Chair",
+    "type": "furniture",
+    "roomId": "balcony",
+    "positionId": "cane_chair",
+    "defaultState": "vacant",
+    "possibleStates": ["vacant", "occupied"],
+    "interactions": ["sit_on_cane_chair", "stand_up"],
+    "description": "A handcrafted wicker cane armchair fitted with a block-printed cotton cushion, perfect for watching the monsoon sky.",
+    "stateDescriptions": {
+      "vacant": "The cane armchair sits peacefully facing the street trees, inviting you to rest.",
+      "occupied": "Someone is sitting comfortably on the cane chair, gazing out at the view."
+    },
+    "portable": false,
+    "icon": "🪑"
   }
 ]

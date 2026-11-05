@@ -272,11 +272,11 @@ export class TerminalUI {
 
         if (actionConfig?.requiresTarget) {
           const roomDetails = this.engine.getCurrentRoomDetails();
-          const targetCandidates = roomDetails.objects.filter(
-            (o) =>
-              !actionConfig.targetTypes ||
-              actionConfig.targetTypes.includes(o.type)
-          );
+          const targetCandidates = roomDetails.objects.filter((o) => {
+            if (!actionConfig.targetTypes) return true;
+            const objTypes = Array.isArray(o.type) ? o.type : [o.type];
+            return actionConfig.targetTypes.some((t) => objTypes.includes(t));
+          });
           if (targetCandidates.length > 0) {
             targetObjectId = targetCandidates[0].id;
           }

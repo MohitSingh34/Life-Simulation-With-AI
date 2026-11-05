@@ -53,5 +53,10 @@ export interface WorldConfig {
     rooms: string[]; // room IDs
   }[];
   connections: DoorConnection[];
+  /** Configurable simulation parameters (e.g. AI ping heartbeat interval) */
+  simulationConfig?: {
+    ariaPingIntervalMinutes?: number;
+    [key: string]: any;
+  };
 }
 

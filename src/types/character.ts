@@ -27,6 +27,7 @@ export interface CharacterEmotions {
   stress: number;      // 0-100
   loneliness: number;  // 0-100
   boredom: number;     // 0-100
+  confidence?: number; // 0-100
 }
 
 export interface CharacterClothing {
@@ -56,6 +57,14 @@ export interface AiNarrativeState {
   [key: string]: string | undefined;
 }
 
+export interface CharacterPersonality {
+  sociability: number;
+  tidiness: number;
+  studiousness: number;
+  laziness: number;
+  foodLove: number;
+}
+
 export interface CharacterState {
   id: string;
   name: string;
@@ -71,14 +80,8 @@ export interface CharacterState {
   activity: CharacterActivity;
   holding: HeldItem | null;
   narrative?: AiNarrativeState;
-  /** Personality traits for AI characters (0-100 scale) */
-  personality?: {
-    sociability: number;
-    tidiness: number;
-    studiousness: number;
-    laziness: number;
-    foodLove: number;
-  };
+  /** Personality traits for characters (0-100 scale) */
+  personality?: CharacterPersonality;
 }
 
 export interface CharacterTemplate {
@@ -88,7 +91,9 @@ export interface CharacterTemplate {
   defaultRoom: string;
   defaultPosition: string;
   clothing: CharacterClothing;
-  personality?: CharacterState["personality"];
+  personality?: CharacterPersonality;
+  /** Heartbeat interval in simulation minutes for autonomous AI actions */
+  pingIntervalMinutes?: number;
 }
 
 /** Need decay/recovery configuration */

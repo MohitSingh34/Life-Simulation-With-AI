@@ -16,6 +16,20 @@ export class EventManager {
     return event;
   }
 
+  public logEvent(data: {
+    actorId: string;
+    actionId: string;
+    description: string;
+    timestamp?: string;
+  }): SimulationEvent {
+    return this.recordEvent({
+      actorId: data.actorId,
+      timestamp: data.timestamp || new Date().toISOString(),
+      type: "action_completed",
+      data: { actionId: data.actionId, description: data.description },
+    });
+  }
+
   public getRecentEvents(count = 10): SimulationEvent[] {
     return this.events.slice(-count);
   }

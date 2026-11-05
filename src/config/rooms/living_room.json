@@ -1,0 +1,46 @@
+{
+  "id": "living_room",
+  "name": "Living Room",
+  "description": "A spacious, welcoming common room with soft earth-toned walls, comfortable seating, a polished teakwood coffee table, and an entertainment console. The wide glass doors open directly to the fresh outdoor balcony.",
+  "ambience": {
+    "morning": "Soft daylight streams through the balcony doors, illuminating the vibrant green leaves of the indoor plants. The calm quiet of early morning makes it an ideal spot to sip hot chai.",
+    "afternoon": "The living room is cool and tranquil with sheer curtains softly diffusing the bright Jabalpur sunshine into a gentle golden haze.",
+    "evening": "Warm ambient lights and mellow tunes from the smart speaker create a comforting, relaxing sanctuary to unwind and chat after the day's tasks.",
+    "night": "Peaceful darkness settles over the room, with only the soft amber glow of the streetlights outside filtering past the balcony."
+  },
+  "positions": [
+    {
+      "id": "sofa_area",
+      "name": "On the Comfortable Sofa",
+      "objectId": "sofa_001",
+      "standable": false,
+      "sittable": true,
+      "lieable": true
+    },
+    {
+      "id": "coffee_table_area",
+      "name": "Near the Coffee Table",
+      "objectId": "coffee_table_001",
+      "standable": true,
+      "sittable": true,
+      "lieable": false
+    },
+    {
+      "id": "tv_cabinet_area",
+      "name": "In Front of TV & Media Cabinet",
+      "objectId": "tv_speaker_001",
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    },
+    {
+      "id": "entrance_door_area",
+      "name": "Near Living Room Entrance",
+      "objectId": null,
+      "standable": true,
+      "sittable": false,
+      "lieable": false
+    }
+  ]
+}
+
