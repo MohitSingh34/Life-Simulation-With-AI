@@ -292,6 +292,14 @@
                 <text x="165" y="88" class="obj-label-tiny" text-anchor="middle">🍶</text>
               </g>
 
+              <!-- Mohit's Phone -->
+              <g class="map-object interactive-obj" id="map-obj-phone" data-obj="phone_001" data-room="bedroom">
+                <rect x="156" y="105" width="18" height="28" rx="4" class="obj-phone" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2" />
+                <rect x="158" y="108" width="14" height="19" rx="2" fill="#1e293b" />
+                <circle cx="165" cy="130" r="1.5" fill="#38bdf8" />
+                <text x="165" y="122" class="obj-label-tiny" text-anchor="middle" font-size="8">📱</text>
+              </g>
+
               <!-- Wardrobe -->
               <g class="map-object interactive-obj" id="map-obj-wardrobe" data-obj="wardrobe_001" data-room="bedroom">
                 <rect x="220" y="36" width="65" height="45" rx="4" class="obj-wardrobe" />
@@ -389,6 +397,19 @@
                 <text x="190" y="304" class="obj-label-tiny" text-anchor="middle">🪑</text>
               </g>
 
+              <!-- Brass Masala Dabba -->
+              <g class="map-object interactive-obj" id="map-obj-spices" data-obj="spice_box_001" data-room="kitchen">
+                <circle cx="140" cy="235" r="9" class="obj-spice-box" fill="#b45309" stroke="#f59e0b" stroke-width="1.2" />
+                <circle cx="140" cy="235" r="5" fill="#d97706" />
+                <text x="140" y="238" class="obj-label-tiny" text-anchor="middle" font-size="7">🍲</text>
+              </g>
+
+              <!-- Steel Dinner Plate -->
+              <g class="map-object interactive-obj" id="map-obj-plate" data-obj="plate_001" data-room="kitchen">
+                <circle cx="190" cy="265" r="10" class="obj-plate" fill="#475569" stroke="#cbd5e1" stroke-width="1.2" />
+                <text x="190" y="268" class="obj-label-tiny" text-anchor="middle" font-size="7">🍽️</text>
+              </g>
+
               <!-- Doorway opening to corridor -->
               <rect x="288" y="215" width="14" height="45" class="doorway-opening" />
 
@@ -417,7 +438,19 @@
               <g class="map-object interactive-obj" id="map-obj-washbasin" data-obj="washbasin_001" data-room="toilet">
                 <rect x="410" y="220" width="55" height="35" rx="4" class="obj-sink" />
                 <circle cx="437" cy="237" r="10" class="obj-basin-bowl" />
-                <text x="437" y="241" class="obj-label-tiny" text-anchor="middle">🪞</text>
+                <text x="437" y="241" class="obj-label-tiny" text-anchor="middle">💧</text>
+              </g>
+
+              <!-- Bathroom Mirror -->
+              <g class="map-object interactive-obj" id="map-obj-mirror" data-obj="mirror_001" data-room="toilet">
+                <rect x="415" y="212" width="45" height="6" rx="2" fill="#38bdf8" stroke="#7dd3fc" stroke-width="1" />
+                <text x="437" y="210" class="obj-label-tiny" text-anchor="middle" font-size="7">🪞</text>
+              </g>
+
+              <!-- Grass Broom -->
+              <g class="map-object interactive-obj" id="map-obj-broom" data-obj="broom_001" data-room="toilet">
+                <rect x="330" y="340" width="16" height="24" rx="3" fill="#78350f" stroke="#a16207" stroke-width="1" />
+                <text x="338" y="356" class="obj-label-tiny" text-anchor="middle" font-size="8">🧹</text>
               </g>
 
               <!-- Toilet Commode -->
@@ -498,9 +531,11 @@
               <rect x="375" y="390" width="225" height="185" rx="8" fill="url(#granite-pattern)" />
 
               <!-- Open Balcony Railings -->
-              <line x1="380" y1="570" x2="595" y2="570" class="obj-balcony-railing" />
-              <line x1="595" y1="395" x2="595" y2="570" class="obj-balcony-railing" />
-              <text x="490" y="566" class="map-window-label" text-anchor="middle">🌳 OPEN BALCONY VIEW</text>
+              <g class="map-object interactive-obj" id="map-obj-railing" data-obj="balcony_railing" data-room="balcony">
+                <line x1="380" y1="570" x2="595" y2="570" class="obj-balcony-railing" />
+                <line x1="595" y1="395" x2="595" y2="570" class="obj-balcony-railing" />
+                <text x="490" y="566" class="map-window-label" text-anchor="middle">🌳 OPEN BALCONY VIEW</text>
+              </g>
 
               <!-- Balcony Planters -->
               <g class="map-object interactive-obj" id="map-obj-balcony-plants" data-obj="balcony_plants_001" data-room="balcony">
@@ -582,6 +617,40 @@
             </g>
 
           </svg>
+
+          <!-- Floating Hovercard Info Card for Map Elements (Objects, Rooms, Tokens) -->
+          <div id="map-hovercard" class="map-hovercard" role="tooltip" aria-hidden="true">
+            <div class="hovercard-header">
+              <span class="hovercard-icon" id="hc-icon">🛏️</span>
+              <div class="hovercard-title-group">
+                <div class="hovercard-title" id="hc-title">Wooden Bed</div>
+                <span class="hovercard-category" id="hc-category">FURNITURE</span>
+              </div>
+              <span class="hovercard-status-badge" id="hc-status">neat</span>
+            </div>
+            <div class="hovercard-body">
+              <p class="hovercard-desc" id="hc-desc">A spacious solid wood bed with a firm cotton mattress and clean linens.</p>
+              <div class="hovercard-meta">
+                <div class="hovercard-meta-row" id="hc-location-row">
+                  <span class="meta-label">📍 Location</span>
+                  <span class="meta-value" id="hc-location">Bedroom (bed_center)</span>
+                </div>
+                <div class="hovercard-meta-row" id="hc-presence-row" style="display: none;">
+                  <span class="meta-label">👥 Inside</span>
+                  <span class="meta-value" id="hc-presence">Mohit</span>
+                </div>
+                <div class="hovercard-meta-row" id="hc-actions-row">
+                  <span class="meta-label">⚡ Actions</span>
+                  <span class="meta-value" id="hc-actions">Sleep, Nap, Sit, Recline</span>
+                </div>
+                <div class="hovercard-meta-row" id="hc-details-row" style="display: none;">
+                  <span class="meta-label">ℹ️ Status</span>
+                  <span class="meta-value" id="hc-details">Hands are free</span>
+                </div>
+              </div>
+              <div class="hovercard-hint" id="hc-hint">Click object to interact ›</div>
+            </div>
+          </div>
         </div>
       </div>
 

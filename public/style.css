@@ -1309,6 +1309,192 @@ body.weather-foggy .sky-cloud {
 }
 
 /* ============================================================
+   MAP HOVERCARD / INFO CARD COMPONENT (MODERN WEB GUIDANCE)
+   ============================================================ */
+
+.map-hovercard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 120;
+  pointer-events: none;
+  width: 290px;
+  max-width: calc(100% - 24px);
+  background: rgba(13, 17, 26, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 
+    0 16px 36px -4px rgba(0, 0, 0, 0.75),
+    0 0 16px rgba(56, 189, 248, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px) scale(0.97);
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.18s;
+  will-change: transform, opacity;
+}
+
+.map-hovercard.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-hovercard {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+.hovercard-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hovercard-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.hovercard-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.hovercard-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hovercard-category {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #38bdf8;
+  margin-top: 2px;
+}
+
+.hovercard-status-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-transform: capitalize;
+}
+
+.hovercard-status-badge.status-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.hovercard-status-badge.status-amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.hovercard-status-badge.status-purple {
+  background: rgba(192, 132, 252, 0.15);
+  color: #e9d5ff;
+  border-color: rgba(192, 132, 252, 0.35);
+}
+
+.hovercard-status-badge.status-blue {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.hovercard-desc {
+  font-size: 11px;
+  line-height: 1.45;
+  color: #cbd5e1;
+  margin: 0 0 8px 0;
+}
+
+.hovercard-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hovercard-meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.meta-label {
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 60px;
+}
+
+.meta-value {
+  color: #e2e8f0;
+  word-break: break-word;
+}
+
+.meta-value.accent-cyan {
+  color: #38bdf8;
+  font-weight: 500;
+}
+
+.meta-value.accent-green {
+  color: #4ade80;
+}
+
+.hovercard-hint {
+  margin-top: 8px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #64748b;
+  text-align: right;
+  letter-spacing: 0.03em;
+}
+
+/* ============================================================
    CURRENT ROOM DETAIL CARD (IMAGE IN BACKGROUND, TAGS ON TOP)
    ============================================================ */
 .current-room-card {

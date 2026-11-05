@@ -51,7 +51,7 @@ function runGroomingChoresTests() {
   console.log("Hygiene after dry:", player.needs.hygiene, "dryRes:", dryRes.result);
   assert.equal(dryRes.result.status, "accepted", "Drying with towel should succeed");
   assert.ok(
-    dryRes.result.changes?.needs?.hygiene === 100 || player.needs.hygiene >= 95,
+    (dryRes.result.changes?.needs as any)?.hygiene === 100 || player.needs.hygiene >= 95,
     "Hygiene should be restored to peak/high level after towel drying"
   );
   console.log("✓ Towel rack drying verified successfully.\n");

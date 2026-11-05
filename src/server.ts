@@ -122,6 +122,7 @@ export function createServer(port = 3000) {
         const alerts = [...playerAlerts, ...aiAlerts];
         const events = engine.eventManager.getRecentEvents(8);
         const world = engine.configLoader.getWorld();
+        const allRooms = engine.configLoader.getAllRooms();
         const objects = engine.configLoader.getAllObjects().map((object) => {
           const state = engine.stateManager.getObjectState(object.id);
           return {
@@ -152,7 +153,7 @@ export function createServer(port = 3000) {
           mood,
           alerts,
           events,
-          world: { ...world, objects },
+          world: { ...world, objects, allRooms },
           narrative: engine.stateManager.getNarrative(),
           activeConversation: conversationManager.getActiveConversation(),
         });

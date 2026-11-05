@@ -165,12 +165,18 @@ function runLivingBalconyTest() {
   assert.equal(smellFlowers.result.status, "accepted");
 
   // Water plants (+10 happiness, -10 stress)
+  player.emotions.happiness = 70;
+  player.emotions.stress = 20;
   const preWaterH = player.emotions.happiness;
   const preWaterS = player.emotions.stress;
   const waterRes = engine.submitPlayerAction("water_plants");
   assert.equal(waterRes.result.status, "accepted");
-  assert.ok(player.emotions.happiness >= Math.min(100, preWaterH + 5) || player.emotions.happiness === 100, "Watering plants increases happiness");
-  assert.ok(player.emotions.stress <= preWaterS + 2, "Watering plants reduces stress");
+  assert.ok(
+    player.emotions.happiness >= preWaterH + 5 ||
+    ((waterRes.result.changes?.emotions as any)?.happiness ?? 0) >= preWaterH + 5,
+    "Watering plants increases happiness"
+  );
+  assert.ok(player.emotions.stress <= preWaterS - 5, "Watering plants reduces stress");
 
   // Sit on cane chair
   const sitCane = engine.submitPlayerAction("sit_on_cane_chair");

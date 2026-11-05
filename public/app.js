@@ -618,6 +618,343 @@ function getCoordinates(roomId, posId) {
 }
 
 // ============================================================
+// 5B. MAP HOVERCARD / INFO CARD CONTROLLER (MODERN WEB GUIDANCE)
+// ============================================================
+
+const mapHovercard = document.getElementById('map-hovercard');
+const hcIcon = document.getElementById('hc-icon');
+const hcTitle = document.getElementById('hc-title');
+const hcCategory = document.getElementById('hc-category');
+const hcStatus = document.getElementById('hc-status');
+const hcDesc = document.getElementById('hc-desc');
+const hcLocationRow = document.getElementById('hc-location-row');
+const hcLocation = document.getElementById('hc-location');
+const hcPresenceRow = document.getElementById('hc-presence-row');
+const hcPresence = document.getElementById('hc-presence');
+const hcActionsRow = document.getElementById('hc-actions-row');
+const hcActions = document.getElementById('hc-actions');
+const hcDetailsRow = document.getElementById('hc-details-row');
+const hcDetails = document.getElementById('hc-details');
+const hcHint = document.getElementById('hc-hint');
+const mapCanvasFrame = document.querySelector('.map-canvas-frame');
+const houseMapSvg = document.getElementById('house-map-svg');
+
+let currentHoverTarget = null;
+
+function getStatusBadgeClass(status) {
+  if (!status) return '';
+  const s = String(status).toLowerCase();
+  if (['neat', 'clean', 'clear', 'blooming', 'watered', 'vacant', 'ready', 'open passage', 'available'].includes(s)) {
+    return 'status-green';
+  }
+  if (['cooking', 'steaming', 'half', 'needs_flush', 'with_food', 'has_items', 'full', 'foggy', 'open'].includes(s)) {
+    return 'status-amber';
+  }
+  if (['occupied', 'occupied_lying', 'occupied_sitting', 'in_use', 'closed', 'sitting', 'lying'].includes(s)) {
+    return 'status-purple';
+  }
+  if (['running', 'running_tap', 'streaming', 'on', 'standing'].includes(s)) {
+    return 'status-blue';
+  }
+  return '';
+}
+
+function formatCleanActionName(actionId) {
+  if (!actionId) return '';
+  const act = gameState?.availableActions?.find(a => a.id === actionId);
+  if (act && act.name) return act.name;
+  return actionId
+    .replace(/^walk_to_/, 'Walk to ')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function hideHovercard() {
+  if (mapHovercard) {
+    mapHovercard.classList.remove('is-visible');
+    mapHovercard.setAttribute('aria-hidden', 'true');
+    currentHoverTarget = null;
+  }
+}
+
+function updateHovercardPosition(e) {
+  if (!mapHovercard || !mapCanvasFrame) return;
+  const frameRect = mapCanvasFrame.getBoundingClientRect();
+  const cardWidth = mapHovercard.offsetWidth || 290;
+  const cardHeight = mapHovercard.offsetHeight || 190;
+
+  // Pointer position relative to frame container
+  let x = e.clientX - frameRect.left + 16;
+  let y = e.clientY - frameRect.top + 16;
+
+  // Horizontal collision check: if card overflows right edge, flip to left of cursor
+  if (x + cardWidth > frameRect.width - 12) {
+    x = e.clientX - frameRect.left - cardWidth - 16;
+  }
+  // Vertical collision check: if card overflows bottom edge, flip above cursor
+  if (y + cardHeight > frameRect.height - 12) {
+    y = e.clientY - frameRect.top - cardHeight - 16;
+  }
+
+  // Bounds clamping to stay strictly inside map frame
+  x = Math.max(10, Math.min(x, frameRect.width - cardWidth - 10));
+  y = Math.max(10, Math.min(y, frameRect.height - cardHeight - 10));
+
+  mapHovercard.style.left = `${Math.round(x)}px`;
+  mapHovercard.style.top = `${Math.round(y)}px`;
+}
+
+function showHovercardForTarget(targetElem, e) {
+  if (!gameState || !mapHovercard) return;
+
+  // 1. Character Tokens
+  const tokenElem = targetElem.closest('.avatar-map-token');
+  if (tokenElem) {
+    const isPlayer = tokenElem.id === 'token-player' || tokenElem.classList.contains('token-player');
+    const char = isPlayer ? gameState.player : gameState.ai;
+    if (!char) return;
+
+    hcIcon.textContent = isPlayer ? '👤' : '✨';
+    hcTitle.textContent = isPlayer ? `${char.name || 'Mohit'} (You)` : `${char.name || 'Aria'} (Roommate)`;
+    hcCategory.textContent = isPlayer ? 'PROTAGONIST' : 'AI COMPANION';
+    hcStatus.textContent = char.body.posture;
+    hcStatus.className = `hovercard-status-badge ${getStatusBadgeClass(char.body.posture)}`;
+
+    const derivedBody = isPlayer
+      ? (gameState.narrative?.player_body || getDetailedPhysicalDescription(char))
+      : 'Perceptive, gentle Jabalpur engineering roommate. Always studying, reflecting, or sharing warm moments.';
+    hcDesc.textContent = derivedBody;
+
+    hcLocationRow.style.display = 'flex';
+    hcLocation.textContent = `${capitalize(char.location.roomId.replace('_', ' '))} (${char.location.positionId})`;
+
+    hcPresenceRow.style.display = 'flex';
+    if (isPlayer) {
+      hcPresence.textContent = `Facing ${char.body.orientation || 'front'} · Mood: ${gameState.mood || 'Calm'}`;
+    } else {
+      const isTogether = gameState.ai.location.roomId === gameState.player.location.roomId;
+      hcPresence.textContent = isTogether ? 'Together in same room (Companionship active)' : 'In separate room';
+    }
+
+    hcActionsRow.style.display = 'flex';
+    const attireUpper = char.clothing?.upper || 'Comfortable Kurta';
+    const attireLower = char.clothing?.lower || 'Track Pants';
+    hcActions.textContent = `👔 Wearing: ${attireUpper}, ${attireLower}`;
+
+    hcDetailsRow.style.display = 'flex';
+    hcDetails.textContent = `⚡ Energy: ${Math.round(char.needs.energy)}% · 🍽️ Hunger: ${Math.round(char.needs.hunger)}% · 🧼 Hygiene: ${Math.round(char.needs.hygiene)}%`;
+
+    hcHint.textContent = isPlayer ? 'Active character · Use action deck to command' : 'Click talk button to converse with Aria ›';
+
+    mapHovercard.classList.add('is-visible');
+    mapHovercard.setAttribute('aria-hidden', 'false');
+    updateHovercardPosition(e);
+    return;
+  }
+
+  // 2. Interactive Objects
+  const objElem = targetElem.closest('.interactive-obj');
+  if (objElem) {
+    const objId = objElem.dataset.obj;
+    const allObjects = gameState.world?.objects || gameState.roomDetails?.objects || [];
+    const obj = allObjects.find(o => o.id === objId);
+
+    // Fallback if not found in list
+    const objName = obj?.name || formatCleanActionName(objId);
+    const objType = (obj?.type || 'furniture').toUpperCase();
+    const objState = obj?.currentState || 'ready';
+    const objIcon = obj?.icon || (objId.includes('bed') ? '🛏️' : objId.includes('lamp') ? '💡' : objId.includes('sofa') ? '🛋️' : objId.includes('tv') ? '📺' : objId.includes('plant') ? '🪴' : objId.includes('chair') ? '🪑' : objId.includes('stove') ? '🔥' : objId.includes('book') ? '📚' : '📦');
+
+    hcIcon.textContent = objIcon;
+    hcTitle.textContent = objName;
+    hcCategory.textContent = objType;
+    hcStatus.textContent = objState;
+    hcStatus.className = `hovercard-status-badge ${getStatusBadgeClass(objState)}`;
+
+    hcDesc.textContent = obj?.stateDescriptions?.[objState] || obj?.description || 'Interactive household fixture.';
+
+    hcLocationRow.style.display = 'flex';
+    const roomName = capitalize((obj?.roomId || objElem.dataset.room || '').replace('_', ' '));
+    const posName = obj?.positionId ? ` · ${obj.positionId}` : '';
+    hcLocation.textContent = `${roomName}${posName}`;
+
+    // Presence or holder
+    if (obj?.heldBy) {
+      hcPresenceRow.style.display = 'flex';
+      hcPresence.textContent = `Currently carried by ${obj.heldBy === 'player_001' ? 'Mohit' : 'Aria'}`;
+    } else {
+      hcPresenceRow.style.display = 'none';
+    }
+
+    // Actions list
+    hcActionsRow.style.display = 'flex';
+    const interactions = obj?.interactions || [];
+    if (interactions.length > 0) {
+      const formattedActions = interactions.slice(0, 4).map(actId => {
+        const isAvail = gameState.availableActions?.some(a => a.id === actId);
+        const name = formatCleanActionName(actId);
+        return isAvail ? `${name} ✓` : name;
+      });
+      hcActions.textContent = formattedActions.join(' · ') + (interactions.length > 4 ? ` (+${interactions.length - 4} more)` : '');
+    } else {
+      hcActions.textContent = 'None directly';
+    }
+
+    // Details row: contained items or portability
+    if (obj?.containedObjectIds && obj.containedObjectIds.length > 0) {
+      hcDetailsRow.style.display = 'flex';
+      hcDetails.textContent = `Contains ${obj.containedObjectIds.length} items (books, notebooks & guides)`;
+    } else if (obj?.portable) {
+      hcDetailsRow.style.display = 'flex';
+      hcDetails.textContent = 'Portable item · Can be carried into any room';
+    } else {
+      hcDetailsRow.style.display = 'none';
+    }
+
+    const isInSameRoom = gameState.player.location.roomId === (obj?.roomId || objElem.dataset.room);
+    hcHint.textContent = isInSameRoom ? 'Click object to open action modal ›' : `Click to walk to ${roomName} first ›`;
+
+    mapHovercard.classList.add('is-visible');
+    mapHovercard.setAttribute('aria-hidden', 'false');
+    updateHovercardPosition(e);
+    return;
+  }
+
+  // 3. Room Zone Floors
+  const roomElem = targetElem.closest('.room-zone');
+  if (roomElem) {
+    const roomId = roomElem.dataset.room;
+    const allRooms = gameState.world?.allRooms || [];
+    const roomConfig = allRooms.find(r => r.id === roomId);
+
+    const isCurrent = gameState.player.location.roomId === roomId;
+    const roomName = roomConfig?.name || capitalize(roomId.replace('_', ' '));
+    const roomIcon = roomId === 'bedroom' ? '🛏️' : roomId === 'study_room' ? '📚' : roomId === 'kitchen' ? '🍳' : roomId === 'toilet' ? '🚿' : roomId === 'living_room' ? '🛋️' : '🌿';
+
+    hcIcon.textContent = roomIcon;
+    hcTitle.textContent = roomName;
+    hcCategory.textContent = isCurrent ? 'CURRENT LOCATION' : 'ROOM ZONE';
+    hcStatus.textContent = isCurrent ? 'You are here' : 'Reachable';
+    hcStatus.className = `hovercard-status-badge ${isCurrent ? 'status-green' : 'status-blue'}`;
+
+    hcDesc.textContent = roomConfig?.description || 'A comfortable space inside the Jabalpur home.';
+
+    hcLocationRow.style.display = 'flex';
+    hcLocation.textContent = 'Ground Floor · Jabalpur Residence';
+
+    hcPresenceRow.style.display = 'flex';
+    const hasPlayer = gameState.player.location.roomId === roomId;
+    const hasAi = gameState.ai.location.roomId === roomId;
+    if (hasPlayer && hasAi) {
+      hcPresence.textContent = `Mohit (${gameState.player.body.posture}) & Aria (${gameState.ai.body.posture})`;
+    } else if (hasPlayer) {
+      hcPresence.textContent = `Mohit (${gameState.player.body.posture})`;
+    } else if (hasAi) {
+      hcPresence.textContent = `Aria (${gameState.ai.body.posture})`;
+    } else {
+      hcPresence.textContent = 'Unoccupied right now';
+    }
+
+    hcActionsRow.style.display = 'flex';
+    const allObjects = gameState.world?.objects || [];
+    const roomObjCount = allObjects.filter(o => o.roomId === roomId).length;
+    hcActions.textContent = `${roomObjCount} Interactive objects · Click floor to navigate`;
+
+    hcDetailsRow.style.display = 'none';
+    hcHint.textContent = isCurrent ? 'You are currently inside this room' : `Click floor to walk to ${roomName} ›`;
+
+    mapHovercard.classList.add('is-visible');
+    mapHovercard.setAttribute('aria-hidden', 'false');
+    updateHovercardPosition(e);
+    return;
+  }
+
+  // 4. Windows
+  const windowElem = targetElem.closest('.map-window') || targetElem.closest('.map-window-label') || targetElem.closest('.map-window-label-vert');
+  if (windowElem) {
+    hcIcon.textContent = '🪟';
+    hcTitle.textContent = 'Glass Window Grill';
+    hcCategory.textContent = 'ARCHITECTURE';
+    hcStatus.textContent = 'Open Breeze';
+    hcStatus.className = 'hovercard-status-badge status-blue';
+    hcDesc.textContent = 'Sliding window grill framing leafy neem trees and letting in fresh Jabalpur morning breeze and natural daylight.';
+    hcLocationRow.style.display = 'flex';
+    hcLocation.textContent = 'Exterior Window';
+    hcPresenceRow.style.display = 'none';
+    hcActionsRow.style.display = 'none';
+    hcDetailsRow.style.display = 'none';
+    hcHint.textContent = 'Natural light and ventilation';
+
+    mapHovercard.classList.add('is-visible');
+    mapHovercard.setAttribute('aria-hidden', 'false');
+    updateHovercardPosition(e);
+    return;
+  }
+
+  // 5. Doorways / Corridor
+  const doorElem = targetElem.closest('.doorway-opening') || targetElem.closest('.map-corridor-label');
+  if (doorElem) {
+    hcIcon.textContent = '🚪';
+    hcTitle.textContent = 'Connecting Hallway & Doors';
+    hcCategory.textContent = 'CIRCULATION';
+    hcStatus.textContent = 'Open Passage';
+    hcStatus.className = 'hovercard-status-badge status-green';
+    hcDesc.textContent = 'Central hallway linking all rooms. Characters easily step through doorways when in standing posture.';
+    hcLocationRow.style.display = 'flex';
+    hcLocation.textContent = 'Central Corridor';
+    hcPresenceRow.style.display = 'none';
+    hcActionsRow.style.display = 'none';
+    hcDetailsRow.style.display = 'none';
+    hcHint.textContent = 'Step through doors to transition rooms';
+
+    mapHovercard.classList.add('is-visible');
+    mapHovercard.setAttribute('aria-hidden', 'false');
+    updateHovercardPosition(e);
+    return;
+  }
+
+  // Default: hide
+  hideHovercard();
+}
+
+function initMapHovercard() {
+  if (!houseMapSvg || !mapCanvasFrame || !mapHovercard) return;
+
+  houseMapSvg.addEventListener('pointermove', (e) => {
+    const target = e.target.closest('.interactive-obj') ||
+                   e.target.closest('.avatar-map-token') ||
+                   e.target.closest('.map-window') ||
+                   e.target.closest('.map-window-label') ||
+                   e.target.closest('.map-window-label-vert') ||
+                   e.target.closest('.doorway-opening') ||
+                   e.target.closest('.map-corridor-label') ||
+                   e.target.closest('.room-zone');
+
+    if (!target) {
+      hideHovercard();
+      return;
+    }
+
+    if (currentHoverTarget !== target) {
+      currentHoverTarget = target;
+      showHovercardForTarget(target, e);
+    } else {
+      updateHovercardPosition(e);
+    }
+  });
+
+  houseMapSvg.addEventListener('pointerleave', hideHovercard);
+  mapCanvasFrame.addEventListener('pointerleave', hideHovercard);
+
+  // WCAG 1.4.13: Allow Escape key to dismiss hovercard
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mapHovercard.classList.contains('is-visible')) {
+      hideHovercard();
+    }
+  });
+}
+
+// ============================================================
 // 6. CURRENT ROOM SCENE HERO (IMAGE IN BACKGROUND, TAGS ON TOP)
 // ============================================================
 
@@ -1230,6 +1567,7 @@ btnCopyJson.addEventListener('click', () => {
 
 // Initial startup
 initWeatherCanvas();
+initMapHovercard();
 fetchRealWeather();
 updateLiveClock();
 fetchState();
