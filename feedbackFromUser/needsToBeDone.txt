@@ -1,0 +1,1 @@
+cursor going over the objects should bring object discription. all objects should have discription in config

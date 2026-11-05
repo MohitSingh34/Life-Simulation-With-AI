@@ -84,6 +84,9 @@ life-simulation/
 │   ├── game-state.json
 │   └── timings.txt
 │
+├── story/
+│   └── UNIVERSAL_STORY.md
+│
 ├── feedbackFromUser/
 │   ├── DoneByAI.txt
 │   └── needsToBeDone.txt
@@ -217,6 +220,12 @@ A lightweight place for user feedback and notes that are useful during iteration
 
 This folder is not the runtime logic itself, but it is useful for project continuity.
 
+### `story/`
+Branching story-flow documentation based on currently configured rooms, objects, and actions.
+
+- `UNIVERSAL_STORY.md` maps the playable choices from Mohit's starting state through the configured home
+- The flow is a planning/reference document; action and world configuration remain the source of truth
+
 ### `events/`
 A place for event logs or debugging traces if the simulation starts producing more detailed logs.
 
@@ -290,4 +299,3 @@ npm test
 - If you are changing the browser experience, the main places to inspect are `public/app.js`, `public/index.html`, and `public/style.css`.
 
 This project is easiest to understand when you remember: the config defines the world, the engine governs it, and the UI simply reveals it.
-
