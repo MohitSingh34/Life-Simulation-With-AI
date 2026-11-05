@@ -8,6 +8,8 @@ import { ActionEngine } from "./ActionEngine.js";
 import { EmotionEngine } from "./EmotionEngine.js";
 import { AIDecisionEngine } from "../ai/AIDecisionEngine.js";
 import { BodyStateEngine } from "./BodyStateEngine.js";
+import { HouseBuilderEngine } from "./HouseBuilderEngine.js";
+import { AriaBuildPlanner } from "../ai/AriaBuildPlanner.js";
 import {
   CharacterState,
   ActionConfig,
@@ -27,6 +29,8 @@ export class GameEngine {
   public emotionEngine!: EmotionEngine;
   public aiEngine!: AIDecisionEngine;
   public bodyStateEngine!: BodyStateEngine;
+  public houseBuilder!: HouseBuilderEngine;
+  public ariaBuildPlanner!: AriaBuildPlanner;
 
   public init(): void {
     this.configLoader = ConfigLoader.getInstance();
@@ -45,12 +49,16 @@ export class GameEngine {
     );
     this.emotionEngine = new EmotionEngine(this.stateManager);
     this.bodyStateEngine = new BodyStateEngine();
+    this.houseBuilder = new HouseBuilderEngine(this.stateManager);
+    this.ariaBuildPlanner = new AriaBuildPlanner(this.houseBuilder);
     this.aiEngine = new AIDecisionEngine(
       this.stateManager,
       this.actionEngine,
       this.configLoader,
       this.movementEngine,
-      this.timeEngine
+      this.timeEngine,
+      this.houseBuilder,
+      this.ariaBuildPlanner
     );
 
     // Initialize state

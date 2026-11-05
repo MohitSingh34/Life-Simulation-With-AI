@@ -422,6 +422,16 @@ async function talkToAria() {
       appendChatMessage('aria', data.dialogue, nowClock, true, true);
     }
 
+    if (data.dialogue && window.phaserHouseGame?.scene?.keys?.HouseScene) {
+      window.phaserHouseGame.scene.keys.HouseScene.showCharacterSpeech('ai', data.dialogue);
+    }
+
+    if (data.layout) {
+      window.dispatchEvent(new CustomEvent('houseStateUpdated', {
+        detail: { layout: data.layout }
+      }));
+    }
+
     if (data.edits) {
       applyAiEdits(data.edits, true);
     }
@@ -482,6 +492,7 @@ function renderAll() {
 
   // 5. Top-Down House Map with Animated Avatars
   renderHouseMap(player, ai);
+  syncPhaserHouse(player, ai, gameState.houseLayout);
 
   // 6. Current Room Detail Card (Hero image in background, tags on top)
   renderCurrentRoomScene(roomDetails, time, narr);
@@ -1846,9 +1857,395 @@ btnCopyJson.addEventListener('click', () => {
   showToast('📋 World state JSON copied');
 });
 
+// ============================================================
+// 12. PHASER 3 HOUSE ENGINE & COLLABORATIVE BUILDER INTEGRATION
+// ============================================================
+
+window.submitAction = submitAction;
+window.showToast = showToast;
+window.openObjectModal = openObjectModal;
+
+function syncPhaserHouse(player, ai, layout) {
+  window.gameState = gameState;
+  if (!player || !ai) return;
+
+  const characters = {
+    player: {
+      id: player.id,
+      name: player.name,
+      roomId: player.location.roomId,
+      positionId: player.location.positionId,
+      posture: player.body.posture,
+    },
+    ai: {
+      id: ai.id,
+      name: ai.name,
+      roomId: ai.location.roomId,
+      positionId: ai.location.positionId,
+      posture: ai.body.posture,
+    }
+  };
+
+  window.dispatchEvent(new CustomEvent('houseStateUpdated', {
+    detail: { layout, characters }
+  }));
+}
+
+let houseCatalog = [];
+let currentBuildCategory = 'all';
+
+async function initPhaserHouseIntegration() {
+  const tabLive = document.getElementById('tab-live-mode');
+  const tabBuild = document.getElementById('tab-build-mode');
+  const tabBlueprint = document.getElementById('tab-blueprint-mode');
+  const phaserContainer = document.getElementById('phaser-house-container');
+  const houseMapSvg = document.getElementById('house-map-svg');
+  const buildModeDrawer = document.getElementById('build-mode-drawer');
+  const buildCatalogList = document.getElementById('build-catalog-list');
+  const roomFinishesPanel = document.getElementById('room-finishes-panel');
+  const buildStatusText = document.getElementById('build-status-text');
+
+  // Camera buttons
+  const btnCamZoomIn = document.getElementById('btn-cam-zoom-in');
+  const btnCamZoomOut = document.getElementById('btn-cam-zoom-out');
+  const btnCamReset = document.getElementById('btn-cam-reset');
+  const btnCamFocusMohit = document.getElementById('btn-cam-focus-mohit');
+  const btnCamFocusAria = document.getElementById('btn-cam-focus-aria');
+
+  // Build toolbar buttons
+  const btnBuildRotate = document.getElementById('btn-build-rotate');
+  const btnBuildCancel = document.getElementById('btn-build-cancel');
+  const btnBuildDemolish = document.getElementById('btn-build-demolish');
+  const btnAriaDecorate = document.getElementById('btn-aria-decorate');
+  const btnResetHouse = document.getElementById('btn-reset-house');
+  const btnApplyFloor = document.getElementById('btn-apply-floor');
+  const btnApplyWall = document.getElementById('btn-apply-wall');
+
+  // 1. Fetch initial house data
+  try {
+    const res = await fetch('/api/house');
+    if (!res.ok) throw new Error('Failed to load house data');
+    const data = await res.json();
+    houseCatalog = data.catalog || [];
+
+    // Initialize Phaser game
+    if (typeof window.initPhaserHouseGame === 'function') {
+      window.initPhaserHouseGame('phaser-house-container', data);
+    }
+
+    renderBuildCatalog();
+  } catch (err) {
+    console.error('Failed to init house:', err);
+  }
+
+  // 2. Mode Tabs
+  function setMode(mode) {
+    tabLive?.classList.toggle('active', mode === 'live');
+    tabLive?.setAttribute('aria-selected', mode === 'live' ? 'true' : 'false');
+
+    tabBuild?.classList.toggle('active', mode === 'build');
+    tabBuild?.setAttribute('aria-selected', mode === 'build' ? 'true' : 'false');
+
+    tabBlueprint?.classList.toggle('active', mode === 'blueprint');
+    tabBlueprint?.setAttribute('aria-selected', mode === 'blueprint' ? 'true' : 'false');
+
+    if (mode === 'blueprint') {
+      if (phaserContainer) phaserContainer.style.display = 'none';
+      if (houseMapSvg) houseMapSvg.style.display = 'block';
+      if (buildModeDrawer) buildModeDrawer.style.display = 'none';
+      window.dispatchEvent(new CustomEvent('setBuildMode', { detail: { enabled: false } }));
+    } else if (mode === 'build') {
+      if (phaserContainer) phaserContainer.style.display = 'flex';
+      if (houseMapSvg) houseMapSvg.style.display = 'none';
+      if (buildModeDrawer) buildModeDrawer.style.display = 'flex';
+      window.dispatchEvent(new CustomEvent('setBuildMode', { detail: { enabled: true } }));
+    } else {
+      // live
+      if (phaserContainer) phaserContainer.style.display = 'flex';
+      if (houseMapSvg) houseMapSvg.style.display = 'none';
+      if (buildModeDrawer) buildModeDrawer.style.display = 'none';
+      window.dispatchEvent(new CustomEvent('setBuildMode', { detail: { enabled: false } }));
+    }
+  }
+
+  tabLive?.addEventListener('click', () => setMode('live'));
+  tabBuild?.addEventListener('click', () => setMode('build'));
+  tabBlueprint?.addEventListener('click', () => setMode('blueprint'));
+
+  // 3. Camera Controls
+  btnCamZoomIn?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('cameraZoom', { detail: { direction: 'in' } }));
+  });
+  btnCamZoomOut?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('cameraZoom', { detail: { direction: 'out' } }));
+  });
+  btnCamReset?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('cameraFocus', { detail: { target: 'reset' } }));
+  });
+  btnCamFocusMohit?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('cameraFocus', { detail: { target: 'mohit' } }));
+  });
+  btnCamFocusAria?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('cameraFocus', { detail: { target: 'aria' } }));
+  });
+
+  // 4. Build Toolbar Actions
+  btnBuildRotate?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('rotateGhostItem'));
+  });
+  btnBuildCancel?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('cancelBuildPlacement'));
+    deselectCatalogCards();
+  });
+  btnBuildDemolish?.addEventListener('click', () => {
+    const scene = window.phaserHouseGame?.scene?.keys?.HouseScene;
+    if (scene) scene.removeSelectedPlacedObject();
+  });
+
+  // Placed object selection listener
+  window.addEventListener('placedObjectSelected', (e) => {
+    const obj = e.detail?.object;
+    if (obj) {
+      if (btnBuildDemolish) btnBuildDemolish.style.display = 'inline-flex';
+      if (buildStatusText) {
+        buildStatusText.textContent = `Selected: "${obj.name}" • Press R to rotate, or Demolish to remove`;
+      }
+    } else {
+      if (btnBuildDemolish) btnBuildDemolish.style.display = 'none';
+      if (buildStatusText) {
+        buildStatusText.textContent = 'Pick an item below to place, or click existing furniture to edit';
+      }
+    }
+  });
+
+  // Ask Aria to Decorate
+  btnAriaDecorate?.addEventListener('click', async () => {
+    showToast('✨ Asking Aria to inspect our space and decorate...');
+    try {
+      const res = await fetch('/api/house/ai-build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (data.success && data.layout) {
+        window.dispatchEvent(new CustomEvent('houseStateUpdated', {
+          detail: { layout: data.layout }
+        }));
+        showToast(data.message || 'Aria added an enhancement!');
+        if (data.proposal) {
+          const scene = window.phaserHouseGame?.scene?.keys?.HouseScene;
+          if (scene) scene.showCharacterSpeech('ai', data.proposal.dialogue);
+          const nowClock = gameState ? format12Hour(gameState.time.clock) : 'Just now';
+          appendChatMessage('aria', data.proposal.dialogue, nowClock, true, true);
+        }
+      } else {
+        showToast(data.message || 'Aria feels the space is balanced.');
+      }
+    } catch (err) {
+      showToast('Could not reach Aria right now');
+    }
+  });
+
+  // Reset House Layout
+  btnResetHouse?.addEventListener('click', async () => {
+    if (!confirm('Reset the house layout to the default Jabalpur residence?')) return;
+    try {
+      const res = await fetch('/api/house/reset', { method: 'POST' });
+      const data = await res.json();
+      if (data.success && data.layout) {
+        window.dispatchEvent(new CustomEvent('houseStateUpdated', {
+          detail: { layout: data.layout }
+        }));
+        showToast('House layout restored to default.');
+      }
+    } catch (err) {
+      showToast('Could not reset layout');
+    }
+  });
+
+  // Category Pills
+  document.querySelectorAll('.build-cat-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.build-cat-pill').forEach((p) => p.classList.remove('active'));
+      pill.classList.add('active');
+      currentBuildCategory = pill.dataset.category || 'all';
+      if (currentBuildCategory === 'finishes') {
+        if (buildCatalogList) buildCatalogList.style.display = 'none';
+        if (roomFinishesPanel) roomFinishesPanel.style.display = 'flex';
+      } else {
+        if (buildCatalogList) buildCatalogList.style.display = 'flex';
+        if (roomFinishesPanel) roomFinishesPanel.style.display = 'none';
+        renderBuildCatalog();
+      }
+    });
+  });
+
+  // Apply Floor Customization
+  btnApplyFloor?.addEventListener('click', async () => {
+    const roomId = document.getElementById('select-finish-room')?.value;
+    const floorType = document.getElementById('select-finish-floor')?.value;
+    if (!roomId || !floorType) return;
+
+    try {
+      const res = await fetch('/api/house/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'customize_floor',
+          params: { roomId, floorType }
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.layout) {
+        window.dispatchEvent(new CustomEvent('houseStateUpdated', {
+          detail: { layout: data.layout }
+        }));
+        showToast(`Updated ${capitalize(roomId.replace('_', ' '))} floor to ${floorType}!`);
+      }
+    } catch (err) {
+      showToast('Failed to customize floor');
+    }
+  });
+
+  // Apply Wall Customization
+  btnApplyWall?.addEventListener('click', async () => {
+    const roomId = document.getElementById('select-finish-room')?.value;
+    const wallColor = document.getElementById('input-wall-color')?.value;
+    if (!roomId || !wallColor) return;
+
+    try {
+      const res = await fetch('/api/house/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'customize_wall',
+          params: { roomId, wallColor }
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.layout) {
+        window.dispatchEvent(new CustomEvent('houseStateUpdated', {
+          detail: { layout: data.layout }
+        }));
+        showToast(`Updated ${capitalize(roomId.replace('_', ' '))} wall color!`);
+      }
+    } catch (err) {
+      showToast('Failed to customize wall');
+    }
+  });
+}
+
+function deselectCatalogCards() {
+  document.querySelectorAll('.build-catalog-card').forEach((c) => c.classList.remove('selected'));
+}
+
+function renderBuildCatalog() {
+  const container = document.getElementById('build-catalog-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const filtered = currentBuildCategory === 'all'
+    ? houseCatalog
+    : houseCatalog.filter((item) => item.category === currentBuildCategory);
+
+  for (const item of filtered) {
+    const card = document.createElement('div');
+    card.className = 'build-catalog-card';
+    card.dataset.itemId = item.id;
+
+    card.innerHTML = `
+      <div class="build-catalog-icon">${item.icon || '📦'}</div>
+      <div class="build-catalog-name">${item.name}</div>
+      <div class="build-catalog-meta">
+        <span class="build-catalog-badge">${item.width}×${item.height}</span>
+        <span>${item.isSolid ? 'Solid' : 'Walkable'}</span>
+      </div>
+    `;
+
+    card.addEventListener('click', () => {
+      deselectCatalogCards();
+      card.classList.add('selected');
+      window.dispatchEvent(new CustomEvent('selectCatalogItem', { detail: { item } }));
+      const buildStatusText = document.getElementById('build-status-text');
+      if (buildStatusText) {
+        buildStatusText.textContent = `Placing "${item.name}" • Click floor to build • Press R to rotate • Esc to cancel`;
+      }
+    });
+
+    container.appendChild(card);
+  }
+}
+
+// Hovercard Bridge for Phaser 3
+window.showPhaserObjectHovercard = function (obj, rawEvent) {
+  if (!mapHovercard) return;
+  const allObjects = gameState?.world?.objects || [];
+  const fullObj = allObjects.find((o) => o.id === obj.id) || obj;
+
+  hcIcon.textContent = fullObj.icon || '📦';
+  hcTitle.textContent = fullObj.name;
+  hcCategory.textContent = (fullObj.type || 'FURNITURE').toUpperCase();
+  hcStatus.textContent = fullObj.state || fullObj.currentState || 'ready';
+  hcStatus.className = `hovercard-status-badge ${getStatusBadgeClass(hcStatus.textContent)}`;
+  hcDesc.textContent = fullObj.description || 'Interactive household fixture.';
+
+  hcLocationRow.style.display = 'flex';
+  const roomName = capitalize((fullObj.roomId || '').replace('_', ' '));
+  hcLocation.textContent = `${roomName} · Grid (${fullObj.x}, ${fullObj.y})`;
+
+  hcPresenceRow.style.display = 'none';
+  hcActionsRow.style.display = 'flex';
+  const interactions = fullObj.interactions || [];
+  hcActions.textContent = interactions.length > 0 ? interactions.slice(0, 3).map(formatCleanActionName).join(' · ') : 'None directly';
+  hcDetailsRow.style.display = 'none';
+
+  const isInSameRoom = gameState?.player?.location?.roomId === fullObj.roomId;
+  hcHint.textContent = isInSameRoom ? 'Left-click object to interact · Esc to close' : `Walk to ${roomName} first · Esc to close`;
+
+  mapHovercard.classList.add('is-visible');
+  mapHovercard.setAttribute('aria-hidden', 'false');
+  updateHovercardPosition(rawEvent, null);
+};
+
+window.showPhaserRoomHovercard = function (room, rawEvent) {
+  if (!mapHovercard) return;
+  const isCurrent = gameState?.player?.location?.roomId === room.id;
+  const roomIcons = {
+    bedroom: '🛏️', study_room: '📚', kitchen: '🍳', toilet: '🚿', living_room: '🛋️', balcony: '🌿'
+  };
+
+  hcIcon.textContent = roomIcons[room.type] || '🏠';
+  hcTitle.textContent = room.name;
+  hcCategory.textContent = isCurrent ? 'CURRENT LOCATION' : 'ROOM ZONE';
+  hcStatus.textContent = isCurrent ? 'You are here' : 'Reachable';
+  hcStatus.className = `hovercard-status-badge ${isCurrent ? 'status-green' : 'status-blue'}`;
+  hcDesc.textContent = room.description || 'A comfortable space inside the Jabalpur home.';
+
+  hcLocationRow.style.display = 'flex';
+  hcLocation.textContent = `Floor: ${capitalize(room.floorType)} · Jabalpur Residence`;
+
+  hcPresenceRow.style.display = 'flex';
+  const hasPlayer = gameState?.player?.location?.roomId === room.id;
+  const hasAi = gameState?.ai?.location?.roomId === room.id;
+  if (hasPlayer && hasAi) hcPresence.textContent = 'Mohit & Aria together';
+  else if (hasPlayer) hcPresence.textContent = 'Mohit';
+  else if (hasAi) hcPresence.textContent = 'Aria';
+  else hcPresence.textContent = 'Unoccupied';
+
+  hcActionsRow.style.display = 'none';
+  hcDetailsRow.style.display = 'none';
+  hcHint.textContent = isCurrent ? 'You are currently inside this room' : `Click floor to walk to ${room.name} ›`;
+
+  mapHovercard.classList.add('is-visible');
+  mapHovercard.setAttribute('aria-hidden', 'false');
+  updateHovercardPosition(rawEvent, null);
+};
+
 // Initial startup
 initWeatherCanvas();
 initMapHovercard();
+initPhaserHouseIntegration();
 fetchRealWeather();
 updateLiveClock();
 fetchState();
@@ -1857,3 +2254,4 @@ setInterval(refreshLiveVitals, 60 * 1000);
 
 // Refresh real weather every 10 minutes
 setInterval(fetchRealWeather, 10 * 60 * 1000);
+

@@ -4,4 +4,5 @@ export * from "./character.js";
 export * from "./action.js";
 export * from "./object.js";
 export * from "./event.js";
+export * from "./house.js";
 

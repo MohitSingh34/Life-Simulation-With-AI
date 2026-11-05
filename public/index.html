@@ -489,19 +489,46 @@
           <div class="home-card-title-group">
             <span class="home-card-icon">🧭</span>
             <div>
-              <h2 class="home-card-title">House Map (Top-Down)</h2>
-              <p class="home-card-desc">Interactive living floorplan • Right-click any object to inspect • Left-click to interact</p>
+              <h2 class="home-card-title">House &amp; Living (Phaser 2D)</h2>
+              <p class="home-card-desc">Interactive living home • Left-click floor to walk • Right-click objects to inspect • Build mode to customize</p>
             </div>
           </div>
+
+          <!-- Mode Switcher Tabs -->
+          <div class="map-mode-tabs" role="tablist">
+            <button type="button" id="tab-live-mode" class="map-mode-tab active" role="tab" aria-selected="true">
+              <span class="tab-icon">🏡</span> Live 2D Mode
+            </button>
+            <button type="button" id="tab-build-mode" class="map-mode-tab" role="tab" aria-selected="false">
+              <span class="tab-icon">🛠️</span> Build &amp; Edit Mode
+            </button>
+            <button type="button" id="tab-blueprint-mode" class="map-mode-tab" role="tab" aria-selected="false">
+              <span class="tab-icon">📐</span> Blueprint View
+            </button>
+          </div>
+
+          <!-- Camera Controls Bar -->
+          <div class="camera-controls-bar">
+            <button type="button" id="btn-cam-zoom-in" class="cam-btn" title="Zoom In">+</button>
+            <button type="button" id="btn-cam-zoom-out" class="cam-btn" title="Zoom Out">−</button>
+            <button type="button" id="btn-cam-reset" class="cam-btn" title="Reset View">100%</button>
+            <button type="button" id="btn-cam-focus-mohit" class="cam-btn cam-pill" title="Center camera on Mohit">👨 Mohit</button>
+            <button type="button" id="btn-cam-focus-aria" class="cam-btn cam-pill" title="Center camera on Aria">👩 Aria</button>
+          </div>
+
           <div class="map-avatars-legend">
             <span class="legend-badge badge-mohit"><span class="avatar-dot dot-m"></span> Mohit</span>
             <span class="legend-badge badge-aria"><span class="avatar-dot dot-a"></span> Aria</span>
           </div>
         </div>
 
-        <!-- Top-Down SVG Blueprint Map -->
+        <!-- Canvas Frame Container -->
         <div class="map-canvas-frame">
-          <svg id="house-map-svg" viewBox="0 0 620 595" preserveAspectRatio="xMidYMid meet" class="house-floorplan-svg">
+          <!-- Phaser 3 Interactive House Container -->
+          <div id="phaser-house-container" class="phaser-house-container"></div>
+
+          <!-- Top-Down SVG Blueprint Map (Fallback / Blueprint Mode) -->
+          <svg id="house-map-svg" viewBox="0 0 620 595" preserveAspectRatio="xMidYMid meet" class="house-floorplan-svg" style="display: none;">
             <defs>
               <!-- Floor Patterns -->
               <pattern id="wood-pattern" width="40" height="12" patternUnits="userSpaceOnUse">
@@ -931,6 +958,86 @@
             </div>
           </div>
         </div>
+
+        <!-- Build & Edit Toolbar Drawer (Active in Build Mode) -->
+        <div id="build-mode-drawer" class="build-mode-drawer" style="display: none;">
+          <div class="build-drawer-header">
+            <div class="build-status-group">
+              <span class="build-badge">🛠️ BUILD MODE</span>
+              <span id="build-status-text" class="build-status-text">Pick an item below to place, or click existing furniture to edit</span>
+            </div>
+            <div class="build-actions-group">
+              <button type="button" id="btn-build-rotate" class="build-btn" title="Rotate preview item 90 degrees">
+                <span>🔄</span> Rotate (R)
+              </button>
+              <button type="button" id="btn-build-cancel" class="build-btn" title="Cancel current placement">
+                <span>✕</span> Cancel
+              </button>
+              <button type="button" id="btn-build-demolish" class="build-btn build-btn-danger" style="display: none;" title="Demolish selected furniture">
+                <span>🗑️</span> Demolish
+              </button>
+              <button type="button" id="btn-aria-decorate" class="build-btn build-btn-aria" title="Aria proposes and decorates the house">
+                <span>✨</span> Ask Aria to Decorate
+              </button>
+              <button type="button" id="btn-reset-house" class="build-btn build-btn-secondary" title="Reset layout to default Jabalpur home">
+                <span>↩️</span> Reset Home
+              </button>
+            </div>
+          </div>
+
+          <!-- Build Catalog Categories -->
+          <div class="build-category-pills">
+            <button type="button" class="build-cat-pill active" data-category="all">All</button>
+            <button type="button" class="build-cat-pill" data-category="seating">🪑 Seating</button>
+            <button type="button" class="build-cat-pill" data-category="tables">🪵 Tables</button>
+            <button type="button" class="build-cat-pill" data-category="beds">🛏️ Beds</button>
+            <button type="button" class="build-cat-pill" data-category="storage">📦 Storage</button>
+            <button type="button" class="build-cat-pill" data-category="appliances">🍳 Appliances</button>
+            <button type="button" class="build-cat-pill" data-category="lighting">💡 Lighting</button>
+            <button type="button" class="build-cat-pill" data-category="plants">🪴 Plants</button>
+            <button type="button" class="build-cat-pill" data-category="decor">🎨 Decor</button>
+            <button type="button" class="build-cat-pill" data-category="finishes">🧱 Finishes</button>
+          </div>
+
+          <!-- Catalog Items Drawer Flow -->
+          <div id="build-catalog-list" class="build-catalog-list">
+            <!-- Dynamically populated from catalog -->
+          </div>
+
+          <!-- Room Finishes Panel (Hidden unless 'finishes' category is selected) -->
+          <div id="room-finishes-panel" class="room-finishes-panel" style="display: none;">
+            <div class="finishes-control-row">
+              <label for="select-finish-room">Select Room:</label>
+              <select id="select-finish-room" class="build-select">
+                <option value="living_room">Living Room</option>
+                <option value="bedroom">Bedroom</option>
+                <option value="study_room">Study Room</option>
+                <option value="kitchen">Kitchen</option>
+                <option value="toilet">Bathroom</option>
+                <option value="balcony">Balcony</option>
+              </select>
+            </div>
+            <div class="finishes-control-row">
+              <label for="select-finish-floor">Floor Material:</label>
+              <select id="select-finish-floor" class="build-select">
+                <option value="wood">Warm Hardwood</option>
+                <option value="parquet">Herringbone Parquet</option>
+                <option value="granite">Polished Granite</option>
+                <option value="marble">Luminous Marble</option>
+                <option value="terracotta">Terracotta Tiles</option>
+                <option value="tile">Ceramic Tiles</option>
+                <option value="carpet">Plush Carpet</option>
+                <option value="tatami">Woven Tatami</option>
+              </select>
+              <button type="button" id="btn-apply-floor" class="build-btn build-btn-primary">Apply Floor</button>
+            </div>
+            <div class="finishes-control-row">
+              <label for="input-wall-color">Wall Accent Color:</label>
+              <input type="color" id="input-wall-color" value="#fef3c7" class="build-color-input" />
+              <button type="button" id="btn-apply-wall" class="build-btn build-btn-primary">Apply Wall</button>
+            </div>
+          </div>
+        </div>
       </div>
 
     </section>
@@ -1014,6 +1121,8 @@
 
   <!-- Notification Toast -->
   <div id="toast" class="toast"></div>
+  <script src="vendor/phaser.min.js"></script>
+  <script src="phaser_game.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

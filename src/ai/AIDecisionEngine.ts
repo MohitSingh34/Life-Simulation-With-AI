@@ -4,6 +4,8 @@ import { ConfigLoader } from "../engine/ConfigLoader.js";
 import { MovementEngine } from "../engine/MovementEngine.js";
 import { TimeEngine } from "../engine/TimeEngine.js";
 import { ActionRequest, ActionResult, ActionConfig } from "../types/index.js";
+import { HouseBuilderEngine } from "../engine/HouseBuilderEngine.js";
+import { AriaBuildPlanner, AriaBuildProposal } from "./AriaBuildPlanner.js";
 
 export class AIDecisionEngine {
   private recentActions: string[] = [];
@@ -13,8 +15,24 @@ export class AIDecisionEngine {
     private actionEngine: ActionEngine,
     private configLoader: ConfigLoader,
     private movementEngine?: MovementEngine,
-    private timeEngine?: TimeEngine
+    private timeEngine?: TimeEngine,
+    private houseBuilder?: HouseBuilderEngine,
+    private ariaBuildPlanner?: AriaBuildPlanner
   ) {}
+
+  /**
+   * Aria executes an autonomous home improvement or decorative addition
+   */
+  public planAndExecuteHomeEnhancement(roomId?: string): AriaBuildProposal | null {
+    if (!this.ariaBuildPlanner || !this.houseBuilder) return null;
+    const proposal = this.ariaBuildPlanner.proposeEnhancement(roomId);
+    if (!proposal) return null;
+
+    const res = this.houseBuilder.executeCommand(proposal.command);
+    if (!res.success) return null;
+
+    return proposal;
+  }
 
   public decideAndExecute(aiCharacterId = "ai_001"): {
     actionName: string;
@@ -97,14 +115,22 @@ export class AIDecisionEngine {
       if (currentRoom !== "kitchen") {
         chosenActionId = stepTowardsRoom("kitchen");
       } else {
-        const plateState = this.stateManager.getObjectState("plate_001")?.state;
+        const plateObj = this.stateManager.getObjectState("plate_001");
+        const plateState = plateObj?.state;
         const stoveState = this.stateManager.getObjectState("stove_001")?.state;
-        if (plateState === "with_food") {
+        if (plateState === "with_food" && available.some((a) => a.id === "eat_meal_from_plate")) {
           chosenActionId = "eat_meal_from_plate";
           targetObjectId = "plate_001";
-        } else if (stoveState === "cooking") {
+        } else if (stoveState === "cooking" && available.some((a) => a.id === "serve_meal")) {
           chosenActionId = "serve_meal";
           targetObjectId = "plate_001";
+        } else if (plateObj?.heldBy === "player_001" || plateState === "with_food" || plateState === "dirty") {
+          // Player is serving, dining, or about to wash the plate; Aria washes hands, drinks water or wipes counter
+          const politeOptions = ["wash_hands_kitchen", "drink_water_glass", "wipe_counter"];
+          const availPolite = politeOptions.filter((id) => available.some((a) => a.id === id));
+          if (availPolite.length > 0) {
+            chosenActionId = availPolite[0];
+          }
         } else {
           // Choose between breakfast or meal or snack
           const cookingOptions = ["cook_breakfast", "cook_meal", "prepare_snack"];

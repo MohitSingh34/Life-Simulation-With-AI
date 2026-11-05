@@ -7,6 +7,8 @@ import { RealtimePersistence } from "./engine/RealtimePersistence.js";
 import { GeminiWebProvider } from "./ai/GeminiWebProvider.js";
 import { TagParser, ParsedAiEdits } from "./ai/TagParser.js";
 import { ConversationManager } from "./ai/ConversationManager.js";
+import { HouseCommand } from "./types/house.js";
+import { AriaBuildProposal } from "./ai/AriaBuildPlanner.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -167,6 +169,7 @@ export function createServer(port = 3000) {
           alerts,
           events,
           world: { ...world, objects, allRooms },
+          houseLayout: engine.houseBuilder.getLayout(),
           narrative: engine.stateManager.getNarrative(),
           activeConversation: conversationManager.getActiveConversation(),
         });
@@ -317,72 +320,109 @@ export function createServer(port = 3000) {
           sendJson({ error: "You and Aria must be in the same room to talk." }, 409);
           return;
         }
-        if (!gemini.isConfigured) {
-          sendJson(
-            { error: "Gemini web is not configured. Follow the setup instructions in README.md." },
-            503
-          );
-          return;
-        }
-
         const clockTime = engine.timeEngine.getFormattedClock();
         conversationManager.addMessage("player", body.message.trim(), clockTime);
 
-        const snapshot = engine.stateManager.getSnapshot();
-        const room = engine.getCurrentRoomDetails();
-        const prompt = [
-          "Roleplay as Aria, the player's roommate in an ongoing everyday-life simulation set in Jabalpur.",
-          "Relationship: you and the player have been in conflict. Neither of you could find another suitable place to live, so you reluctantly share the same flat. The living arrangement is a source of awkwardness and friction, not instant friendship.",
-          "Play the relationship with nuance: be guarded, irritated, defensive, or blunt when the moment calls for it, but let small courtesies, humor, vulnerability, and gradual changes emerge naturally. Do not force hostility into every exchange or resolve the conflict immediately. Let the player's words and the events of the shared life shape how you respond.",
-          "Speak in first person as Aria, like a real person in a face-to-face conversation. Reply to what the player actually said; keep it conversational and usually to one or two short sentences. Use natural wording, occasional pauses or dry humor, and avoid narration, stage directions, dialogue labels, lists, and explanations unless the player asks for them.",
-          "Use the simulation state for immediate continuity, such as where you are, what you are doing, the time, and your current mood or needs. Do not invent actions, objects, locations, or events that contradict it. You may refer to personal details or history only when they are genuinely available from the conversation context; do not fabricate shared memories or imply access to information you were not given.",
-          "Our conversation gets feeded to a visual interface renderer which accepts only those values which r predefined as options. Do not claim to change the game state, perform actions, or control the simulation; only the game engine can do that.",
-          "INTERFACE CONTROL INSTRUCTIONS:",
-          "You can control and update what is displayed on the player's screen! Format your output using these exact XML tags:",
-          "<dialogue>Your in-character spoken response to the player.</dialogue>",
-          "<player_body>An evocative, physical 1-2 sentence description of the player's physical body posture, hands, and bodily sensations right now.</player_body>",
-          "<player_pose>A short 2-4 word summary of the player's posture (e.g. Lying on bed, Standing beside counter, Sitting at desk).</player_pose>",
-          "<player_mood>A short mood description with emoji reflecting the vibe between you two (e.g. 😐 Guarded & Wary, 😌 Calm, 😒 Annoyed, 🙂 Softening).</player_mood>",
-          "<room_ambience>A 1-sentence sensory description of this room's light, sound, and air right now.</room_ambience>",
-          "<room_description>A 1-2 sentence description of the room from your perspective.</room_description>",
-          "<ai_activity>A short description of what you are doing right now (e.g. Leaning against the desk with arms crossed, Chopping onions at the counter).</ai_activity>",
-          "<ai_location>Short status badge for you (e.g. In Study Room • Reading, In Kitchen • Cooking).</ai_location>",
-          "<player_clothing>What the player is wearing if changed or noticed.</player_clothing>",
-          "<hunger_feeling>How hungry the player appears or feels (e.g. Stomach rumbling softly).</hunger_feeling>",
-          "<thirst_feeling>How thirsty the player appears or feels (e.g. Could enjoy a glass of water).</thirst_feeling>",
-          "<energy_feeling>The player's energy level (e.g. Rested and alert, Sluggish).</energy_feeling>",
-          "<sleepiness_feeling>The player's drowsiness (e.g. Wide awake, Heavy eyelids).</sleepiness_feeling>",
-          "<hygiene_feeling>The player's cleanliness (e.g. Fresh & comfortable, Sticky from heat).</hygiene_feeling>",
-          "<bladder_feeling>The player's bladder status (e.g. Comfortable, Needs restroom).</bladder_feeling>",
-          "<time_weather>Weather and temperature description (e.g. ☀️ 26°C Clear Sky).</time_weather>",
-          "<time_period>Time period tag (e.g. Morning Light, Afternoon Sun).</time_period>",
-          "Always provide <dialogue> and <player_body>. Any other tags are optional whenever you want to update or manipulate that specific screen element.",
-          `Current simulation context (JSON): ${JSON.stringify({
-            time: snapshot.time,
-            characters: snapshot.characters,
-            objects: snapshot.objects,
-            currentRoom: {
-              id: room.room.id,
-              ambience: room.ambience,
-              objects: room.objects,
-            },
-          })}`,
-          `The player says: ${JSON.stringify(body.message.trim())}`,
-        ].join("\n\n");
-
         let rawDialogue: string;
-        try {
-          rawDialogue = await gemini.generateReply(prompt);
-        } catch (error) {
-          console.error("Gemini dialogue request failed:", error);
-          sendJson(
-            { error: error instanceof Error ? error.message : "Gemini could not reply." },
-            502
-          );
-          return;
+        if (!gemini.isConfigured) {
+          // Contextual offline/fallback Aria responses with full building support
+          const lower = body.message.trim().toLowerCase();
+          const isBuildRequest =
+            lower.includes("build") ||
+            lower.includes("decorate") ||
+            lower.includes("plant") ||
+            lower.includes("furniture") ||
+            lower.includes("table") ||
+            lower.includes("chair") ||
+            lower.includes("sofa") ||
+            lower.includes("floor") ||
+            lower.includes("add ") ||
+            lower.includes("lamp") ||
+            lower.includes("rug");
+
+          if (isBuildRequest) {
+            const proposal = engine.ariaBuildPlanner.parseNaturalLanguageRequest(body.message.trim());
+            if (proposal) {
+              engine.houseBuilder.executeCommand(proposal.command);
+              realtimePersistence.persist();
+              rawDialogue = `<dialogue>${proposal.dialogue}</dialogue><player_body>Standing and listening attentively, admiring the shared space.</player_body><ai_activity>Admiring the new ${proposal.itemName} in ${proposal.roomName}</ai_activity>`;
+            } else {
+              rawDialogue = `<dialogue>I'd love to make our place cozier! Let's check out what we can add together.</dialogue><player_body>Standing relaxed, talking about home improvements.</player_body>`;
+            }
+          } else {
+            const aiStep = engine.aiEngine.decideAndExecute("ai_001");
+            const actName = aiStep?.actionName || "looking around";
+            rawDialogue = `<dialogue>Hey Mohit. I was just ${actName.toLowerCase()}. Living together takes a bit of getting used to, but Jabalpur mornings have their own peaceful charm.</dialogue><player_body>Standing comfortably in the room, taking in the morning stillness.</player_body><ai_activity>${actName}</ai_activity>`;
+          }
+        } else {
+          const snapshot = engine.stateManager.getSnapshot();
+          const room = engine.getCurrentRoomDetails();
+          const prompt = [
+            "Roleplay as Aria, the player's roommate in an ongoing everyday-life simulation set in Jabalpur.",
+            "Relationship: you and the player have been in conflict. Neither of you could find another suitable place to live, so you reluctantly share the same flat. The living arrangement is a source of awkwardness and friction, not instant friendship.",
+            "Play the relationship with nuance: be guarded, irritated, defensive, or blunt when the moment calls for it, but let small courtesies, humor, vulnerability, and gradual changes emerge naturally. Do not force hostility into every exchange or resolve the conflict immediately. Let the player's words and the events of the shared life shape how you respond.",
+            "Speak in first person as Aria, like a real person in a face-to-face conversation. Reply to what the player actually said; keep it conversational and usually to one or two short sentences. Use natural wording, occasional pauses or dry humor, and avoid narration, stage directions, dialogue labels, lists, and explanations unless the player asks for them.",
+            "Use the simulation state for immediate continuity, such as where you are, what you are doing, the time, and your current mood or needs. Do not invent actions, objects, locations, or events that contradict it. You may refer to personal details or history only when they are genuinely available from the conversation context; do not fabricate shared memories or imply access to information you were not given.",
+            "Our conversation gets feeded to a visual interface renderer which accepts only those values which r predefined as options. Do not claim to change the game state, perform actions, or control the simulation; only the game engine can do that.",
+            "INTERFACE CONTROL INSTRUCTIONS:",
+            "You can control and update what is displayed on the player's screen! Format your output using these exact XML tags:",
+            "<dialogue>Your in-character spoken response to the player.</dialogue>",
+            "<player_body>An evocative, physical 1-2 sentence description of the player's physical body posture, hands, and bodily sensations right now.</player_body>",
+            "<player_pose>A short 2-4 word summary of the player's posture (e.g. Lying on bed, Standing beside counter, Sitting at desk).</player_pose>",
+            "<player_mood>A short mood description with emoji reflecting the vibe between you two (e.g. 😐 Guarded & Wary, 😌 Calm, 😒 Annoyed, 🙂 Softening).</player_mood>",
+            "<room_ambience>A 1-sentence sensory description of this room's light, sound, and air right now.</room_ambience>",
+            "<room_description>A 1-2 sentence description of the room from your perspective.</room_description>",
+            "<ai_activity>A short description of what you are doing right now (e.g. Leaning against the desk with arms crossed, Chopping onions at the counter).</ai_activity>",
+            "<ai_location>Short status badge for you (e.g. In Study Room • Reading, In Kitchen • Cooking).</ai_location>",
+            "<player_clothing>What the player is wearing if changed or noticed.</player_clothing>",
+            "<hunger_feeling>How hungry the player appears or feels (e.g. Stomach rumbling softly).</hunger_feeling>",
+            "<thirst_feeling>How thirsty the player appears or feels (e.g. Could enjoy a glass of water).</thirst_feeling>",
+            "<energy_feeling>The player's energy level (e.g. Rested and alert, Sluggish).</energy_feeling>",
+            "<sleepiness_feeling>The player's drowsiness (e.g. Wide awake, Heavy eyelids).</sleepiness_feeling>",
+            "<hygiene_feeling>The player's cleanliness (e.g. Fresh & comfortable, Sticky from heat).</hygiene_feeling>",
+            "<bladder_feeling>The player's bladder status (e.g. Comfortable, Needs restroom).</bladder_feeling>",
+            "<time_weather>Weather and temperature description (e.g. ☀️ 26°C Clear Sky).</time_weather>",
+            "<time_period>Time period tag (e.g. Morning Light, Afternoon Sun).</time_period>",
+            "Optional: If you and the player agree on adding or decorating something in the room, you can output a construction command: <build_command>{\"action\":\"place_object\",\"params\":{\"templateId\":\"monstera_001\",\"roomId\":\"study_room\",\"x\":28,\"y\":8}}</build_command>.",
+            "Always provide <dialogue> and <player_body>. Any other tags are optional whenever you want to update or manipulate that specific screen element.",
+            `Current simulation context (JSON): ${JSON.stringify({
+              time: snapshot.time,
+              characters: snapshot.characters,
+              objects: snapshot.objects,
+              currentRoom: {
+                id: room.room.id,
+                ambience: room.ambience,
+                objects: room.objects,
+              },
+            })}`,
+            `The player says: ${JSON.stringify(body.message.trim())}`,
+          ].join("\n\n");
+
+          try {
+            rawDialogue = await gemini.generateReply(prompt);
+          } catch (error) {
+            console.error("Gemini dialogue request failed:", error);
+            sendJson(
+              { error: error instanceof Error ? error.message : "Gemini could not reply." },
+              502
+            );
+            return;
+          }
         }
 
         const parsed = TagParser.parse(rawDialogue);
+
+        // Execute build command if suggested by AI
+        if (parsed.edits.build_command) {
+          try {
+            const buildCmd = JSON.parse(parsed.edits.build_command);
+            buildCmd.issuedBy = "ai_001";
+            engine.houseBuilder.executeCommand(buildCmd);
+            realtimePersistence.persist();
+          } catch (err) {
+            console.warn("Could not parse build_command from AI:", err);
+          }
+        }
         if (Object.keys(parsed.edits).length > 0) {
           engine.stateManager.updateNarrative(parsed.edits);
           realtimePersistence.persist();
@@ -393,6 +433,7 @@ export function createServer(port = 3000) {
         sendJson({
           dialogue: parsed.dialogue,
           edits: parsed.edits,
+          layout: engine.houseBuilder.getLayout(),
           narrative: engine.stateManager.getNarrative(),
           activeConversation: conversationManager.getActiveConversation(),
         });
@@ -536,20 +577,125 @@ export function createServer(port = 3000) {
           if (fs.existsSync(path.join(stateDir, "conversations.json"))) {
             fs.unlinkSync(path.join(stateDir, "conversations.json"));
           }
+          if (fs.existsSync(path.join(stateDir, "house-layout.json"))) {
+            fs.unlinkSync(path.join(stateDir, "house-layout.json"));
+          }
         } catch (e) {
           console.warn("Could not remove state files during reset:", e);
         }
 
-        // Re-initialize engine and conversations
+        // Re-initialize engine, house, and conversations
         engine.init();
+        engine.houseBuilder.resetToDefault();
         realtimePersistence.start();
         conversationManager.reset();
 
         sendJson({
           success: true,
-          message: "Story has been reset to initial Day 1 state.",
+          message: "Story and house layout have been reset to initial Day 1 state.",
           activeConversation: conversationManager.getActiveConversation(),
+          layout: engine.houseBuilder.getLayout(),
         });
+        return;
+      }
+
+      // 8. API: House Construction & 2D Phaser Layout
+      if (req.method === "GET" && pathname === "/api/house") {
+        const layout = engine.houseBuilder.getLayout();
+        const catalog = engine.houseBuilder.getCatalog();
+        const player = engine.getPlayer();
+        const ai = engine.getAI();
+        sendJson({
+          layout,
+          catalog,
+          characters: {
+            player: {
+              id: player.id,
+              name: player.name,
+              roomId: player.location.roomId,
+              positionId: player.location.positionId,
+              posture: player.body.posture,
+            },
+            ai: {
+              id: ai.id,
+              name: ai.name,
+              roomId: ai.location.roomId,
+              positionId: ai.location.positionId,
+              posture: ai.body.posture,
+            },
+          },
+        });
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/house/build") {
+        const body = await parseBody<HouseCommand>();
+        if (!body || !body.action) {
+          sendJson({ error: "Invalid build command: action is required" }, 400);
+          return;
+        }
+        const result = engine.houseBuilder.executeCommand(body);
+        realtimePersistence.persist();
+        sendJson(result);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/house/ai-build") {
+        const body = await parseBody<{ roomId?: string; prompt?: string }>();
+        let proposal: AriaBuildProposal | null = null;
+        if (body.prompt) {
+          proposal = engine.ariaBuildPlanner.parseNaturalLanguageRequest(body.prompt);
+        } else {
+          proposal = engine.ariaBuildPlanner.proposeEnhancement(body.roomId);
+        }
+
+        if (!proposal) {
+          sendJson({
+            success: false,
+            message: "Aria evaluated the space and feels it is harmonious right now.",
+            layout: engine.houseBuilder.getLayout(),
+          });
+          return;
+        }
+
+        const buildResult = engine.houseBuilder.executeCommand(proposal.command);
+        realtimePersistence.persist();
+
+        // Also add Aria's voice to conversation
+        const activeConv = conversationManager.getActiveConversation();
+        if (activeConv) {
+          const timeStr = engine.timeEngine.getFormattedClock();
+          conversationManager.addMessage("aria", proposal.dialogue, timeStr);
+        }
+
+        sendJson({
+          success: buildResult.success,
+          message: buildResult.message,
+          proposal,
+          layout: engine.houseBuilder.getLayout(),
+        });
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/house/reset") {
+        const layout = engine.houseBuilder.resetToDefault();
+        realtimePersistence.persist();
+        sendJson({
+          success: true,
+          message: "House layout reset to default Jabalpur residence.",
+          layout,
+        });
+        return;
+      }
+
+      // 9. API: A* Pathfinding Navigation
+      if (req.method === "GET" && pathname === "/api/navigation/path") {
+        const sX = parseFloat(url.searchParams.get("startX") || "0");
+        const sY = parseFloat(url.searchParams.get("startY") || "0");
+        const tX = parseFloat(url.searchParams.get("targetX") || "0");
+        const tY = parseFloat(url.searchParams.get("targetY") || "0");
+        const path = engine.houseBuilder.pathfindingEngine.findPath(sX, sY, tX, tY);
+        sendJson({ path });
         return;
       }
 

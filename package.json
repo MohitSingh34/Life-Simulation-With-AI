@@ -8,16 +8,17 @@
     "web": "tsx src/server.ts",
     "terminal": "tsx src/main.ts --terminal",
     "dev": "tsx watch src/main.ts",
-    "test": "tsx src/test_simulation.ts && tsx src/test_realtime_persistence.ts && tsx src/test_grooming_chores.ts && tsx src/test_living_balcony.ts && tsx src/test_study_social.ts && tsx src/test_bedroom_wardrobe.ts && tsx src/test_culinary_engine.ts"
+    "test": "tsx src/test_simulation.ts && tsx src/test_realtime_persistence.ts && tsx src/test_grooming_chores.ts && tsx src/test_living_balcony.ts && tsx src/test_study_social.ts && tsx src/test_bedroom_wardrobe.ts && tsx src/test_culinary_engine.ts && tsx src/test_house_builder.ts"
   },
   "dependencies": {
     "chalk": "^5.3.0",
-    "inquirer": "^9.2.0"
+    "inquirer": "^9.2.0",
+    "phaser": "^3.88.2"
   },
   "devDependencies": {
-    "tsx": "^4.7.0",
-    "@types/node": "^20.0.0",
     "@types/inquirer": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
     "typescript": "^5.4.0"
   }
 }
