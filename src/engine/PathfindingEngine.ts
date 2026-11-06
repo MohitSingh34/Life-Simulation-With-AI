@@ -92,6 +92,12 @@ export class PathfindingEngine {
 
       for (let y = y1; y <= y2; y++) {
         for (let x = x1; x <= x2; x++) {
+          const hallwayFloor = layout.rooms.some(room =>
+            room.type === "hallway" &&
+            x >= room.x && x < room.x + room.width &&
+            y >= room.y && y < room.y + room.height
+          );
+          if (hallwayFloor) continue;
           if (this.isWithinBounds(x, y)) {
             this.grid[y][x] = 1;
           }

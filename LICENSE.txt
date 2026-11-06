@@ -1,0 +1,20 @@
+LICENSE - Cozy Interiors Pixel Pack (Free Demo)
+by Willosuna
+
+WHAT YOU CAN DO
+  - Use these tiles and sprites in personal and commercial projects, in any
+    number of projects, royalty free.
+  - Modify, recolour, scale and edit them however you like.
+  - Use them in games, apps, video, prototypes and client work.
+  - Attribution is not required, though it is always appreciated.
+
+WHAT YOU CANNOT DO
+  - Resell, redistribute or give away the image files themselves, either as-is
+    or modified, as an asset pack, library or collection.
+
+HOW THE ART WAS MADE
+  Every image is drawn procedurally by original code. It contains no
+  third-party art. The author owns all rights.
+
+NO WARRANTY
+  Provided "as is", without warranty of any kind.

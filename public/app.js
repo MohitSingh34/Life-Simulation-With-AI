@@ -92,6 +92,7 @@ const playerPoseSummary = document.getElementById('player-pose-summary');
 const playerDetailedBody = document.getElementById('player-detailed-body');
 const playerPresenceStatus = document.getElementById('player-presence-status');
 const playerClothing = document.getElementById('player-clothing');
+const playerAppearance = document.getElementById('player-appearance');
 const holdingPack = document.getElementById('holding-pack');
 const heldItemLabel = document.getElementById('held-item-label');
 const btnPutDownItem = document.getElementById('btn-put-down-item');
@@ -130,6 +131,9 @@ const ariaRoomBadge = document.getElementById('aria-room-badge');
 const ariaOutOfSight = document.getElementById('aria-out-of-sight');
 const ariaOutOfSightText = document.getElementById('aria-out-of-sight-text');
 const ariaNeedsBox = document.getElementById('aria-needs-box');
+const ariaBodyDescription = document.getElementById('aria-body-description');
+const ariaClothing = document.getElementById('aria-clothing');
+const ariaAppearance = document.getElementById('aria-appearance');
 const playerQuickActionsRow = document.getElementById('player-quick-actions-row');
 const playerQuickActionsCount = document.getElementById('player-quick-actions-count');
 const aiAvailableActionsList = document.getElementById('ai-available-actions-list');
@@ -482,13 +486,14 @@ function renderAll() {
   playerDetailedBody.textContent = narr.player_body || derivedPlayerBody;
   playerPresenceStatus.textContent = `Present · In ${roomDetails.room.name}`;
   playerClothing.textContent = narr.player_clothing || `${player.clothing.upper}, ${player.clothing.lower} (${player.clothing.footwear})`;
+  playerAppearance.textContent = formatAppearance(player.appearance);
   renderHeldItem(player);
 
   // 3. Player Body Needs
   renderPlayerNeeds(player.needs);
 
   // 4. Aria Body Needs (Equal Maintenance, visible only when in same room)
-  renderAriaNeeds(ai.needs, isTogether, roomDetails?.room?.name);
+  renderAriaNeeds(ai, isTogether, roomDetails?.room?.name);
 
   // 5. Top-Down House Map with Animated Avatars
   renderHouseMap(player, ai);
@@ -593,7 +598,8 @@ function renderPlayerNeeds(needs) {
   }
 }
 
-function renderAriaNeeds(aiNeeds, inSameRoom = true, currentRoomName = '') {
+function renderAriaNeeds(ai, inSameRoom = true, currentRoomName = '') {
+  const aiNeeds = ai?.needs;
   if (!aiNeeds) return;
 
   const aiRoomName = capitalize((gameState?.ai?.location?.roomId || 'other room').replace('_', ' '));
@@ -612,6 +618,11 @@ function renderAriaNeeds(aiNeeds, inSameRoom = true, currentRoomName = '') {
   // Same room: display physical state and vitals
   if (ariaOutOfSight) ariaOutOfSight.style.display = 'none';
   if (ariaNeedsBox) ariaNeedsBox.style.display = 'block';
+  if (ariaBodyDescription) ariaBodyDescription.textContent = getDetailedPhysicalDescription(ai);
+  if (ariaClothing) {
+    ariaClothing.textContent = `${ai.clothing.upper}, ${ai.clothing.lower} (${ai.clothing.footwear})`;
+  }
+  if (ariaAppearance) ariaAppearance.textContent = formatAppearance(ai.appearance);
 
   const hunger = Math.round(aiNeeds.hunger);
   if (ariaBarHunger) ariaBarHunger.style.width = `${hunger}%`;
@@ -666,6 +677,38 @@ function renderAriaNeeds(aiNeeds, inSameRoom = true, currentRoomName = '') {
       ariaBodyStatusPill.style.color = '#34d399';
     }
   }
+}
+
+function formatAppearance(appearance = {}) {
+  const labels = {
+    face_hair: 'Facial hair',
+    torso_outer: 'Outer layer',
+    torso_inner: 'Inner layer',
+    upper_arm_left: 'Left upper arm',
+    upper_arm_right: 'Right upper arm',
+    elbow_left: 'Left elbow',
+    elbow_right: 'Right elbow',
+    forearm_left: 'Left forearm',
+    forearm_right: 'Right forearm',
+    wrist_left: 'Left wrist',
+    wrist_right: 'Right wrist',
+    hand_left: 'Left hand',
+    hand_right: 'Right hand',
+    thigh_left: 'Left thigh',
+    thigh_right: 'Right thigh',
+    knee_left: 'Left knee',
+    knee_right: 'Right knee',
+    calf_left: 'Left calf',
+    calf_right: 'Right calf',
+    foot_left: 'Left foot',
+    foot_right: 'Right foot',
+  };
+  const stateDrivenSlots = new Set(['body', 'clothes', 'torso_inner', 'legs', 'feet']);
+  const details = Object.entries(appearance)
+    .filter(([slot, value]) => !stateDrivenSlots.has(slot) && value && value.toLowerCase() !== 'nothing')
+    .map(([slot, value]) => `${labels[slot] || capitalize(slot.replace(/_/g, ' '))}: ${value}`);
+
+  return details.length ? details.join(' · ') : 'No additional appearance details';
 }
 
 // ============================================================
@@ -1902,7 +1945,10 @@ async function initPhaserHouseIntegration() {
   const houseMapSvg = document.getElementById('house-map-svg');
   const buildModeDrawer = document.getElementById('build-mode-drawer');
   const buildCatalogList = document.getElementById('build-catalog-list');
+  const buildCategoryPills = document.getElementById('build-category-pills');
   const roomFinishesPanel = document.getElementById('room-finishes-panel');
+  const roomLibraryPanel = document.getElementById('room-library-panel');
+  const objectInspectorPanel = document.getElementById('object-inspector-panel');
   const buildStatusText = document.getElementById('build-status-text');
 
   // Camera buttons
@@ -1911,6 +1957,7 @@ async function initPhaserHouseIntegration() {
   const btnCamReset = document.getElementById('btn-cam-reset');
   const btnCamFocusMohit = document.getElementById('btn-cam-focus-mohit');
   const btnCamFocusAria = document.getElementById('btn-cam-focus-aria');
+  const btnBuildDone = document.getElementById('btn-build-done');
 
   // Build toolbar buttons
   const btnBuildRotate = document.getElementById('btn-build-rotate');
@@ -1920,6 +1967,11 @@ async function initPhaserHouseIntegration() {
   const btnResetHouse = document.getElementById('btn-reset-house');
   const btnApplyFloor = document.getElementById('btn-apply-floor');
   const btnApplyWall = document.getElementById('btn-apply-wall');
+  const btnAddRoom = document.getElementById('btn-add-room');
+  const btnRemoveRoom = document.getElementById('btn-remove-room');
+  const btnSaveObject = document.getElementById('btn-save-object');
+  let currentHouseLayout = null;
+  let selectedObjectForEdit = null;
 
   // 1. Fetch initial house data
   try {
@@ -1927,18 +1979,47 @@ async function initPhaserHouseIntegration() {
     if (!res.ok) throw new Error('Failed to load house data');
     const data = await res.json();
     houseCatalog = data.catalog || [];
+    currentHouseLayout = data.layout || null;
 
     // Initialize Phaser game
     if (typeof window.initPhaserHouseGame === 'function') {
       window.initPhaserHouseGame('phaser-house-container', data);
     }
 
+    renderBuildCategories();
+    renderRoomOptions(currentHouseLayout);
     renderBuildCatalog();
   } catch (err) {
     console.error('Failed to init house:', err);
   }
 
+  window.addEventListener('houseStateUpdated', (event) => {
+    if (!event.detail?.layout) return;
+    currentHouseLayout = event.detail.layout;
+    renderRoomOptions(currentHouseLayout);
+  });
+
+  window.addEventListener('placedObjectSelected', (event) => {
+    selectedObjectForEdit = event.detail?.object || null;
+    if (!objectInspectorPanel) return;
+    objectInspectorPanel.style.display = selectedObjectForEdit ? 'flex' : 'none';
+    if (selectedObjectForEdit) populateObjectInspector(selectedObjectForEdit);
+  });
+
   // 2. Mode Tabs
+  function updateBuildDrawerOffset() {
+    if (!document.body.classList.contains('build-map-fullscreen')) return;
+    const header = document.querySelector('.home-card-header');
+    if (header) {
+      document.body.style.setProperty(
+        '--build-drawer-top',
+        `${Math.ceil(header.getBoundingClientRect().height + 8)}px`
+      );
+    }
+  }
+
+  window.addEventListener('resize', updateBuildDrawerOffset);
+
   function setMode(mode) {
     tabLive?.classList.toggle('active', mode === 'live');
     tabLive?.setAttribute('aria-selected', mode === 'live' ? 'true' : 'false');
@@ -1948,6 +2029,15 @@ async function initPhaserHouseIntegration() {
 
     tabBlueprint?.classList.toggle('active', mode === 'blueprint');
     tabBlueprint?.setAttribute('aria-selected', mode === 'blueprint' ? 'true' : 'false');
+    document.body.classList.toggle('build-map-fullscreen', mode === 'build');
+    if (mode === 'build') {
+      requestAnimationFrame(updateBuildDrawerOffset);
+    } else {
+      document.body.style.removeProperty('--build-drawer-top');
+    }
+    window.dispatchEvent(new CustomEvent('mapFullscreenChanged', {
+      detail: { enabled: mode === 'build' }
+    }));
 
     if (mode === 'blueprint') {
       if (phaserContainer) phaserContainer.style.display = 'none';
@@ -1971,6 +2061,7 @@ async function initPhaserHouseIntegration() {
   tabLive?.addEventListener('click', () => setMode('live'));
   tabBuild?.addEventListener('click', () => setMode('build'));
   tabBlueprint?.addEventListener('click', () => setMode('blueprint'));
+  btnBuildDone?.addEventListener('click', () => setMode('live'));
 
   // 3. Camera Controls
   btnCamZoomIn?.addEventListener('click', () => {
@@ -2001,6 +2092,141 @@ async function initPhaserHouseIntegration() {
     const scene = window.phaserHouseGame?.scene?.keys?.HouseScene;
     if (scene) scene.removeSelectedPlacedObject();
   });
+  btnSaveObject?.addEventListener('click', () => {
+    if (!selectedObjectForEdit) return;
+    const scene = window.phaserHouseGame?.scene?.keys?.HouseScene;
+    const customData = {
+      labelText: document.getElementById('edit-object-label')?.value || '',
+      labelColor: document.getElementById('edit-object-label-color')?.value,
+      fontSize: Number(document.getElementById('edit-object-font-size')?.value),
+      edgeColor: document.getElementById('edit-object-edge-color')?.value,
+      edgeWidth: Number(document.getElementById('edit-object-edge-width')?.value),
+      cornerRadius: Number(document.getElementById('edit-object-corner-radius')?.value)
+    };
+    if (scene) {
+      scene.editSelectedPlacedObject({
+        name: document.getElementById('edit-object-name')?.value,
+        width: Number(document.getElementById('edit-object-width')?.value),
+        height: Number(document.getElementById('edit-object-height')?.value),
+        rotation: Number(document.getElementById('edit-object-rotation')?.value),
+        color: document.getElementById('edit-object-color')?.value,
+        icon: document.getElementById('edit-object-icon')?.value,
+        isSolid: !!document.getElementById('edit-object-solid')?.checked,
+        customData
+      });
+    }
+  });
+
+  btnAddRoom?.addEventListener('click', async () => {
+    const name = document.getElementById('new-room-name')?.value.trim();
+    if (!name) return showToast('Enter a room name', true);
+    const roomId = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')}_${Date.now().toString(36)}`;
+    await submitBuildCommand('add_room', {
+      roomId,
+      name,
+      type: document.getElementById('new-room-type')?.value || 'room',
+      gridX: Number(document.getElementById('new-room-x')?.value),
+      gridY: Number(document.getElementById('new-room-y')?.value),
+      gridWidth: Number(document.getElementById('new-room-width')?.value),
+      gridHeight: Number(document.getElementById('new-room-height')?.value)
+    });
+  });
+
+  btnRemoveRoom?.addEventListener('click', async () => {
+    const roomId = document.getElementById('select-library-room')?.value;
+    const room = currentHouseLayout?.rooms?.find((item) => item.id === roomId);
+    if (!room) return;
+    if (!confirm(`Delete "${room.name}" and everything placed inside it?`)) return;
+    await submitBuildCommand('remove_room', { roomId });
+  });
+
+  async function submitBuildCommand(action, params) {
+    try {
+      const response = await fetch('/api/house/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, params })
+      });
+      const data = await response.json();
+      if (!data.success || !data.layout) {
+        showToast(data.message || `Could not ${action.replace('_', ' ')}`, true);
+        return false;
+      }
+      window.dispatchEvent(new CustomEvent('houseStateUpdated', { detail: { layout: data.layout } }));
+      showToast(data.message || 'Home updated');
+      return true;
+    } catch (error) {
+      console.error(`House ${action} failed:`, error);
+      showToast('Could not update the home');
+      return false;
+    }
+  }
+
+  function renderBuildCategories() {
+    if (!buildCategoryPills) return;
+    const labels = {
+      all: 'All',
+      seating: '🪑 Seating',
+      tables: '🪵 Tables',
+      beds: '🛏️ Beds',
+      storage: '📦 Storage',
+      appliances: '🍳 Appliances',
+      lighting: '💡 Lighting',
+      plants: '🪴 Plants',
+      decor: '🎨 Decor',
+      fixtures: '🔧 Fixtures'
+    };
+    const categories = ['all', ...new Set(houseCatalog.map((item) => item.category).filter(Boolean)), 'finishes', 'rooms'];
+    const extras = { finishes: '🧱 Finishes', rooms: '🏠 Rooms' };
+    buildCategoryPills.replaceChildren();
+    categories.forEach((category) => {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = `build-cat-pill${category === currentBuildCategory ? ' active' : ''}`;
+      pill.dataset.category = category;
+      pill.textContent = extras[category] || labels[category] || category.replace(/_/g, ' ');
+      buildCategoryPills.appendChild(pill);
+    });
+  }
+
+  function renderRoomOptions(layout) {
+    if (!layout?.rooms) return;
+    ['select-finish-room', 'select-library-room'].forEach((id) => {
+      const select = document.getElementById(id);
+      if (!select) return;
+      const previous = select.value;
+      select.replaceChildren();
+      layout.rooms.forEach((room) => {
+        const option = document.createElement('option');
+        option.value = room.id;
+        option.textContent = room.name;
+        select.appendChild(option);
+      });
+      if (layout.rooms.some((room) => room.id === previous)) select.value = previous;
+    });
+  }
+
+  function populateObjectInspector(object) {
+    const setValue = (id, value) => {
+      const input = document.getElementById(id);
+      if (input) input.value = value;
+    };
+    const style = object.customData || {};
+    setValue('edit-object-name', object.name);
+    setValue('edit-object-width', object.width);
+    setValue('edit-object-height', object.height);
+    setValue('edit-object-rotation', object.rotation);
+    setValue('edit-object-color', object.color || '#475569');
+    setValue('edit-object-icon', object.icon || '📦');
+    setValue('edit-object-label', style.labelText ?? object.name);
+    setValue('edit-object-label-color', style.labelColor || '#f8fafc');
+    setValue('edit-object-font-size', style.fontSize ?? 17);
+    setValue('edit-object-edge-color', style.edgeColor || '#ffffff');
+    setValue('edit-object-edge-width', style.edgeWidth ?? 1.5);
+    setValue('edit-object-corner-radius', style.cornerRadius ?? 4);
+    const solid = document.getElementById('edit-object-solid');
+    if (solid) solid.checked = !!object.isSolid;
+  }
 
   // Placed object selection listener
   window.addEventListener('placedObjectSelected', (e) => {
@@ -2064,21 +2290,19 @@ async function initPhaserHouseIntegration() {
     }
   });
 
-  // Category Pills
-  document.querySelectorAll('.build-cat-pill').forEach((pill) => {
-    pill.addEventListener('click', () => {
-      document.querySelectorAll('.build-cat-pill').forEach((p) => p.classList.remove('active'));
-      pill.classList.add('active');
-      currentBuildCategory = pill.dataset.category || 'all';
-      if (currentBuildCategory === 'finishes') {
-        if (buildCatalogList) buildCatalogList.style.display = 'none';
-        if (roomFinishesPanel) roomFinishesPanel.style.display = 'flex';
-      } else {
-        if (buildCatalogList) buildCatalogList.style.display = 'flex';
-        if (roomFinishesPanel) roomFinishesPanel.style.display = 'none';
-        renderBuildCatalog();
-      }
+  buildCategoryPills?.addEventListener('click', (event) => {
+    const pill = event.target.closest('.build-cat-pill');
+    if (!pill) return;
+    currentBuildCategory = pill.dataset.category || 'all';
+    buildCategoryPills.querySelectorAll('.build-cat-pill').forEach((item) => {
+      item.classList.toggle('active', item === pill);
     });
+    const showFinishes = currentBuildCategory === 'finishes';
+    const showRooms = currentBuildCategory === 'rooms';
+    if (buildCatalogList) buildCatalogList.style.display = showFinishes || showRooms ? 'none' : 'grid';
+    if (roomFinishesPanel) roomFinishesPanel.style.display = showFinishes ? 'flex' : 'none';
+    if (roomLibraryPanel) roomLibraryPanel.style.display = showRooms ? 'flex' : 'none';
+    renderBuildCatalog();
   });
 
   // Apply Floor Customization
@@ -2096,6 +2320,7 @@ async function initPhaserHouseIntegration() {
           params: { roomId, floorType }
         })
       });
+
       const data = await res.json();
       if (data.success && data.layout) {
         window.dispatchEvent(new CustomEvent('houseStateUpdated', {
@@ -2254,4 +2479,3 @@ setInterval(refreshLiveVitals, 60 * 1000);
 
 // Refresh real weather every 10 minutes
 setInterval(fetchRealWeather, 10 * 60 * 1000);
-

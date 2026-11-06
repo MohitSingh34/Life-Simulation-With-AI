@@ -122,6 +122,49 @@ export class AriaBuildPlanner {
       else if (lower.includes("bath") || lower.includes("toilet") || lower.includes("wash")) targetRoom = layout.rooms.find(r => r.id === "toilet");
     }
 
+    if (/\b(move|relocate|reposition|shift)\b/.test(lower)) {
+      const object = this.findRequestedObject(lower, layout.placedObjects);
+      if (!object) return null;
+
+      const explicitTargetRoom = layout.rooms.find((candidate) => {
+        const labels = [candidate.name.toLowerCase(), candidate.id.replace(/_/g, " ")];
+        return labels.some((label) =>
+          [`to ${label}`, `to the ${label}`, `into ${label}`, `into the ${label}`]
+            .some((phrase) => lower.includes(phrase))
+        );
+      });
+      const room = explicitTargetRoom ||
+        layout.rooms.find((candidate) => candidate.id === object.roomId) ||
+        targetRoom ||
+        layout.rooms[0];
+      const coordinatePair = lower.match(/\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
+      const xMatch = lower.match(/\bx\s*(?::|=|\s)\s*(-?\d+)\b/);
+      const yMatch = lower.match(/\by\s*(?::|=|\s)\s*(-?\d+)\b/);
+      const coordinates = coordinatePair
+        ? { x: Number(coordinatePair[1]), y: Number(coordinatePair[2]) }
+        : xMatch && yMatch
+          ? { x: Number(xMatch[1]), y: Number(yMatch[1]) }
+          : null;
+      const spot = coordinates || this.findValidMoveSpot(object, room);
+      if (!spot) return null;
+
+      return {
+        command: {
+          action: "move_object",
+          params: {
+            objectId: object.id,
+            newX: spot.x,
+            newY: spot.y,
+            newRoomId: room.id,
+          },
+          issuedBy: "ai_001",
+        },
+        dialogue: `I moved the ${object.name} to grid (${spot.x}, ${spot.y}) in the ${room.name}.`,
+        roomName: room.name,
+        itemName: object.name,
+      };
+    }
+
     const room = targetRoom || layout.rooms[0];
 
     // 2. Detect requested item category or template
@@ -249,6 +292,70 @@ export class AriaBuildPlanner {
       }
     }
 
+    return null;
+  }
+
+  private findRequestedObject(
+    text: string,
+    objects: ReturnType<HouseBuilderEngine["getLayout"]>["placedObjects"]
+  ) {
+    const exactMatch = objects.find((object) =>
+      text.includes(object.id.toLowerCase()) ||
+      text.includes(object.name.toLowerCase())
+    );
+    if (exactMatch) return exactMatch;
+
+    const ignoredWords = new Set([
+      "move", "relocate", "reposition", "shift", "the", "a", "an", "to", "into",
+      "from", "in", "on", "at", "near", "closer", "please", "aria", "grid",
+      "room", "living", "study", "bedroom", "kitchen", "toilet", "balcony",
+      "patio", "garden", "hallway", "floor", "object", "furniture",
+    ]);
+    const requestWords = new Set(
+      text.match(/[a-z0-9_]+/g)?.filter((word) => word.length > 2 && !ignoredWords.has(word)) || []
+    );
+    return objects
+      .map((object) => {
+        const objectWords = new Set(
+          `${object.name} ${object.id} ${object.templateId} ${object.type}`
+            .toLowerCase()
+            .match(/[a-z0-9_]+/g) || []
+        );
+        const score = [...requestWords].filter((word) => objectWords.has(word)).length;
+        return { object, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)[0]?.object;
+  }
+
+  private findValidMoveSpot(
+    object: ReturnType<HouseBuilderEngine["getLayout"]>["placedObjects"][number],
+    room: HouseRoom
+  ): { x: number; y: number } | null {
+    const layout = this.houseBuilder.getLayout();
+    for (let y = room.y + 1; y <= room.y + room.height - object.height - 1; y++) {
+      for (let x = room.x + 1; x <= room.x + room.width - object.width - 1; x++) {
+        const overlapsObject = object.isSolid && layout.placedObjects.some((other) =>
+          other.id !== object.id &&
+          other.isSolid &&
+          x < other.x + other.width &&
+          x + object.width > other.x &&
+          y < other.y + other.height &&
+          y + object.height > other.y
+        );
+        const overlapsDoor = object.isSolid && layout.doors.some((door) => {
+          const doorWidth = door.orientation === "horizontal" ? door.width : 1;
+          const doorHeight = door.orientation === "vertical" ? door.width : 1;
+          return (
+            x < door.x + doorWidth &&
+            x + object.width > door.x &&
+            y < door.y + doorHeight &&
+            y + object.height > door.y
+          );
+        });
+        if (!overlapsObject && !overlapsDoor) return { x, y };
+      }
+    }
     return null;
   }
 }

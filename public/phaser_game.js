@@ -15,6 +15,8 @@ class HouseScene extends Phaser.Scene {
     this.CELL_SIZE = 20;
     this.WORLD_WIDTH = this.GRID_COLS * this.CELL_SIZE; // 800
     this.WORLD_HEIGHT = this.GRID_ROWS * this.CELL_SIZE; // 760
+    this.fitZoom = 1;
+    this.zoomMultiplier = 1;
 
     // Data State
     this.layout = null;
@@ -43,6 +45,9 @@ class HouseScene extends Phaser.Scene {
     this.dragStartY = 0;
     this.cameraStartX = 0;
     this.cameraStartY = 0;
+    this.pointerGesture = null;
+    this.pointerObjectTarget = null;
+    this.selectedPlacedDisplay = null;
 
     // Rendered Display Object Maps
     this.roomGraphicsMap = new Map();
@@ -58,7 +63,9 @@ class HouseScene extends Phaser.Scene {
     // Setup World bounds
     this.cameras.main.setBounds(0, 0, this.WORLD_WIDTH, this.WORLD_HEIGHT);
     this.cameras.main.centerOn(this.WORLD_WIDTH / 2, this.WORLD_HEIGHT / 2);
-    this.cameras.main.setZoom(1.0);
+    this.cameras.main.roundPixels = true;
+    this.scale.on('resize', this.resizeCameraToFit, this);
+    this.resizeCameraToFit(this.scale.gameSize);
 
     // Create Layers
     this.foundationLayer = this.add.graphics();
@@ -98,32 +105,85 @@ class HouseScene extends Phaser.Scene {
 
     // Wheel Zoom
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
-      const zoomFactor = deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Phaser.Math.Clamp(cam.zoom * zoomFactor, 0.6, 2.4);
-      cam.zoomTo(newZoom, 120, 'Sine.easeInOut');
+      const worldPoint = cam.getWorldPoint(pointer.x, pointer.y);
+      const zoomFactor = Math.exp(-deltaY * 0.001);
+      this.zoomMultiplier = Phaser.Math.Clamp(this.zoomMultiplier * zoomFactor, 0.6, 2.4);
+      const newZoom = this.fitZoom * this.zoomMultiplier;
+      cam.setZoom(newZoom);
+      this.updateCameraBounds(newZoom);
+      this.updateZoomStatus();
+      const zoomedWorldPoint = cam.getWorldPoint(pointer.x, pointer.y);
+      cam.setScroll(
+        cam.scrollX + worldPoint.x - zoomedWorldPoint.x,
+        cam.scrollY + worldPoint.y - zoomedWorldPoint.y
+      );
     });
 
-    // Pointer Drag to Pan (Middle click or Left click drag on empty background)
+    // Left drag pans the map; in Build & Edit, dragging an object moves it instead.
     this.input.on('pointerdown', (pointer) => {
-      if (pointer.button === 1 || (pointer.button === 0 && !this.selectedCatalogItem && pointer.event.shiftKey)) {
-        this.isDraggingCamera = true;
-        this.dragStartX = pointer.x;
-        this.dragStartY = pointer.y;
-        this.cameraStartX = cam.scrollX;
-        this.cameraStartY = cam.scrollY;
-      }
+      if (pointer.rightButtonDown()) return;
+
+      const isMiddleButton = pointer.button === 1;
+      const isLeftButton = pointer.button === 0;
+      if (!isMiddleButton && !isLeftButton) return;
+
+      const forcePan = isMiddleButton || this.keySpace?.isDown === true;
+      const target = this.pointerObjectTarget;
+      this.pointerObjectTarget = null;
+      const shouldMoveObject = isLeftButton && !forcePan && this.isBuildMode && !!target;
+      const shouldPlaceItem = isLeftButton && !forcePan && this.isBuildMode && !!this.selectedCatalogItem && !target;
+      const worldPoint = cam.getWorldPoint(pointer.x, pointer.y);
+      const object = shouldMoveObject ? target.obj : null;
+
+      this.pointerGesture = {
+        startX: pointer.x,
+        startY: pointer.y,
+        startScrollX: cam.scrollX,
+        startScrollY: cam.scrollY,
+        moved: false,
+        button: pointer.button,
+        kind: shouldMoveObject ? 'object' : shouldPlaceItem ? 'place' : 'pan',
+        object,
+        display: shouldMoveObject ? target.display : null,
+        target,
+        grabOffsetX: object ? worldPoint.x - object.x * this.CELL_SIZE : 0,
+        grabOffsetY: object ? worldPoint.y - object.y * this.CELL_SIZE : 0
+      };
+      if (this.game.canvas) this.game.canvas.style.cursor = 'grabbing';
     });
 
     this.input.on('pointermove', (pointer) => {
-      if (this.isDraggingCamera) {
-        const dx = (pointer.x - this.dragStartX) / cam.zoom;
-        const dy = (pointer.y - this.dragStartY) / cam.zoom;
-        cam.setScroll(this.cameraStartX - dx, this.cameraStartY - dy);
+      const gesture = this.pointerGesture;
+      if (gesture && pointer.isDown) {
+        const dx = pointer.x - gesture.startX;
+        const dy = pointer.y - gesture.startY;
+        if (!gesture.moved && Math.hypot(dx, dy) >= 6) {
+          gesture.moved = true;
+          if (gesture.kind === 'place') gesture.kind = 'pan';
+          this.isDraggingCamera = gesture.kind === 'pan';
+        }
+
+        if (gesture.moved && gesture.kind === 'pan') {
+          cam.setScroll(
+            gesture.startScrollX - dx / cam.zoom,
+            gesture.startScrollY - dy / cam.zoom
+          );
+        } else if (gesture.moved && gesture.kind === 'object') {
+          this.updateDraggedObject(gesture, pointer);
+        }
       }
+      this.updateCoordinateStatus(pointer);
     });
 
-    this.input.on('pointerup', () => {
-      this.isDraggingCamera = false;
+    this.input.on('pointerup', (pointer) => this.finishPointerGesture(pointer));
+    this.input.on('pointerupoutside', (pointer) => {
+      if (this.pointerGesture?.moved) {
+        this.finishPointerGesture(pointer);
+      } else {
+        this.pointerGesture = null;
+        this.isDraggingCamera = false;
+        if (this.game.canvas) this.game.canvas.style.cursor = 'grab';
+      }
     });
 
     // Keyboard Pan (WASD / Arrows)
@@ -134,6 +194,7 @@ class HouseScene extends Phaser.Scene {
     this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     this.keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
     this.keyEscape = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     // Rotate Ghost Key (R)
     this.keyR.on('down', () => {
@@ -151,6 +212,179 @@ class HouseScene extends Phaser.Scene {
     });
   }
 
+  updateDraggedObject(gesture, pointer) {
+    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const x = Math.floor((worldPoint.x - gesture.grabOffsetX) / this.CELL_SIZE);
+    const y = Math.floor((worldPoint.y - gesture.grabOffsetY) / this.CELL_SIZE);
+    const room = this.layout.rooms.find((candidate) =>
+      x >= candidate.x &&
+      y >= candidate.y &&
+      x + gesture.object.width <= candidate.x + candidate.width &&
+      y + gesture.object.height <= candidate.y + candidate.height
+    );
+    const valid = !!room && this.isValidObjectMove(gesture.object, x, y);
+
+    gesture.newX = x;
+    gesture.newY = y;
+    gesture.newRoomId = room?.id;
+    gesture.valid = valid;
+
+    const width = gesture.object.width * this.CELL_SIZE;
+    const height = gesture.object.height * this.CELL_SIZE;
+    gesture.display.setPosition(
+      x * this.CELL_SIZE + width / 2,
+      y * this.CELL_SIZE + height / 2
+    );
+    gesture.display.setAlpha(valid ? 0.85 : 0.4);
+    if (this.selectionHighlight) {
+      this.selectionHighlight.setPosition(
+        (x - gesture.object.x) * this.CELL_SIZE,
+        (y - gesture.object.y) * this.CELL_SIZE
+      );
+    }
+  }
+
+  isValidObjectMove(object, x, y) {
+    if (
+      x < 0 ||
+      y < 0 ||
+      x + object.width > this.GRID_COLS ||
+      y + object.height > this.GRID_ROWS
+    ) return false;
+
+    if (object.isSolid) {
+      for (const other of this.layout.placedObjects) {
+        if (other.id === object.id || !other.isSolid) continue;
+        if (
+          x < other.x + other.width &&
+          x + object.width > other.x &&
+          y < other.y + other.height &&
+          y + object.height > other.y
+        ) return false;
+      }
+
+      for (const door of this.layout.doors || []) {
+        const doorWidth = door.orientation === 'horizontal' ? door.width : 1;
+        const doorHeight = door.orientation === 'vertical' ? door.width : 1;
+        if (
+          x < door.x + doorWidth &&
+          x + object.width > door.x &&
+          y < door.y + doorHeight &&
+          y + object.height > door.y
+        ) return false;
+      }
+    }
+
+    return true;
+  }
+
+  finishPointerGesture(pointer) {
+    const gesture = this.pointerGesture;
+    if (!gesture) return;
+
+    this.pointerGesture = null;
+    this.isDraggingCamera = false;
+
+    if (gesture.moved && gesture.kind === 'object') {
+      gesture.display.setAlpha(1);
+      if (!gesture.valid) {
+        this.deselectPlacedObject();
+        this.updateLayout(this.layout);
+        if (typeof window.showToast === 'function') {
+          window.showToast('That spot is outside a room or blocked.', true);
+        }
+        return;
+      }
+      this.movePlacedObject(gesture);
+      return;
+    }
+
+    if (gesture.moved || gesture.button !== 0) return;
+
+    if (gesture.target) {
+      if (!this.isBuildMode && typeof window.openObjectModal === 'function') {
+        window.openObjectModal(gesture.target.obj.id);
+      }
+      return;
+    }
+
+    if (gesture.kind === 'place') {
+      this.updateGhostPreview(pointer);
+      if (this.ghostIsValid) {
+        this.executePlacement(this.ghostGridX, this.ghostGridY);
+      } else {
+        this.showPlacementErrorFx(this.ghostGridX, this.ghostGridY);
+      }
+      return;
+    }
+
+    if (!this.isBuildMode && !this.selectedCatalogItem) {
+      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+      this.handleFloorClickToWalk(
+        Math.floor(worldPoint.x / this.CELL_SIZE),
+        Math.floor(worldPoint.y / this.CELL_SIZE),
+        worldPoint
+      );
+    }
+  }
+
+  movePlacedObject(gesture) {
+    fetch('/api/house/build', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'move_object',
+        params: {
+          objectId: gesture.object.id,
+          newX: gesture.newX,
+          newY: gesture.newY,
+          newRoomId: gesture.newRoomId
+        },
+        issuedBy: 'player_001'
+      })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || !data.success || !data.layout) {
+          throw new Error(data.message || `Move failed (HTTP ${res.status})`);
+        }
+        this.deselectPlacedObject();
+        this.updateLayout(data.layout);
+        if (typeof window.showToast === 'function') {
+          window.showToast(`Moved ${gesture.object.name} to ${gesture.newRoomId}.`);
+        }
+      })
+      .catch((err) => {
+        console.error('Object move failed:', err);
+        this.deselectPlacedObject();
+        this.updateLayout(this.layout);
+        if (typeof window.showToast === 'function') {
+          window.showToast(err.message || 'Could not move item.', true);
+        }
+      });
+  }
+
+  setCoordinateStatus(text) {
+    const status = document.getElementById('map-coordinate-status');
+    if (status) status.textContent = text;
+  }
+
+  updateCoordinateStatus(pointer) {
+    if (!this.isBuildMode) return;
+    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const x = Math.floor(worldPoint.x / this.CELL_SIZE);
+    const y = Math.floor(worldPoint.y / this.CELL_SIZE);
+    const room = this.layout?.rooms?.find((candidate) =>
+      x >= candidate.x &&
+      x < candidate.x + candidate.width &&
+      y >= candidate.y &&
+      y < candidate.y + candidate.height
+    );
+    this.setCoordinateStatus(
+      room ? `Grid (${x}, ${y}) · ${room.name}` : `Grid (${x}, ${y})`
+    );
+  }
+
   /**
    * Pointer interactions: click-to-walk, placement, object selection
    */
@@ -158,32 +392,6 @@ class HouseScene extends Phaser.Scene {
     this.input.on('pointermove', (pointer) => {
       if (this.isBuildMode && this.selectedCatalogItem) {
         this.updateGhostPreview(pointer);
-      }
-    });
-
-    // Left click handling
-    this.input.on('pointerdown', (pointer) => {
-      // Ignore right clicks here (handled separately for info cards)
-      if (pointer.rightButtonDown()) return;
-
-      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-      const gridX = Math.floor(worldPoint.x / this.CELL_SIZE);
-      const gridY = Math.floor(worldPoint.y / this.CELL_SIZE);
-
-      if (this.isBuildMode) {
-        if (this.selectedCatalogItem) {
-          // Place item
-          if (this.ghostIsValid) {
-            this.executePlacement(gridX, gridY);
-          } else {
-            this.showPlacementErrorFx(gridX, gridY);
-          }
-        }
-      } else {
-        // LIVE MODE: Click to walk if clicking on walkable floor
-        if (!this.selectedCatalogItem) {
-          this.handleFloorClickToWalk(gridX, gridY, worldPoint);
-        }
       }
     });
 
@@ -206,6 +414,14 @@ class HouseScene extends Phaser.Scene {
    * Listen to events triggered from app.js / UI
    */
   setupBridgeEvents() {
+    window.addEventListener('mapFullscreenChanged', (e) => {
+      requestAnimationFrame(() => {
+        const parent = this.game.canvas.parentElement;
+        if (parent) this.scale.setParentSize(parent.clientWidth, parent.clientHeight);
+        if (e.detail?.enabled) this.resetCamera();
+      });
+    });
+
     window.addEventListener('houseStateLoaded', (e) => {
       if (e.detail) this.initHouseData(e.detail);
     });
@@ -244,8 +460,11 @@ class HouseScene extends Phaser.Scene {
     window.addEventListener('cameraZoom', (e) => {
       const cam = this.cameras.main;
       const factor = e.detail?.direction === 'in' ? 1.25 : 0.8;
-      const newZoom = Phaser.Math.Clamp(cam.zoom * factor, 0.6, 2.4);
+      this.zoomMultiplier = Phaser.Math.Clamp(this.zoomMultiplier * factor, 0.6, 2.4);
+      const newZoom = this.fitZoom * this.zoomMultiplier;
+      this.updateCameraBounds(newZoom);
       cam.zoomTo(newZoom, 150, 'Sine.easeInOut');
+      this.updateZoomStatus();
     });
   }
 
@@ -372,15 +591,24 @@ class HouseScene extends Phaser.Scene {
       };
       const icon = roomIcons[room.type] || '🏠';
 
+      if (room.type === 'hallway') {
+        this.floorLayer.lineStyle(1, 0xcbd5e1, 0.22);
+        this.floorLayer.strokeLineShape(new Phaser.Geom.Line(rx + 2, ry + rh / 2, rx + rw - 2, ry + rh / 2));
+        continue;
+      }
+
       const labelText = this.add.text(rx + rw / 2, ry + 16, `${icon} ${room.name.toUpperCase()}`, {
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        fontSize: '11px',
+        fontSize: '19px',
+        resolution: 2,
         fontWeight: 'bold',
         color: '#ffffff',
+        backgroundColor: 'rgba(7, 10, 17, 0.72)',
+        padding: { x: 5, y: 3 },
         stroke: '#000000',
-        strokeThickness: 3
+        strokeThickness: 1
       });
-      labelText.setAlpha(0.7);
+      labelText.setAlpha(0.88);
       labelText.setOrigin(0.5, 0.5);
       this.decorLayer.add(labelText);
     }
@@ -393,6 +621,12 @@ class HouseScene extends Phaser.Scene {
     this.wallLayer.clear();
     if (!this.layout?.walls) return;
 
+    const hallwayCell = (x, y) => this.layout.rooms.some(room =>
+      room.type === 'hallway' &&
+      x >= room.x && x < room.x + room.width &&
+      y >= room.y && y < room.y + room.height
+    );
+
     for (const wall of this.layout.walls) {
       const x1 = wall.x1 * this.CELL_SIZE;
       const y1 = wall.y1 * this.CELL_SIZE;
@@ -403,18 +637,44 @@ class HouseScene extends Phaser.Scene {
       const color = isExt ? 0x2d3748 : 0x1f2937;
       const highlight = isExt ? 0x4a5568 : 0x374151;
       const thickness = isExt ? 8 : 6;
+      const drawSegment = (startX, startY, endX, endY) => {
+        this.wallLayer.lineStyle(thickness + 2, 0x050811, 0.7);
+        this.wallLayer.strokeLineShape(new Phaser.Geom.Line(startX, startY + 2, endX, endY + 2));
+        this.wallLayer.lineStyle(thickness, color, 1.0);
+        this.wallLayer.strokeLineShape(new Phaser.Geom.Line(startX, startY, endX, endY));
+        this.wallLayer.lineStyle(1.5, highlight, 0.6);
+        this.wallLayer.strokeLineShape(new Phaser.Geom.Line(startX, startY, endX, endY));
+      };
 
-      // Shadow
-      this.wallLayer.lineStyle(thickness + 2, 0x050811, 0.7);
-      this.wallLayer.strokeLineShape(new Phaser.Geom.Line(x1, y1 + 2, x2, y2 + 2));
-
-      // Main Wall Line
-      this.wallLayer.lineStyle(thickness, color, 1.0);
-      this.wallLayer.strokeLineShape(new Phaser.Geom.Line(x1, y1, x2, y2));
-
-      // Wall Rim Accent
-      this.wallLayer.lineStyle(1.5, highlight, 0.6);
-      this.wallLayer.strokeLineShape(new Phaser.Geom.Line(x1, y1, x2, y2));
+      if (wall.y1 === wall.y2) {
+        let runStart = null;
+        const minX = Math.min(wall.x1, wall.x2);
+        const maxX = Math.max(wall.x1, wall.x2);
+        for (let x = minX; x <= maxX + 1; x++) {
+          const open = x <= maxX && hallwayCell(x, wall.y1);
+          if (open && runStart === null) {
+            runStart = x;
+          } else if (!open && runStart !== null) {
+            drawSegment(runStart * this.CELL_SIZE, y1, x * this.CELL_SIZE, y1);
+            runStart = null;
+          }
+        }
+      } else if (wall.x1 === wall.x2) {
+        let runStart = null;
+        const minY = Math.min(wall.y1, wall.y2);
+        const maxY = Math.max(wall.y1, wall.y2);
+        for (let y = minY; y <= maxY + 1; y++) {
+          const open = y <= maxY && hallwayCell(wall.x1, y);
+          if (open && runStart === null) {
+            runStart = y;
+          } else if (!open && runStart !== null) {
+            drawSegment(x1, runStart * this.CELL_SIZE, x1, y * this.CELL_SIZE);
+            runStart = null;
+          }
+        }
+      } else {
+        drawSegment(x1, y1, x2, y2);
+      }
     }
   }
 
@@ -495,9 +755,8 @@ class HouseScene extends Phaser.Scene {
    * Create an interactive Phaser container for a placed object
    */
   createPlacedObjectDisplay(obj) {
-    const isRotated = obj.rotation === 90 || obj.rotation === 270;
-    const w = (isRotated ? obj.height : obj.width) * this.CELL_SIZE;
-    const h = (isRotated ? obj.width : obj.height) * this.CELL_SIZE;
+    const w = obj.width * this.CELL_SIZE;
+    const h = obj.height * this.CELL_SIZE;
     const cx = obj.x * this.CELL_SIZE + w / 2;
     const cy = obj.y * this.CELL_SIZE + h / 2;
 
@@ -512,38 +771,50 @@ class HouseScene extends Phaser.Scene {
 
     // Main Body Box
     const bodyColor = Phaser.Display.Color.HexStringToColor(obj.color || '#475569').color;
+    const customData = obj.customData || {};
+    const edgeColor = Phaser.Display.Color.HexStringToColor(customData.edgeColor || '#ffffff').color;
+    const edgeWidth = Number.isFinite(customData.edgeWidth) ? customData.edgeWidth : 1.5;
+    const cornerRadius = Number.isFinite(customData.cornerRadius) ? customData.cornerRadius : 4;
     const box = this.add.graphics();
     box.fillStyle(bodyColor, 0.95);
-    box.fillRoundedRect(-w / 2, -h / 2, w, h, 4);
+    box.fillRoundedRect(-w / 2, -h / 2, w, h, cornerRadius);
 
     // Border line
-    box.lineStyle(1.5, 0xffffff, 0.25);
-    box.strokeRoundedRect(-w / 2, -h / 2, w, h, 4);
+    box.lineStyle(edgeWidth, edgeColor, 0.8);
+    box.strokeRoundedRect(-w / 2, -h / 2, w, h, cornerRadius);
     container.add(box);
 
     // Emoji Icon (Crisp System Emoji)
-    const iconFontSize = Math.min(Math.max(12, Math.floor(Math.min(w, h) * 0.55)), 28);
+    const iconFontSize = Math.min(Math.max(15, Math.floor(Math.min(w, h) * 0.7)), 32);
     const icon = this.add.text(0, 0, obj.icon || '📦', {
       fontFamily: 'Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif',
-      fontSize: `${iconFontSize}px`
+      fontSize: `${iconFontSize}px`,
+      resolution: 2
     });
     icon.setOrigin(0.5, 0.5);
     container.add(icon);
 
     // Compact Label if size allows
-    if (w >= 40 && h >= 24) {
-      const shortName = obj.name.length > 12 ? obj.name.substring(0, 11) + '..' : obj.name;
-      const label = this.add.text(0, h / 2 - 6, shortName, {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '9px',
-        fontWeight: 'bold',
-        color: '#f8fafc',
-        stroke: '#000000',
-        strokeThickness: 2
-      });
-      label.setOrigin(0.5, 0.5);
-      container.add(label);
-    }
+    const labelText = customData.labelText?.trim() || obj.name;
+    const fontSize = Number.isFinite(customData.fontSize)
+      ? customData.fontSize
+      : Math.min(18, Math.max(12, 240 / Math.max(labelText.length, 1)));
+    const label = this.add.text(0, 0, labelText, {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: `${fontSize}px`,
+      resolution: 2,
+      fontWeight: 'bold',
+      color: customData.labelColor || '#f8fafc',
+      backgroundColor: 'rgba(8, 11, 18, 0.96)',
+      padding: { x: 6, y: 4 },
+      stroke: '#000000',
+      strokeThickness: 1,
+      align: 'center'
+    });
+    label.setOrigin(0.5, 0.5);
+    label.setVisible(false);
+    container.add(label);
+    container.setData('nameLabel', label);
 
     // Interactive Hit Area
     container.setSize(w, h);
@@ -553,32 +824,32 @@ class HouseScene extends Phaser.Scene {
     container.on('pointerover', () => {
       box.clear();
       box.fillStyle(bodyColor, 1.0);
-      box.fillRoundedRect(-w / 2, -h / 2, w, h, 4);
-      box.lineStyle(2.5, 0x38bdf8, 0.9); // Cyan glowing border
-      box.strokeRoundedRect(-w / 2, -h / 2, w, h, 4);
+      box.fillRoundedRect(-w / 2, -h / 2, w, h, cornerRadius);
+      box.lineStyle(Math.max(2.5, edgeWidth), 0x38bdf8, 0.9);
+      box.strokeRoundedRect(-w / 2, -h / 2, w, h, cornerRadius);
     });
 
     container.on('pointerout', () => {
+      if (this.selectedPlacedObject?.id !== obj.id) label.setVisible(false);
       box.clear();
       box.fillStyle(bodyColor, 0.95);
-      box.fillRoundedRect(-w / 2, -h / 2, w, h, 4);
-      box.lineStyle(1.5, 0xffffff, 0.25);
-      box.strokeRoundedRect(-w / 2, -h / 2, w, h, 4);
+      box.fillRoundedRect(-w / 2, -h / 2, w, h, cornerRadius);
+      box.lineStyle(edgeWidth, edgeColor, 0.8);
+      box.strokeRoundedRect(-w / 2, -h / 2, w, h, cornerRadius);
     });
 
     // Left Click Handling
     container.on('pointerdown', (pointer) => {
       if (pointer.rightButtonDown()) return; // Handled by canvas contextmenu
-
+      this.pointerObjectTarget = { obj, display: container };
       if (this.isBuildMode) {
-        this.selectPlacedObject(obj, container);
-      } else {
-        // Live Mode: open interaction modal
-        if (typeof window.openObjectModal === 'function') {
-          window.openObjectModal(obj.id);
+        if (!this.keySpace?.isDown && pointer.button !== 1) {
+          this.cancelGhostPlacement();
+          this.selectPlacedObject(obj, container);
         }
       }
     });
+    container.on('pointerover', () => label.setVisible(true));
 
     return container;
   }
@@ -629,7 +900,8 @@ class HouseScene extends Phaser.Scene {
     // Avatar Letter/Emoji
     const text = this.add.text(0, 0, emoji, {
       fontFamily: 'Apple Color Emoji, Segoe UI Emoji, system-ui, sans-serif',
-      fontSize: '13px'
+      fontSize: '16px',
+      resolution: 2
     });
     text.setOrigin(0.5, 0.5);
     container.add(text);
@@ -644,7 +916,8 @@ class HouseScene extends Phaser.Scene {
 
     const nameTag = this.add.text(0, -20, name, {
       fontFamily: 'system-ui, sans-serif',
-      fontSize: '10px',
+      fontSize: '15px',
+      resolution: 2,
       fontWeight: 'bold',
       color: '#ffffff'
     });
@@ -786,7 +1059,8 @@ class HouseScene extends Phaser.Scene {
     const shortText = text.length > 40 ? text.substring(0, 38) + '...' : text;
     const textObj = this.add.text(0, 0, `💬 "${shortText}"`, {
       fontFamily: 'system-ui, sans-serif',
-      fontSize: '11px',
+      fontSize: '12px',
+      resolution: 2,
       color: '#ffffff',
       backgroundColor: 'rgba(15, 23, 42, 0.9)',
       padding: { x: 8, y: 5 }
@@ -874,7 +1148,11 @@ class HouseScene extends Phaser.Scene {
 
   setBuildMode(enabled) {
     this.isBuildMode = enabled;
+    if (this.game.canvas) this.game.canvas.style.cursor = 'grab';
     this.gridLayer.setVisible(enabled);
+    this.setCoordinateStatus(enabled
+      ? 'Drag empty floor to pan · Click floor to place · Drag furniture to move · Space + drag pans anywhere'
+      : 'Drag to pan · Scroll to zoom at the cursor · Click a floor to walk');
     if (!enabled) {
       this.cancelGhostPlacement();
       this.deselectPlacedObject();
@@ -959,9 +1237,8 @@ class HouseScene extends Phaser.Scene {
     // 3. Collision with solid placed objects
     for (const obj of this.layout.placedObjects) {
       if (!obj.isSolid) continue;
-      const isRot = obj.rotation === 90 || obj.rotation === 270;
-      const objW = isRot ? obj.height : obj.width;
-      const objH = isRot ? obj.width : obj.height;
+      const objW = obj.width;
+      const objH = obj.height;
 
       // AABB overlap check
       const overlaps =
@@ -1070,13 +1347,14 @@ class HouseScene extends Phaser.Scene {
   selectPlacedObject(obj, displayContainer) {
     this.deselectPlacedObject();
     this.selectedPlacedObject = obj;
+    this.selectedPlacedDisplay = displayContainer;
+    displayContainer?.getData('nameLabel')?.setVisible(true);
 
     // Highlight selected object with animated golden ring
     this.selectionHighlight = this.add.graphics();
     this.selectionHighlight.lineStyle(3, 0xf59e0b, 1.0);
-    const isRot = obj.rotation === 90 || obj.rotation === 270;
-    const w = (isRot ? obj.height : obj.width) * this.CELL_SIZE;
-    const h = (isRot ? obj.width : obj.height) * this.CELL_SIZE;
+    const w = obj.width * this.CELL_SIZE;
+    const h = obj.height * this.CELL_SIZE;
     this.selectionHighlight.strokeRoundedRect(obj.x * this.CELL_SIZE - 2, obj.y * this.CELL_SIZE - 2, w + 4, h + 4, 6);
 
     // Notify UI toolbar about selected object
@@ -1084,6 +1362,8 @@ class HouseScene extends Phaser.Scene {
   }
 
   deselectPlacedObject() {
+    this.selectedPlacedDisplay?.getData('nameLabel')?.setVisible(false);
+    this.selectedPlacedDisplay = null;
     this.selectedPlacedObject = null;
     if (this.selectionHighlight) {
       this.selectionHighlight.destroy();
@@ -1101,15 +1381,23 @@ class HouseScene extends Phaser.Scene {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'rotate_object',
-        params: { id: this.selectedPlacedObject.id, rotation: newRot }
+        params: { objectId: this.selectedPlacedObject.id, angle: newRot }
       })
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.layout) {
-          this.updateLayout(data.layout);
-          this.deselectPlacedObject();
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || !data.success || !data.layout) {
+          throw new Error(data.message || `Rotate failed (HTTP ${res.status})`);
         }
+        return data;
+      })
+      .then((data) => {
+        this.updateLayout(data.layout);
+        this.deselectPlacedObject();
+      })
+      .catch((err) => {
+        console.error('Object rotation failed:', err);
+        if (typeof window.showToast === 'function') window.showToast(err.message || 'Could not rotate item.', true);
       });
   }
 
@@ -1122,7 +1410,37 @@ class HouseScene extends Phaser.Scene {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'remove_object',
-        params: { id: objId }
+        params: { objectId: objId }
+      })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || !data.success || !data.layout) {
+          throw new Error(data.message || `Remove failed (HTTP ${res.status})`);
+        }
+        return data;
+      })
+      .then((data) => {
+        this.updateLayout(data.layout);
+        this.deselectPlacedObject();
+        if (typeof window.showToast === 'function') {
+          window.showToast('Item demolished.');
+        }
+      })
+      .catch((err) => {
+        console.error('Object removal failed:', err);
+        if (typeof window.showToast === 'function') window.showToast(err.message || 'Could not remove item.', true);
+      });
+  }
+
+  editSelectedPlacedObject(changes) {
+    if (!this.selectedPlacedObject) return;
+    fetch('/api/house/build', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'edit_object',
+        params: { objectId: this.selectedPlacedObject.id, ...changes }
       })
     })
       .then((res) => res.json())
@@ -1130,10 +1448,14 @@ class HouseScene extends Phaser.Scene {
         if (data.success && data.layout) {
           this.updateLayout(data.layout);
           this.deselectPlacedObject();
-          if (typeof window.showToast === 'function') {
-            window.showToast('Item demolished.');
-          }
+          if (typeof window.showToast === 'function') window.showToast(data.message || 'Item updated');
+        } else if (typeof window.showToast === 'function') {
+          window.showToast(data.message || 'Could not update item', true);
         }
+      })
+      .catch((err) => {
+        console.error('Object edit failed:', err);
+        if (typeof window.showToast === 'function') window.showToast('Could not update item', true);
       });
   }
 
@@ -1146,9 +1468,8 @@ class HouseScene extends Phaser.Scene {
 
     // 1. Check if an object was right clicked
     const hitObj = this.layout.placedObjects.find((obj) => {
-      const isRot = obj.rotation === 90 || obj.rotation === 270;
-      const w = isRot ? obj.height : obj.width;
-      const h = isRot ? obj.width : obj.height;
+      const w = obj.width;
+      const h = obj.height;
       return gridX >= obj.x && gridX < obj.x + w && gridY >= obj.y && gridY < obj.y + h;
     });
 
@@ -1180,13 +1501,54 @@ class HouseScene extends Phaser.Scene {
     const token = this.characterTokens[type];
     if (token) {
       this.cameras.main.pan(token.x, token.y, 400, 'Sine.easeInOut');
-      this.cameras.main.zoomTo(1.2, 400, 'Sine.easeInOut');
+      this.zoomMultiplier = 1.2;
+      const zoom = this.fitZoom * this.zoomMultiplier;
+      this.updateCameraBounds(zoom);
+      this.cameras.main.zoomTo(zoom, 400, 'Sine.easeInOut');
+      this.updateZoomStatus();
     }
   }
 
   resetCamera() {
+    this.zoomMultiplier = 1;
+    this.updateCameraBounds(this.fitZoom);
     this.cameras.main.pan(this.WORLD_WIDTH / 2, this.WORLD_HEIGHT / 2, 400, 'Sine.easeInOut');
-    this.cameras.main.zoomTo(1.0, 400, 'Sine.easeInOut');
+    this.cameras.main.zoomTo(this.fitZoom, 400, 'Sine.easeInOut');
+    this.updateZoomStatus();
+  }
+
+  updateZoomStatus() {
+    const zoomLabel = document.getElementById('map-zoom-level');
+    if (zoomLabel) zoomLabel.textContent = `${Math.round(this.zoomMultiplier * 100)}%`;
+  }
+
+  updateCameraBounds(zoom = this.cameras.main.zoom) {
+    const width = this.scale.width;
+    const height = this.scale.height;
+    if (!width || !height || !zoom) return;
+    const horizontalMargin = Math.max(0, (width / zoom - this.WORLD_WIDTH) / 2);
+    const verticalMargin = Math.max(0, (height / zoom - this.WORLD_HEIGHT) / 2);
+    this.cameras.main.setBounds(
+      -horizontalMargin,
+      -verticalMargin,
+      this.WORLD_WIDTH + horizontalMargin * 2,
+      this.WORLD_HEIGHT + verticalMargin * 2
+    );
+  }
+
+  resizeCameraToFit(gameSize) {
+    const width = gameSize?.width || this.scale.width;
+    const height = gameSize?.height || this.scale.height;
+    if (!width || !height) return;
+
+    const centerX = this.cameras.main.midPoint?.x ?? this.WORLD_WIDTH / 2;
+    const centerY = this.cameras.main.midPoint?.y ?? this.WORLD_HEIGHT / 2;
+    this.fitZoom = Math.min(width / this.WORLD_WIDTH, height / this.WORLD_HEIGHT);
+    const zoom = this.fitZoom * this.zoomMultiplier;
+    this.cameras.main.setZoom(zoom);
+    this.updateCameraBounds(zoom);
+    this.cameras.main.centerOn(centerX, centerY);
+    this.updateZoomStatus();
   }
 }
 
@@ -1206,9 +1568,14 @@ window.initPhaserHouseGame = function (containerId, initialData) {
     width: 800,
     height: 760,
     backgroundColor: '#0a0d14',
+    render: {
+      antialias: true,
+      pixelArt: false,
+      roundPixels: false
+    },
     scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH
+      mode: Phaser.Scale.RESIZE,
+      autoCenter: Phaser.Scale.NO_CENTER
     },
     scene: [HouseScene]
   };

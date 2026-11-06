@@ -9,6 +9,7 @@ import { TagParser, ParsedAiEdits } from "./ai/TagParser.js";
 import { ConversationManager } from "./ai/ConversationManager.js";
 import { HouseCommand } from "./types/house.js";
 import { AriaBuildProposal } from "./ai/AriaBuildPlanner.js";
+import { executeHomeMapCommands, getHomeFloorCoordinates } from "./ai/HomeMapCommandProcessor.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,6 +69,7 @@ export function createServer(port = 3000) {
   }, 1000);
   const gemini = new GeminiWebProvider();
   const conversationManager = new ConversationManager();
+  const pendingHomeActionOutcomes = new Map<string, string[]>();
 
   const server = http.createServer(async (req, res) => {
     if (req.method === "OPTIONS") {
@@ -321,49 +323,64 @@ export function createServer(port = 3000) {
           return;
         }
         const clockTime = engine.timeEngine.getFormattedClock();
+        const conversationId = conversationManager.getActiveConversation().id;
+        const pendingOutcomes = pendingHomeActionOutcomes.get(conversationId) || [];
         conversationManager.addMessage("player", body.message.trim(), clockTime);
 
         let rawDialogue: string;
         if (!gemini.isConfigured) {
           // Contextual offline/fallback Aria responses with full building support
           const lower = body.message.trim().toLowerCase();
-          const isBuildRequest =
-            lower.includes("build") ||
-            lower.includes("decorate") ||
-            lower.includes("plant") ||
-            lower.includes("furniture") ||
-            lower.includes("table") ||
-            lower.includes("chair") ||
-            lower.includes("sofa") ||
-            lower.includes("floor") ||
-            lower.includes("add ") ||
-            lower.includes("lamp") ||
-            lower.includes("rug");
-
-          if (isBuildRequest) {
-            const proposal = engine.ariaBuildPlanner.parseNaturalLanguageRequest(body.message.trim());
-            if (proposal) {
-              engine.houseBuilder.executeCommand(proposal.command);
-              realtimePersistence.persist();
-              rawDialogue = `<dialogue>${proposal.dialogue}</dialogue><player_body>Standing and listening attentively, admiring the shared space.</player_body><ai_activity>Admiring the new ${proposal.itemName} in ${proposal.roomName}</ai_activity>`;
-            } else {
-              rawDialogue = `<dialogue>I'd love to make our place cozier! Let's check out what we can add together.</dialogue><player_body>Standing relaxed, talking about home improvements.</player_body>`;
-            }
+          if (lower.includes("coordinate") && (lower.includes("floor") || lower.includes("home") || lower.includes("map"))) {
+            rawDialogue = `<dialogue>Here is the current home floor map: ${JSON.stringify(getHomeFloorCoordinates(engine.houseBuilder.getLayout()))}</dialogue>`;
           } else {
-            const aiStep = engine.aiEngine.decideAndExecute("ai_001");
-            const actName = aiStep?.actionName || "looking around";
-            rawDialogue = `<dialogue>Hey Mohit. I was just ${actName.toLowerCase()}. Living together takes a bit of getting used to, but Jabalpur mornings have their own peaceful charm.</dialogue><player_body>Standing comfortably in the room, taking in the morning stillness.</player_body><ai_activity>${actName}</ai_activity>`;
+            const isBuildRequest =
+              lower.includes("build") ||
+              lower.includes("decorate") ||
+              lower.includes("plant") ||
+              lower.includes("furniture") ||
+              lower.includes("table") ||
+              lower.includes("chair") ||
+              lower.includes("sofa") ||
+              lower.includes("move ") ||
+              lower.includes("relocate ") ||
+              lower.includes("reposition ") ||
+              lower.includes("shift ") ||
+              lower.includes("floor") ||
+              lower.includes("add ") ||
+              lower.includes("lamp") ||
+              lower.includes("rug");
+
+            if (isBuildRequest) {
+              const proposal = engine.ariaBuildPlanner.parseNaturalLanguageRequest(body.message.trim());
+              if (proposal) {
+                const buildResult = engine.houseBuilder.executeCommand(proposal.command);
+                if (buildResult.success) {
+                  realtimePersistence.persist();
+                  rawDialogue = `<dialogue>${proposal.dialogue}</dialogue><player_body>Standing and listening attentively, admiring the shared space.</player_body><ai_activity>Admiring the ${proposal.itemName} in ${proposal.roomName}</ai_activity>`;
+                } else {
+                  rawDialogue = `<dialogue>I couldn't make that change: ${buildResult.message}</dialogue><player_body>Standing relaxed, talking about home improvements.</player_body>`;
+                }
+              } else {
+                rawDialogue = `<dialogue>I'd love to make our place cozier! Let's check out what we can add together.</dialogue><player_body>Standing relaxed, talking about home improvements.</player_body>`;
+              }
+            } else {
+              const aiStep = engine.aiEngine.decideAndExecute("ai_001");
+              const actName = aiStep?.actionName || "looking around";
+              rawDialogue = `<dialogue>Hey Mohit. I was just ${actName.toLowerCase()}. Living together takes a bit of getting used to, but Jabalpur mornings have their own peaceful charm.</dialogue><player_body>Standing comfortably in the room, taking in the morning stillness.</player_body><ai_activity>${actName}</ai_activity>`;
+            }
           }
         } else {
           const snapshot = engine.stateManager.getSnapshot();
           const room = engine.getCurrentRoomDetails();
+          const houseLayout = engine.houseBuilder.getLayout();
           const prompt = [
             "Roleplay as Aria, the player's roommate in an ongoing everyday-life simulation set in Jabalpur.",
             "Relationship: you and the player have been in conflict. Neither of you could find another suitable place to live, so you reluctantly share the same flat. The living arrangement is a source of awkwardness and friction, not instant friendship.",
             "Play the relationship with nuance: be guarded, irritated, defensive, or blunt when the moment calls for it, but let small courtesies, humor, vulnerability, and gradual changes emerge naturally. Do not force hostility into every exchange or resolve the conflict immediately. Let the player's words and the events of the shared life shape how you respond.",
             "Speak in first person as Aria, like a real person in a face-to-face conversation. Reply to what the player actually said; keep it conversational and usually to one or two short sentences. Use natural wording, occasional pauses or dry humor, and avoid narration, stage directions, dialogue labels, lists, and explanations unless the player asks for them.",
             "Use the simulation state for immediate continuity, such as where you are, what you are doing, the time, and your current mood or needs. Do not invent actions, objects, locations, or events that contradict it. You may refer to personal details or history only when they are genuinely available from the conversation context; do not fabricate shared memories or imply access to information you were not given.",
-            "Our conversation gets feeded to a visual interface renderer which accepts only those values which r predefined as options. Do not claim to change the game state, perform actions, or control the simulation; only the game engine can do that.",
+            "The game engine applies simulation changes. Do not claim an action or home edit succeeded until the game reports its result; only describe changes that the engine confirms.",
             "INTERFACE CONTROL INSTRUCTIONS:",
             "You can control and update what is displayed on the player's screen! Format your output using these exact XML tags:",
             "<dialogue>Your in-character spoken response to the player.</dialogue>",
@@ -383,7 +400,13 @@ export function createServer(port = 3000) {
             "<bladder_feeling>The player's bladder status (e.g. Comfortable, Needs restroom).</bladder_feeling>",
             "<time_weather>Weather and temperature description (e.g. ☀️ 26°C Clear Sky).</time_weather>",
             "<time_period>Time period tag (e.g. Morning Light, Afternoon Sun).</time_period>",
-            "Optional: If you and the player agree on adding or decorating something in the room, you can output a construction command: <build_command>{\"action\":\"place_object\",\"params\":{\"templateId\":\"monstera_001\",\"roomId\":\"study_room\",\"x\":28,\"y\":8}}</build_command>.",
+            "You and the player can collaboratively rearrange the home. For adding furniture, you can output a construction command: <build_command>{\"action\":\"place_object\",\"params\":{\"templateId\":\"monstera_001\",\"roomId\":\"study_room\",\"x\":28,\"y\":8}}</build_command>. Only move items that exist in the supplied home layout.",
+            "You can request a precise floor map by outputting &&coordinates_of_home_floor&&. The game will send you room bounds, occupied objects, and free single-cell coordinate runs in its next tool-result message.",
+            "To move an existing object, output &&&object_id-action:reposition;x,y;room_id&& (the room suffix is optional). Example: &&&desk_001-action:reposition;28,8;study_room&&. Use the exact object id from the supplied home layout and zero-based grid coordinates. The game will validate bounds, collisions, and doorways, then send the result back to you before your final reply.",
+            "Home coordinates are zero-based grid cells: x increases to the right, y increases downward, and each object's x/y is its top-left cell. Room x/y/width/height define the valid floor area. The floor query returns free coordinates for 1x1 objects; larger items need adjacent free cells and are validated on move.",
+            ...(pendingOutcomes.length > 0
+              ? [`Result of your previous home command(s); use this to maintain continuity: ${pendingOutcomes.join(" | ")}`]
+              : []),
             "Always provide <dialogue> and <player_body>. Any other tags are optional whenever you want to update or manipulate that specific screen element.",
             `Current simulation context (JSON): ${JSON.stringify({
               time: snapshot.time,
@@ -394,12 +417,28 @@ export function createServer(port = 3000) {
                 ambience: room.ambience,
                 objects: room.objects,
               },
+              home: {
+                grid: {
+                  cols: houseLayout.grid.cols,
+                  rows: houseLayout.grid.rows,
+                  coordinateSystem: "zero-based grid cells; x increases right, y increases down",
+                },
+                rooms: houseLayout.rooms.map(({ id, name, x, y, width, height }) => ({
+                  id, name, x, y, width, height,
+                })),
+                placedObjects: houseLayout.placedObjects.map(({
+                  id, name, roomId, x, y, width, height, rotation,
+                }) => ({
+                  id, name, roomId, x, y, width, height, rotation,
+                })),
+              },
             })}`,
             `The player says: ${JSON.stringify(body.message.trim())}`,
           ].join("\n\n");
 
           try {
             rawDialogue = await gemini.generateReply(prompt);
+            pendingHomeActionOutcomes.delete(conversationId);
           } catch (error) {
             console.error("Gemini dialogue request failed:", error);
             sendJson(
@@ -410,6 +449,32 @@ export function createServer(port = 3000) {
           }
         }
 
+        if (gemini.isConfigured) {
+          for (let round = 0; round < 3; round++) {
+            const toolResult = executeHomeMapCommands(rawDialogue, engine.houseBuilder);
+            rawDialogue = toolResult.response;
+            if (!toolResult.hasCommands) break;
+
+            if (round === 2) {
+              pendingHomeActionOutcomes.set(conversationId, toolResult.outcomes);
+              break;
+            }
+
+            try {
+              rawDialogue = await gemini.generateReply([
+                "Your previous response requested home-map tools. The game executed them.",
+                `The player's original message was: ${JSON.stringify(body.message.trim())}`,
+                `Tool results: ${toolResult.outcomes.join(" ")}`,
+                "Now continue the same conversation in character. Respond naturally to the player's original message, acknowledge what happened, and do not repeat tool commands unless another map operation is needed.",
+              ].join("\n\n"));
+            } catch (error) {
+              console.error("Could not send home-map tool results to Aria:", error);
+              pendingHomeActionOutcomes.set(conversationId, toolResult.outcomes);
+              break;
+            }
+          }
+        }
+
         const parsed = TagParser.parse(rawDialogue);
 
         // Execute build command if suggested by AI
@@ -417,8 +482,20 @@ export function createServer(port = 3000) {
           try {
             const buildCmd = JSON.parse(parsed.edits.build_command);
             buildCmd.issuedBy = "ai_001";
-            engine.houseBuilder.executeCommand(buildCmd);
-            realtimePersistence.persist();
+            const buildResult = engine.houseBuilder.executeCommand(buildCmd);
+            if (buildResult.success) {
+              realtimePersistence.persist();
+              pendingHomeActionOutcomes.set(conversationId, [
+                `Your build command succeeded: ${buildResult.message}.`,
+              ]);
+            } else {
+              console.warn("AI build command was rejected:", buildResult.message);
+              pendingHomeActionOutcomes.set(conversationId, [
+                `Your build command failed: ${buildResult.message}.`,
+              ]);
+              parsed.dialogue = `I couldn't make that change: ${buildResult.message}`;
+              parsed.edits.dialogue = parsed.dialogue;
+            }
           } catch (err) {
             console.warn("Could not parse build_command from AI:", err);
           }

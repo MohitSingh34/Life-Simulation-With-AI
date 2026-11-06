@@ -1,7 +1,7 @@
 {
   "id": "jabalpur_home_layout_001",
   "name": "Jabalpur Residence",
-  "version": 2,
+  "version": 4,
   "grid": {
     "cols": 40,
     "rows": 38,
@@ -74,17 +74,30 @@
       "description": "Welcoming living hall with plush sofa, 55-inch smart TV, coffee table, and plants."
     },
     {
-      "id": "balcony",
-      "name": "Balcony",
-      "type": "balcony",
-      "x": 21,
-      "y": 26,
-      "width": 18,
-      "height": 11,
-      "floorType": "terracotta",
-      "wallColor": "#f0fdf4",
-      "wallStyle": "brick",
-      "description": "Breezy open balcony with cane chairs, potted jasmine, and fresh morning air."
+      "id": "hall_north",
+      "name": "North Hall",
+      "type": "hallway",
+      "x": 1,
+      "y": 12,
+      "width": 38,
+      "height": 1,
+      "floorType": "wood",
+      "wallColor": "#94a3b8",
+      "wallStyle": "plaster",
+      "description": "A shared corridor connecting the north rooms."
+    },
+    {
+      "id": "hall_south",
+      "name": "South Hall",
+      "type": "hallway",
+      "x": 1,
+      "y": 24,
+      "width": 38,
+      "height": 1,
+      "floorType": "wood",
+      "wallColor": "#94a3b8",
+      "wallStyle": "plaster",
+      "description": "A shared corridor connecting the south rooms."
     }
   ],
   "walls": [
@@ -229,16 +242,6 @@
       "y": 24,
       "width": 2,
       "orientation": "horizontal",
-      "isOpen": true
-    },
-    {
-      "id": "door_living_balcony",
-      "roomA": "living_room",
-      "roomB": "balcony",
-      "x": 20,
-      "y": 30,
-      "width": 2,
-      "orientation": "vertical",
       "isOpen": true
     }
   ],
@@ -705,8 +708,8 @@
       "name": "Ceramic Bathroom Washbasin",
       "type": "fixture",
       "roomId": "toilet",
-      "x": 27,
-      "y": 15,
+      "x": 26,
+      "y": 14,
       "width": 3,
       "height": 2,
       "rotation": 0,
@@ -875,91 +878,6 @@
       "placedAt": "2026-11-05T20:06:32.213Z"
     },
     {
-      "id": "cane_chair_001",
-      "templateId": "cane_chair_001",
-      "name": "Balcony Cane Chair",
-      "type": "furniture",
-      "roomId": "balcony",
-      "x": 23,
-      "y": 28,
-      "width": 2,
-      "height": 2,
-      "rotation": 0,
-      "icon": "🪑",
-      "color": "#ca8a04",
-      "state": "empty",
-      "isSolid": true,
-      "interactions": [
-        "sit_balcony_chair",
-        "stand_up"
-      ],
-      "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
-    },
-    {
-      "id": "bistro_table_001",
-      "templateId": "bistro_table_001",
-      "name": "Balcony Bistro Table",
-      "type": "furniture",
-      "roomId": "balcony",
-      "x": 26,
-      "y": 28,
-      "width": 2,
-      "height": 2,
-      "rotation": 0,
-      "icon": "☕",
-      "color": "#334155",
-      "state": "clean",
-      "isSolid": true,
-      "interactions": [
-        "offer_chai"
-      ],
-      "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
-    },
-    {
-      "id": "planters_001",
-      "templateId": "balcony_planters_001",
-      "name": "Jasmine & Marigold Planters",
-      "type": "plant",
-      "roomId": "balcony",
-      "x": 30,
-      "y": 34,
-      "width": 4,
-      "height": 1,
-      "rotation": 0,
-      "icon": "🌸",
-      "color": "#ec4899",
-      "state": "moist",
-      "isSolid": false,
-      "interactions": [
-        "water_balcony_plants"
-      ],
-      "placedBy": "ai_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
-    },
-    {
-      "id": "fairy_lights_001",
-      "templateId": "fairy_lights_001",
-      "name": "Balcony Fairy Lights",
-      "type": "lighting",
-      "roomId": "balcony",
-      "x": 24,
-      "y": 35,
-      "width": 4,
-      "height": 1,
-      "rotation": 0,
-      "icon": "✨",
-      "color": "#fef08a",
-      "state": "on",
-      "isSolid": false,
-      "interactions": [
-        "lean_on_railing"
-      ],
-      "placedBy": "ai_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
-    },
-    {
       "id": "monstera_mw402gpn",
       "templateId": "monstera_001",
       "name": "Potted Monstera Deliciosa",
@@ -982,6 +900,6 @@
       "placedAt": "2026-11-05T20:30:24.539Z"
     }
   ],
-  "lastModified": "2026-11-05T20:30:24.540Z",
-  "modifiedBy": "ai_001"
+  "lastModified": "2026-11-06T15:23:55.202Z",
+  "modifiedBy": "player_001"
 }

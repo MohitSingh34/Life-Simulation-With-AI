@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { HouseBuilderEngine } from "./engine/HouseBuilderEngine.js";
 import { AriaBuildPlanner } from "./ai/AriaBuildPlanner.js";
+import { executeHomeMapCommands, getHomeFloorCoordinates } from "./ai/HomeMapCommandProcessor.js";
 import { StateManager } from "./engine/StateManager.js";
 
 console.log("=== RUNNING HOUSE BUILDER & 2D NAVIGATION TEST SUITE ===");
@@ -17,13 +18,14 @@ try {
   const stateManager = new StateManager();
   const builder = new HouseBuilderEngine(stateManager, tempStateFile);
   const layout = builder.getLayout();
+  const initialLayoutForMigration = JSON.parse(JSON.stringify(layout));
 
-  assert.equal(layout.rooms.length, 6, "Must initialize with 6 rooms");
+  assert.equal(layout.rooms.length, 8, "Must initialize with 6 rooms and 2 connecting halls");
   assert.ok(layout.placedObjects.length >= 20, "Must initialize with placed objects");
   assert.ok(layout.doors.length >= 6, "Must initialize with connecting doors");
   assert.equal(layout.grid.cols, 40, "Grid columns must be 40");
   assert.equal(layout.grid.rows, 38, "Grid rows must be 38");
-  console.log(`✓ Loaded default Jabalpur layout with ${layout.rooms.length} rooms and ${layout.placedObjects.length} objects.`);
+  console.log(`✓ Loaded default Jabalpur layout with ${layout.rooms.length} rooms/halls and ${layout.placedObjects.length} objects.`);
 
   // 2. Catalog Lookup
   console.log("\n[TEST 2] Testing Build Item Catalog...");
@@ -104,6 +106,83 @@ try {
   assert.equal(placedPlant?.y, 34);
   console.log("✓ move_object successfully moved item.");
 
+  const fractionalMoveRes = builder.executeCommand({
+    action: "move_object",
+    params: { objectId: plantId, newX: 4.5, newY: 34 },
+    issuedBy: "player_001",
+  });
+  assert.equal(fractionalMoveRes.success, false, "Move coordinates must use whole grid cells");
+
+  const overlappingBedMoveRes = builder.executeCommand({
+    action: "move_object",
+    params: { objectId: "bed_001", newX: 8, newY: 2 },
+    issuedBy: "player_001",
+  });
+  assert.equal(overlappingBedMoveRes.success, false, "Solid objects cannot be moved onto other furniture");
+
+  const planner = new AriaBuildPlanner(builder);
+  const moveProposal = planner.parseNaturalLanguageRequest(
+    `Aria, reposition ${plantId} to grid (5, 34)`
+  );
+  assert.equal(moveProposal?.command.action, "move_object");
+  assert.deepEqual(moveProposal?.command.params, {
+    objectId: plantId,
+    newX: 5,
+    newY: 34,
+    newRoomId: "living_room",
+  });
+  const aiMoveRes = builder.executeCommand(moveProposal!.command);
+  assert.equal(aiMoveRes.success, true, "Aria's coordinate-based move command should execute");
+  assert.equal(placedPlant?.x, 5);
+  console.log("✓ Aria can relocate existing objects using grid coordinates.");
+
+  const editRes = builder.executeCommand({
+    action: "edit_object",
+    params: {
+      objectId: plantId,
+      name: "Large Floor Plant",
+      width: 2,
+      height: 1,
+      color: "#22aa66",
+      customData: {
+        labelText: "Monstera",
+        labelColor: "#ffffff",
+        fontSize: 12,
+        edgeColor: "#112233",
+        edgeWidth: 2,
+        cornerRadius: 5,
+      },
+    },
+    issuedBy: "player_001",
+  });
+  assert.equal(editRes.success, true, "Object inspector changes should be applied");
+  assert.equal(placedPlant?.width, 2);
+  assert.equal(placedPlant?.height, 1);
+  assert.equal(placedPlant?.customData?.labelText, "Monstera");
+  assert.equal(placedPlant?.color, "#22aa66");
+  const invalidEditRes = builder.executeCommand({
+    action: "edit_object",
+    params: { objectId: plantId, width: 20 },
+    issuedBy: "player_001",
+  });
+  assert.equal(invalidEditRes.success, false, "Invalid object dimensions must be rejected");
+
+  const floorCoordinates = JSON.stringify(getHomeFloorCoordinates(layout));
+  assert.ok(floorCoordinates.includes('"coordinateSystem"'));
+  assert.ok(floorCoordinates.includes('"freeSingleCellRuns"'));
+  assert.ok(floorCoordinates.includes('"id":"bed_001"'));
+
+  const toolResult = executeHomeMapCommands(
+    `I'll check the map. &&coordinates_of_home_floor&& &&&${plantId}-action:reposition;6,34;living_room&&`,
+    builder
+  );
+  assert.equal(toolResult.hasCommands, true);
+  assert.ok(!toolResult.response.includes("&&"));
+  assert.ok(toolResult.outcomes.some((outcome) => outcome.includes("coordinate query succeeded")));
+  assert.ok(toolResult.outcomes.some((outcome) => outcome.includes("Reposition succeeded")));
+  assert.equal(placedPlant?.x, 6);
+  console.log("✓ Conversation map commands return available coordinates and execute checked moves.");
+
   const rotateRes = builder.executeCommand({
     action: "rotate_object",
     params: {
@@ -113,6 +192,8 @@ try {
   });
   assert.equal(rotateRes.success, true);
   assert.equal(placedPlant?.rotation, 90);
+  assert.equal(placedPlant?.width, 1);
+  assert.equal(placedPlant?.height, 2);
   console.log("✓ rotate_object rotated item to 90 degrees.");
 
   // 6. Structured Command: remove_object
@@ -149,14 +230,18 @@ try {
   // 8. A* Pathfinding Engine
   console.log("\n[TEST 8] Testing A* Pathfinding Engine...");
   const pathfinder = builder.pathfindingEngine;
+  assert.equal(pathfinder.isWalkable(5, 12), true, "North hallway floor should be walkable");
+  assert.equal(pathfinder.isWalkable(5, 24), true, "South hallway floor should be walkable");
+  const hallPath = pathfinder.findPath(8, 5, 8, 14);
+  assert.ok(hallPath.length > 0, "A* should traverse a room doorway and connecting hall");
   // Path across bedroom (from bed bedside to bedroom doorway)
-  const path = pathfinder.findPath(8, 5, 18, 6);
-  assert.ok(path.length > 0, "A* must find a valid path");
-  assert.equal(path[0].gridX, 8);
-  assert.equal(path[0].gridY, 5);
-  assert.equal(path[path.length - 1].gridX, 18);
-  assert.equal(path[path.length - 1].gridY, 6);
-  console.log(`✓ A* computed path of ${path.length} waypoints across the room.`);
+  const bedroomPath = pathfinder.findPath(8, 5, 18, 6);
+  assert.ok(bedroomPath.length > 0, "A* must find a valid path");
+  assert.equal(bedroomPath[0].gridX, 8);
+  assert.equal(bedroomPath[0].gridY, 5);
+  assert.equal(bedroomPath[bedroomPath.length - 1].gridX, 18);
+  assert.equal(bedroomPath[bedroomPath.length - 1].gridY, 6);
+  console.log(`✓ A* computed path of ${bedroomPath.length} waypoints across the room.`);
 
   // Path through door from bedroom to study room
   const multiRoomPath = pathfinder.findPath(8, 5, 25, 5);
@@ -171,7 +256,6 @@ try {
 
   // 9. Aria AI Construction & Collaborative Building
   console.log("\n[TEST 9] Testing Aria AI Construction Planning...");
-  const planner = new AriaBuildPlanner(builder);
   const proposal = planner.proposeEnhancement("balcony");
   assert.ok(proposal, "Aria must produce a valid build proposal");
   assert.ok(proposal?.dialogue.length > 0, "Proposal must have dialogue");
@@ -190,6 +274,54 @@ try {
   assert.ok(nlProposal, "Must parse plant request for balcony");
   assert.equal(nlProposal?.roomName, "Balcony");
   console.log(`✓ Natural language parsed: "${nlProposal?.itemName}" in ${nlProposal?.roomName}`);
+
+  const removeHallRes = builder.executeCommand({
+    action: "remove_room",
+    params: { roomId: "hall_south" },
+    issuedBy: "player_001",
+  });
+  assert.equal(removeHallRes.success, true, "A hall should be removable from the room library");
+  const addRoomRes = builder.executeCommand({
+    action: "add_room",
+    params: {
+      roomId: "new_room_test",
+      name: "New Room",
+      type: "room",
+      gridX: 21,
+      gridY: 24,
+      gridWidth: 2,
+      gridHeight: 2,
+    },
+    issuedBy: "player_001",
+  });
+  assert.equal(addRoomRes.success, true, "A non-overlapping room should be addable");
+  const overlappingRoomRes = builder.executeCommand({
+    action: "add_room",
+    params: {
+      roomId: "overlap_test",
+      name: "Overlap",
+      type: "room",
+      gridX: 21,
+      gridY: 25,
+      gridWidth: 2,
+      gridHeight: 2,
+    },
+    issuedBy: "player_001",
+  });
+  assert.equal(overlappingRoomRes.success, false, "Overlapping room additions must be rejected");
+
+  const legacyStateFile = path.join(tempDir, "legacy-house-layout.json");
+  fs.writeFileSync(
+    legacyStateFile,
+    JSON.stringify({
+      ...initialLayoutForMigration,
+      rooms: initialLayoutForMigration.rooms.filter((room: { type: string }) => room.type !== "hallway"),
+    }),
+    "utf8"
+  );
+  const migratedLayout = new HouseBuilderEngine(undefined, legacyStateFile).getLayout();
+  assert.ok(migratedLayout.rooms.some(room => room.id === "hall_north"));
+  assert.ok(migratedLayout.rooms.some(room => room.id === "hall_south"));
 
   console.log("\n=== ALL HOUSE BUILDER & NAVIGATION TESTS PASSED (100%) ===");
 } finally {

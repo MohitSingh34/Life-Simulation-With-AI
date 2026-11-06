@@ -565,6 +565,15 @@ export class ActionEngine {
         ...char.clothing,
         ...effects.clothing,
       };
+      if (effects.clothing.upper !== undefined) {
+        char.appearance.torso_inner = effects.clothing.upper;
+      }
+      if (effects.clothing.lower !== undefined) {
+        char.appearance.legs = effects.clothing.lower;
+      }
+      if (effects.clothing.footwear !== undefined) {
+        char.appearance.feet = effects.clothing.footwear;
+      }
     }
 
     // Apply needs, emotions, and personality changes

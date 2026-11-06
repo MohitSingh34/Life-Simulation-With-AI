@@ -77,11 +77,11 @@
   <!-- Alerts Banner -->
   <div id="alerts-container" class="alerts-container"></div>
 
-  <!-- Main 3-Column Living Dashboard -->
+  <!-- Two-Column Live Home -->
   <main class="dashboard-grid">
 
     <!-- ========================================== -->
-    <!-- COLUMN 1: Player Presence & Living Needs   -->
+    <!-- Player Profile & Living Needs              -->
     <!-- ========================================== -->
     <section class="panel-column col-player">
       
@@ -112,6 +112,14 @@
           <p id="player-detailed-body" class="physical-desc" data-ai-tag="player_body">
             Lying sideways on the soft cotton mattress, body relaxed. Eyes blinking softly, breathing is rhythmic and calm.
           </p>
+          <div class="body-state-clothing">
+            <span class="wearing-title">Clothes</span>
+            <p id="player-clothing" class="wearing-desc" data-ai-tag="player_clothing">Comfortable Cotton T-Shirt, Navy Blue Pajamas (Barefoot)</p>
+          </div>
+          <div class="appearance-summary">
+            <span class="wearing-title">Appearance</span>
+            <p id="player-appearance" class="appearance-values">Goggles · Soft silver necklace</p>
+          </div>
         </div>
 
         <div class="card-divider"></div>
@@ -206,20 +214,6 @@
           </div>
         </div>
 
-        <div class="card-divider"></div>
-
-        <!-- Wearing Pill -->
-        <div class="wearing-pill">
-          <div class="wearing-icon-box">
-            <span>👕</span>
-          </div>
-          <div class="wearing-details">
-            <span class="wearing-title">Wearing</span>
-            <p id="player-clothing" class="wearing-desc" data-ai-tag="player_clothing">Cotton T-Shirt, Navy Pajamas (Barefoot)</p>
-          </div>
-          <span class="wearing-arrow">›</span>
-        </div>
-
         <div class="holding-pack" id="holding-pack">
           <div class="holding-pack-header">
             <span class="holding-pack-icon">🤲</span>
@@ -234,7 +228,7 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- COLUMN 2 (MIDDLE): Room Scene & Aria Chat  -->
+    <!-- Current Room Details & Aria Chat           -->
     <!-- ========================================== -->
     <section class="panel-column col-center">
 
@@ -312,9 +306,19 @@
         <!-- Aria's Body Needs Panel (Visible only when in the same room) -->
         <div class="aria-body-needs-box" id="aria-needs-box">
           <div class="aria-needs-title-row">
-            <span class="section-eyebrow">ARIA'S PHYSICAL NEEDS</span>
+            <span class="section-eyebrow">ARIA'S BODY STATE</span>
             <span id="aria-body-status-pill" class="aria-status-pill">Satisfied &amp; Well</span>
           </div>
+          <p id="aria-body-description" class="aria-body-description">Seated upright at the desk, relaxed and focused.</p>
+          <div class="aria-body-clothing">
+            <span class="wearing-title">Clothes</span>
+            <p id="aria-clothing" class="wearing-desc">Soft Linen Blouse, Soft Linen Trousers (Barefoot)</p>
+          </div>
+          <div class="appearance-summary aria-appearance-summary">
+            <span class="wearing-title">Appearance</span>
+            <p id="aria-appearance" class="appearance-values">Soft silver necklace</p>
+          </div>
+          <div class="aria-needs-label">BODY NEEDS</div>
           <div class="aria-needs-compact-grid">
             <!-- Appetite -->
             <div class="aria-need-item" title="Aria's Appetite / Hunger">
@@ -431,7 +435,7 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- COLUMN 3: Full Actions & AI Controls       -->
+    <!-- Player Actions & AI Controls               -->
     <!-- ========================================== -->
     <section class="panel-column col-actions">
 
@@ -479,7 +483,7 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- BOTTOM: Top-Down House Map (Full Width)     -->
+    <!-- Main Interactive Home Map                 -->
     <!-- ========================================== -->
     <section class="map-bottom-container">
 
@@ -489,21 +493,21 @@
           <div class="home-card-title-group">
             <span class="home-card-icon">🧭</span>
             <div>
-              <h2 class="home-card-title">House &amp; Living (Phaser 2D)</h2>
-              <p class="home-card-desc">Interactive living home • Left-click floor to walk • Right-click objects to inspect • Build mode to customize</p>
+              <h2 class="home-card-title">Our Home</h2>
+              <p class="home-card-desc">Drag empty floor to pan · Scroll to zoom · Click floor to walk or place · Drag furniture to move · Space + drag pans anywhere</p>
             </div>
           </div>
 
           <!-- Mode Switcher Tabs -->
           <div class="map-mode-tabs" role="tablist">
             <button type="button" id="tab-live-mode" class="map-mode-tab active" role="tab" aria-selected="true">
-              <span class="tab-icon">🏡</span> Live 2D Mode
+              <span class="tab-icon">🏡</span> Live
             </button>
             <button type="button" id="tab-build-mode" class="map-mode-tab" role="tab" aria-selected="false">
-              <span class="tab-icon">🛠️</span> Build &amp; Edit Mode
+              <span class="tab-icon">🛠️</span> Build &amp; Edit
             </button>
             <button type="button" id="tab-blueprint-mode" class="map-mode-tab" role="tab" aria-selected="false">
-              <span class="tab-icon">📐</span> Blueprint View
+              <span class="tab-icon">📐</span> Floor Plan
             </button>
           </div>
 
@@ -511,9 +515,13 @@
           <div class="camera-controls-bar">
             <button type="button" id="btn-cam-zoom-in" class="cam-btn" title="Zoom In">+</button>
             <button type="button" id="btn-cam-zoom-out" class="cam-btn" title="Zoom Out">−</button>
-            <button type="button" id="btn-cam-reset" class="cam-btn" title="Reset View">100%</button>
+            <button type="button" id="btn-cam-reset" class="cam-btn" title="Reset View"><span id="map-zoom-level">100%</span></button>
             <button type="button" id="btn-cam-focus-mohit" class="cam-btn cam-pill" title="Center camera on Mohit">👨 Mohit</button>
             <button type="button" id="btn-cam-focus-aria" class="cam-btn cam-pill" title="Center camera on Aria">👩 Aria</button>
+            <button type="button" id="btn-build-done" class="cam-btn cam-pill build-done-btn">✓ Done editing</button>
+          </div>
+          <div id="map-coordinate-status" class="map-coordinate-status" aria-live="polite">
+            Drag to pan · Scroll to zoom at the cursor · Click a floor to walk
           </div>
 
           <div class="map-avatars-legend">
@@ -985,37 +993,41 @@
             </div>
           </div>
 
-          <!-- Build Catalog Categories -->
-          <div class="build-category-pills">
-            <button type="button" class="build-cat-pill active" data-category="all">All</button>
-            <button type="button" class="build-cat-pill" data-category="seating">🪑 Seating</button>
-            <button type="button" class="build-cat-pill" data-category="tables">🪵 Tables</button>
-            <button type="button" class="build-cat-pill" data-category="beds">🛏️ Beds</button>
-            <button type="button" class="build-cat-pill" data-category="storage">📦 Storage</button>
-            <button type="button" class="build-cat-pill" data-category="appliances">🍳 Appliances</button>
-            <button type="button" class="build-cat-pill" data-category="lighting">💡 Lighting</button>
-            <button type="button" class="build-cat-pill" data-category="plants">🪴 Plants</button>
-            <button type="button" class="build-cat-pill" data-category="decor">🎨 Decor</button>
-            <button type="button" class="build-cat-pill" data-category="finishes">🧱 Finishes</button>
+          <section id="object-inspector-panel" class="build-editor-panel" style="display: none;">
+            <h3>Edit selected item</h3>
+            <div class="build-editor-grid">
+              <label class="build-editor-wide">Name <input id="edit-object-name" class="build-input" maxlength="60" /></label>
+              <label>Width <input id="edit-object-width" class="build-input" type="number" min="1" max="20" /></label>
+              <label>Height <input id="edit-object-height" class="build-input" type="number" min="1" max="20" /></label>
+              <label>Rotation
+                <select id="edit-object-rotation" class="build-select">
+                  <option value="0">0°</option><option value="90">90°</option>
+                  <option value="180">180°</option><option value="270">270°</option>
+                </select>
+              </label>
+              <label>Body color <input id="edit-object-color" class="build-color-input" type="color" /></label>
+              <label>Icon <input id="edit-object-icon" class="build-input" maxlength="8" /></label>
+              <label class="build-editor-wide">Label <input id="edit-object-label" class="build-input" maxlength="30" /></label>
+              <label>Text color <input id="edit-object-label-color" class="build-color-input" type="color" /></label>
+              <label>Text size <input id="edit-object-font-size" class="build-input" type="number" min="8" max="24" /></label>
+              <label>Edge color <input id="edit-object-edge-color" class="build-color-input" type="color" /></label>
+              <label>Edge width <input id="edit-object-edge-width" class="build-input" type="number" min="0" max="8" step="0.5" /></label>
+              <label>Corner radius <input id="edit-object-corner-radius" class="build-input" type="number" min="0" max="12" /></label>
+              <label class="build-checkbox"><input id="edit-object-solid" type="checkbox" /> Blocks walking</label>
+            </div>
+            <button type="button" id="btn-save-object" class="build-btn build-btn-primary">Apply changes</button>
+          </section>
+
+          <div id="build-category-pills" class="build-category-pills" aria-label="Build library categories">
           </div>
 
-          <!-- Catalog Items Drawer Flow -->
           <div id="build-catalog-list" class="build-catalog-list">
-            <!-- Dynamically populated from catalog -->
           </div>
 
-          <!-- Room Finishes Panel (Hidden unless 'finishes' category is selected) -->
           <div id="room-finishes-panel" class="room-finishes-panel" style="display: none;">
             <div class="finishes-control-row">
               <label for="select-finish-room">Select Room:</label>
-              <select id="select-finish-room" class="build-select">
-                <option value="living_room">Living Room</option>
-                <option value="bedroom">Bedroom</option>
-                <option value="study_room">Study Room</option>
-                <option value="kitchen">Kitchen</option>
-                <option value="toilet">Bathroom</option>
-                <option value="balcony">Balcony</option>
-              </select>
+              <select id="select-finish-room" class="build-select"></select>
             </div>
             <div class="finishes-control-row">
               <label for="select-finish-floor">Floor Material:</label>
@@ -1037,6 +1049,37 @@
               <button type="button" id="btn-apply-wall" class="build-btn build-btn-primary">Apply Wall</button>
             </div>
           </div>
+
+          <section id="room-library-panel" class="build-editor-panel" style="display: none;">
+            <h3>Rooms & halls</h3>
+            <p class="build-editor-hint">Add rooms in empty grid cells. Delete a room first if the floor is full.</p>
+            <label for="select-library-room">Existing room</label>
+            <div class="build-editor-row">
+              <select id="select-library-room" class="build-select"></select>
+              <button type="button" id="btn-remove-room" class="build-btn build-btn-danger">Delete</button>
+            </div>
+            <div class="build-editor-grid">
+              <label>Name <input id="new-room-name" class="build-input" maxlength="40" value="New room" /></label>
+              <label>Type
+                <select id="new-room-type" class="build-select">
+                  <option value="room">Room</option>
+                  <option value="hallway">Hall</option>
+                  <option value="bedroom">Bedroom</option>
+                  <option value="living_room">Living room</option>
+                  <option value="kitchen">Kitchen</option>
+                  <option value="study_room">Study</option>
+                  <option value="toilet">Bathroom</option>
+                  <option value="balcony">Balcony</option>
+                </select>
+              </label>
+              <label>Grid X <input id="new-room-x" class="build-input" type="number" min="0" max="39" value="2" /></label>
+              <label>Grid Y <input id="new-room-y" class="build-input" type="number" min="0" max="37" value="2" /></label>
+              <label>Width <input id="new-room-width" class="build-input" type="number" min="2" max="40" value="6" /></label>
+              <label>Height <input id="new-room-height" class="build-input" type="number" min="2" max="38" value="6" /></label>
+            </div>
+            <button type="button" id="btn-add-room" class="build-btn build-btn-primary">Add room</button>
+          </section>
+
         </div>
       </div>
 

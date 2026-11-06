@@ -84,6 +84,7 @@ export class HouseBuilderEngine {
       this.persist();
     }
 
+    if (this.addDefaultHallways()) this.persist();
     this.pathfindingEngine.rebuildFromHouse(this.layout);
     this.syncPlacedObjectsWithStateManager();
     return this.layout;
@@ -152,6 +153,9 @@ export class HouseBuilderEngine {
         break;
       case "rotate_object":
         result = this.rotateObject(command.params as any, issuedBy);
+        break;
+      case "edit_object":
+        result = this.editObject(command.params as any, issuedBy);
         break;
       case "remove_object":
         result = this.removeObject(command.params as any, issuedBy);
@@ -320,6 +324,14 @@ export class HouseBuilderEngine {
       };
     }
 
+    if (!Number.isInteger(params.newX) || !Number.isInteger(params.newY)) {
+      return {
+        success: false,
+        message: "Object coordinates must be whole grid cells",
+        command: { action: "move_object", params, issuedBy },
+      };
+    }
+
     const targetRoomId = params.newRoomId || obj.roomId;
     const room = this.layout.rooms.find(r => r.id === targetRoomId);
     if (!room) {
@@ -331,6 +343,13 @@ export class HouseBuilderEngine {
     }
 
     const rot = params.newRotation !== undefined ? params.newRotation : obj.rotation;
+    if (![0, 90, 180, 270].includes(rot)) {
+      return {
+        success: false,
+        message: `Invalid rotation "${rot}"`,
+        command: { action: "move_object", params, issuedBy },
+      };
+    }
     const isRotChange = (rot === 90 || rot === 270) !== (obj.rotation === 90 || obj.rotation === 270);
     const w = isRotChange ? obj.height : obj.width;
     const h = isRotChange ? obj.width : obj.height;
@@ -368,6 +387,31 @@ export class HouseBuilderEngine {
           return {
             success: false,
             message: `Cannot move "${obj.name}": overlaps with "${other.name}"`,
+            command: { action: "move_object", params, issuedBy },
+          };
+        }
+      }
+    }
+
+    if (obj.isSolid) {
+      for (const door of this.layout.doors) {
+        const doorWidth = door.orientation === "horizontal" ? door.width : 1;
+        const doorHeight = door.orientation === "vertical" ? door.width : 1;
+        if (
+          this.checkAABBOverlap(
+            params.newX,
+            params.newY,
+            w,
+            h,
+            door.x,
+            door.y,
+            doorWidth,
+            doorHeight
+          )
+        ) {
+          return {
+            success: false,
+            message: `Cannot move "${obj.name}": blocks a doorway`,
             command: { action: "move_object", params, issuedBy },
           };
         }
@@ -416,7 +460,6 @@ export class HouseBuilderEngine {
     obj.height = oldW;
     obj.rotation = nextAngle;
 
-    // Verify room boundaries after rotation
     const room = this.layout.rooms.find(r => r.id === obj.roomId);
     if (room) {
       if (obj.x + obj.width > room.x + room.width) {
@@ -434,6 +477,177 @@ export class HouseBuilderEngine {
       affectedObjectId: obj.id,
     };
   }
+
+    public editObject(
+      params: {
+        objectId: string;
+        name?: string;
+        width?: number;
+        height?: number;
+        rotation?: 0 | 90 | 180 | 270;
+        color?: string;
+        icon?: string;
+        isSolid?: boolean;
+        customData?: Record<string, unknown>;
+      },
+      issuedBy: "player_001" | "ai_001"
+    ): BuildResult {
+      const obj = this.layout.placedObjects.find(o => o.id === params.objectId);
+      if (!obj) {
+        return {
+          success: false,
+          message: `Object "${params.objectId}" not found`,
+          command: { action: "edit_object", params, issuedBy },
+        };
+      }
+
+      const name = params.name?.trim();
+      const width = params.width ?? obj.width;
+      const height = params.height ?? obj.height;
+      const rotation = params.rotation ?? obj.rotation;
+      const color = params.color ?? obj.color;
+      const icon = params.icon ?? obj.icon;
+      const isSolid = params.isSolid ?? obj.isSolid;
+      const customData = { ...(obj.customData || {}), ...(params.customData || {}) };
+
+      if (params.name !== undefined && (!name || name.length > 60)) {
+        return {
+          success: false,
+          message: "Object name must be between 1 and 60 characters",
+          command: { action: "edit_object", params, issuedBy },
+        };
+      }
+      if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 20 || height > 20) {
+        return {
+          success: false,
+          message: "Object dimensions must be whole grid cells between 1 and 20",
+          command: { action: "edit_object", params, issuedBy },
+        };
+      }
+      if (![0, 90, 180, 270].includes(rotation)) {
+        return {
+          success: false,
+          message: `Invalid rotation "${rotation}"`,
+          command: { action: "edit_object", params, issuedBy },
+        };
+      }
+      if (params.color !== undefined && !/^#[0-9a-f]{6}$/i.test(color)) {
+        return {
+          success: false,
+          message: "Object color must be a six-digit hex color",
+          command: { action: "edit_object", params, issuedBy },
+        };
+      }
+      if (params.icon !== undefined && (!icon || icon.length > 8)) {
+        return {
+          success: false,
+          message: "Object icon must be between 1 and 8 characters",
+          command: { action: "edit_object", params, issuedBy },
+        };
+      }
+
+      const styleLimits: Record<string, [number, number]> = {
+        fontSize: [8, 24],
+        edgeWidth: [0, 8],
+        cornerRadius: [0, 12],
+      };
+      const styleColors = ["labelColor", "edgeColor"];
+      for (const [key, [min, max]] of Object.entries(styleLimits)) {
+        const value = customData[key];
+        if (value !== undefined &&
+          (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max)) {
+          return {
+            success: false,
+            message: `${key} must be between ${min} and ${max}`,
+            command: { action: "edit_object", params, issuedBy },
+          };
+        }
+      }
+      for (const key of styleColors) {
+        const value = customData[key];
+        if (value !== undefined && (typeof value !== "string" || !/^#[0-9a-f]{6}$/i.test(value))) {
+          return {
+            success: false,
+            message: `${key} must be a six-digit hex color`,
+            command: { action: "edit_object", params, issuedBy },
+          };
+        }
+      }
+      if (customData.labelText !== undefined &&
+        (typeof customData.labelText !== "string" || customData.labelText.length > 30)) {
+        return {
+          success: false,
+          message: "Object label must be 30 characters or fewer",
+          command: { action: "edit_object", params, issuedBy },
+        };
+      }
+
+      const room = this.layout.rooms.find(r => r.id === obj.roomId);
+      const rotationChanged =
+        (rotation === 90 || rotation === 270) !== (obj.rotation === 90 || obj.rotation === 270);
+      const occupiedWidth = rotationChanged ? height : width;
+      const occupiedHeight = rotationChanged ? width : height;
+      if (!room || obj.x < room.x || obj.y < room.y ||
+        obj.x + occupiedWidth > room.x + room.width ||
+        obj.y + occupiedHeight > room.y + room.height) {
+        return {
+          success: false,
+          message: "Edited object would extend beyond its room",
+          command: { action: "edit_object", params, issuedBy },
+        };
+      }
+
+      if (isSolid) {
+        const collision = this.layout.placedObjects.find(other =>
+          other.id !== obj.id &&
+          other.isSolid &&
+          this.checkAABBOverlap(
+            obj.x, obj.y, occupiedWidth, occupiedHeight,
+            other.x, other.y, other.width, other.height
+          )
+        );
+        if (collision) {
+          return {
+            success: false,
+            message: `Edited object would overlap "${collision.name}"`,
+            command: { action: "edit_object", params, issuedBy },
+          };
+        }
+        const doorway = this.layout.doors.find(door => this.checkAABBOverlap(
+          obj.x,
+          obj.y,
+          occupiedWidth,
+          occupiedHeight,
+          door.x,
+          door.y,
+          door.orientation === "horizontal" ? door.width : 1,
+          door.orientation === "vertical" ? door.width : 1
+        ));
+        if (doorway) {
+          return {
+            success: false,
+            message: "Edited object would block a doorway",
+            command: { action: "edit_object", params, issuedBy },
+          };
+        }
+      }
+
+      if (name) obj.name = name;
+      obj.width = occupiedWidth;
+      obj.height = occupiedHeight;
+      obj.rotation = rotation;
+      obj.color = color;
+      obj.icon = icon;
+      obj.isSolid = isSolid;
+      obj.customData = customData;
+      return {
+        success: true,
+        message: `Updated "${obj.name}"`,
+        command: { action: "edit_object", params, issuedBy },
+        affectedObjectId: obj.id,
+        affectedRoomId: obj.roomId,
+      };
+    }
 
   /**
    * Remove an object from the house
@@ -488,9 +702,36 @@ export class HouseBuilderEngine {
       };
     }
 
+    const roomName = params.name?.trim();
+    if (!/^[a-z0-9_-]{1,40}$/i.test(params.roomId) ||
+      !roomName || roomName.length > 40 ||
+      ![params.gridX, params.gridY, params.gridWidth, params.gridHeight].every(Number.isInteger) ||
+      params.gridWidth < 2 || params.gridHeight < 2 ||
+      params.gridX < 0 || params.gridY < 0 ||
+      params.gridX + params.gridWidth > this.layout.grid.cols ||
+      params.gridY + params.gridHeight > this.layout.grid.rows) {
+      return {
+        success: false,
+        message: "Room needs a valid ID/name, whole grid coordinates, and dimensions of at least 2×2 within the home",
+        command: { action: "add_room", params, issuedBy },
+      };
+    }
+
+    const overlappingRoom = this.layout.rooms.find(room => this.checkAABBOverlap(
+      params.gridX, params.gridY, params.gridWidth, params.gridHeight,
+      room.x, room.y, room.width, room.height
+    ));
+    if (overlappingRoom) {
+      return {
+        success: false,
+        message: `Room would overlap "${overlappingRoom.name}"`,
+        command: { action: "add_room", params, issuedBy },
+      };
+    }
+
     const newRoom: HouseRoom = {
       id: params.roomId,
-      name: params.name,
+      name: roomName,
       type: params.type || "room",
       x: params.gridX,
       y: params.gridY,
@@ -733,6 +974,32 @@ export class HouseBuilderEngine {
           wallColor: "#f0fdf4",
           wallStyle: "brick",
           description: "Breezy open balcony with cane chairs, potted jasmine, and fresh morning air.",
+        },
+        {
+          id: "hall_north",
+          name: "North Hall",
+          type: "hallway",
+          x: 1,
+          y: 12,
+          width: 38,
+          height: 1,
+          floorType: "wood",
+          wallColor: "#94a3b8",
+          wallStyle: "plaster",
+          description: "A shared corridor connecting the north rooms.",
+        },
+        {
+          id: "hall_south",
+          name: "South Hall",
+          type: "hallway",
+          x: 1,
+          y: 24,
+          width: 38,
+          height: 1,
+          floorType: "wood",
+          wallColor: "#94a3b8",
+          wallStyle: "plaster",
+          description: "A shared corridor connecting the south rooms.",
         },
       ],
       walls: [
@@ -1353,5 +1620,45 @@ export class HouseBuilderEngine {
       lastModified: new Date().toISOString(),
       modifiedBy: "system",
     };
+  }
+
+  private addDefaultHallways(): boolean {
+    if (this.layout.grid.cols !== 40 || this.layout.grid.rows !== 38) return false;
+    const hallways: HouseRoom[] = [
+      {
+        id: "hall_north",
+        name: "North Hall",
+        type: "hallway",
+        x: 1,
+        y: 12,
+        width: 38,
+        height: 1,
+        floorType: "wood",
+        wallColor: "#94a3b8",
+        wallStyle: "plaster",
+        description: "A shared corridor connecting the north rooms.",
+      },
+      {
+        id: "hall_south",
+        name: "South Hall",
+        type: "hallway",
+        x: 1,
+        y: 24,
+        width: 38,
+        height: 1,
+        floorType: "wood",
+        wallColor: "#94a3b8",
+        wallStyle: "plaster",
+        description: "A shared corridor connecting the south rooms.",
+      },
+    ];
+    let changed = false;
+    for (const hallway of hallways) {
+      if (!this.layout.rooms.some(room => room.id === hallway.id)) {
+        this.layout.rooms.push(hallway);
+        changed = true;
+      }
+    }
+    return changed;
   }
 }

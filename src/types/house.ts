@@ -136,6 +136,7 @@ export type BuildActionType =
   | "place_object"
   | "move_object"
   | "rotate_object"
+  | "edit_object"
   | "remove_object"
   | "add_room"
   | "modify_room"

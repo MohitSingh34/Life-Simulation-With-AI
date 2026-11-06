@@ -4,12 +4,14 @@ import {
   SimulationTime,
   SimulationSnapshot,
   CharacterTemplate,
+  CharacterAppearance,
   ObjectConfig,
   AiNarrativeState,
 } from "../types/index.js";
 
 export class StateManager {
   private characters: Map<string, CharacterState> = new Map();
+  private appearanceDefaults: Map<string, CharacterAppearance> = new Map();
   private objectStates: Map<string, ObjectState> = new Map();
   private narrative: AiNarrativeState = {};
   private time: SimulationTime = {
@@ -39,8 +41,10 @@ export class StateManager {
       ai_activity: "Studying and taking notes",
     };
     this.characters.clear();
+    this.appearanceDefaults.clear();
     for (const t of templates) {
       const isPlayer = t.type === "human";
+      this.appearanceDefaults.set(t.id, { ...t.appearance });
       const charState: CharacterState = {
         id: t.id,
         name: t.name,
@@ -70,6 +74,7 @@ export class StateManager {
           confidence: 60,
         },
         clothing: t.clothing,
+        appearance: { ...t.appearance },
         activity: {
           current: isPlayer ? "resting" : "studying",
           status: "in_progress",
@@ -244,7 +249,18 @@ export class StateManager {
     this.narrative = snapshot.narrative || {};
     this.characters.clear();
     for (const [k, v] of Object.entries(snapshot.characters)) {
-      this.characters.set(k, v);
+      const appearance = {
+        ...this.appearanceDefaults.get(k),
+        ...v.appearance,
+      };
+      if (!v.appearance?.torso_inner) appearance.torso_inner = v.clothing.upper;
+      if (!v.appearance?.legs) appearance.legs = v.clothing.lower;
+      if (!v.appearance?.feet) appearance.feet = v.clothing.footwear;
+
+      this.characters.set(k, {
+        ...v,
+        appearance,
+      });
     }
     this.objectStates.clear();
     for (const [k, v] of Object.entries(snapshot.objects)) {

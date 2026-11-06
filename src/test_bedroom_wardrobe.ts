@@ -1,5 +1,6 @@
 import assert from "node:assert";
 import { GameEngine } from "./engine/GameEngine.js";
+import type { CharacterState } from "./types/character.js";
 
 export function runBedroomWardrobeTests() {
   console.log("=== RUNNING BEDROOM, WARDROBE & DRESSING VERIFICATION SUITE ===\n");
@@ -133,6 +134,9 @@ export function runBedroomWardrobeTests() {
   assert.equal(changeRes.result.status, "accepted");
   assert.ok(player.clothing.upper.length > 0);
   assert.ok(player.clothing.lower.length > 0);
+  assert.equal(player.appearance.torso_inner, player.clothing.upper);
+  assert.equal(player.appearance.legs, player.clothing.lower);
+  assert.equal(player.appearance.feet, player.clothing.footwear);
   assert.equal(player.emotions.confidence, Math.min(100, preConfidence + 10));
   assert.ok(Math.abs(player.emotions.stress - Math.max(0, preStress - 5)) <= 1);
   console.log(`✓ change_clothes applied: confidence -> ${player.emotions.confidence}, stress -> ${player.emotions.stress}`);
@@ -143,6 +147,9 @@ export function runBedroomWardrobeTests() {
   assert.equal(player.clothing.upper, "Soft Cotton Kurta");
   assert.equal(player.clothing.lower, "Soft Cotton Pyjama");
   assert.equal(player.clothing.footwear, "Barefoot");
+  assert.equal(player.appearance.torso_inner, player.clothing.upper);
+  assert.equal(player.appearance.legs, player.clothing.lower);
+  assert.equal(player.appearance.feet, player.clothing.footwear);
   console.log("✓ Sleepwear outfit (Kurta-Pyjama) verified.");
 
   // Test Wear Casual Loungewear
@@ -151,6 +158,9 @@ export function runBedroomWardrobeTests() {
   assert.equal(player.clothing.upper, "Comfortable T-Shirt");
   assert.equal(player.clothing.lower, "Grey Track Pants");
   assert.equal(player.clothing.footwear, "Slip-on Sandals");
+  assert.equal(player.appearance.torso_inner, player.clothing.upper);
+  assert.equal(player.appearance.legs, player.clothing.lower);
+  assert.equal(player.appearance.feet, player.clothing.footwear);
   console.log("✓ Casual Loungewear outfit (T-Shirt & Track Pants) verified.");
 
   // Test Wear Outdoor / Work Wear
@@ -159,6 +169,9 @@ export function runBedroomWardrobeTests() {
   assert.equal(player.clothing.upper, "Crisp Linen Shirt");
   assert.equal(player.clothing.lower, "Tailored Trousers");
   assert.equal(player.clothing.footwear, "Leather Loafers");
+  assert.equal(player.appearance.torso_inner, player.clothing.upper);
+  assert.equal(player.appearance.legs, player.clothing.lower);
+  assert.equal(player.appearance.feet, player.clothing.footwear);
   console.log("✓ Outdoor / Work Wear outfit (Crisp Linen Shirt & Tailored Trousers) verified.");
 
   // Close the wardrobe
@@ -209,8 +222,20 @@ export function runBedroomWardrobeTests() {
   assert.equal(turnOffLampRes.result.status, "accepted");
   assert.equal(lampState.state, "off");
 
+  const legacySnapshot = stateManager.getSnapshot();
+  delete (legacySnapshot.characters["player_001"] as Partial<CharacterState>).appearance;
+  delete (legacySnapshot.characters["ai_001"] as Partial<CharacterState>).appearance;
+  stateManager.loadSnapshot(legacySnapshot);
+  const restoredPlayer = stateManager.getCharacter("player_001");
+  const restoredAria = stateManager.getCharacter("ai_001");
+  assert.equal(restoredPlayer?.appearance.eyes, "goggles");
+  assert.equal(restoredAria?.appearance.neck, "soft silver necklace");
+  assert.equal(restoredPlayer?.appearance.torso_inner, restoredPlayer?.clothing.upper);
+  assert.equal(restoredPlayer?.appearance.legs, restoredPlayer?.clothing.lower);
+  assert.equal(restoredPlayer?.appearance.feet, restoredPlayer?.clothing.footwear);
+  console.log("✓ Appearance defaults restored for saved characters without appearance data.");
+
   console.log("\n=== ALL BEDROOM, WARDROBE & DRESSING TESTS PASSED WITH 100% SUCCESS! ===");
 }
 
 runBedroomWardrobeTests();
-

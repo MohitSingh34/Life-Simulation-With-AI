@@ -1,0 +1,91 @@
+# Cline Fast Performance & Architecture Rules
+
+## 1. High-Speed Terminal & Search Tools (ALWAYS PREFER)
+High-performance native CLI tools (`rg` and `fd`) are installed and available on PATH. Use them instead of slow shell searches:
+
+- **Search File Contents with Ripgrep (`rg`)**:
+  - NEVER use slow `grep -r` or python search loops.
+  - Always try using fast working commands for things, if not available then download because slow commands slows our task
+  - Find pattern in all files: `rg "<pattern>"`
+  - Find pattern in specific extensions: `rg "<pattern>" -g "*.ts"` or `rg "<pattern>" -g "*.json"`
+  - List matching file paths only: `rg -l "<pattern>"`
+  - Show line numbers with context: `rg -n -C 2 "<pattern>"`
+
+- **Find Files & Directories with `fd`**:
+  - NEVER use slow `find . -name` or recursive directory listings.
+  - Find files by name: `fd "<filename>"`
+  - Find files by extension: `fd -e ts` or `fd -e json`
+  - Find directories: `fd -t d "<dirname>"`
+
+- **Selective Reading**:
+  - For large files, avoid reading thousands of lines into context. Use `head -n 60 <file>`, `tail -n 60 <file>`, or `sed -n '100,160p' <file>`.
+
+- **Chained Execution**:
+  - Combine dependent shell commands with `&&` (e.g. `npx tsc --noEmit && npm test`) to minimize prompt round-trips.
+
+---
+
+## 2. On-Demand Guidance & Reference Sources (RUN WHEN NEEDED)
+Whenever you are unsure of the latest platform patterns, library APIs, or best practices, use these on-demand CLI sources to get accurate guidance before writing code:
+
+### A. Modern Web, CSS, DOM & Accessibility Guidance
+When building or fixing web UI, layouts, modals, popovers, animations, forms, or responsive design:
+- **Search guidance**:
+  ```bash
+  npx -y modern-web-guidance@latest search "<2-5 word query>"
+  ```
+  *Examples*: `npx -y modern-web-guidance@latest search "responsive modal"`, `search "container queries"`, `search "accessible forms"`.
+- **Retrieve full guide**:
+  ```bash
+  npx -y modern-web-guidance@latest retrieve "<id>"
+  ```
+  Follow the retrieved modern native APIs (native `<dialog>`, `popover`, `@container`, `clamp()`) instead of outdated hacks.
+
+### B. Library & Package Official Documentation On Demand
+When you need to look up how to use any npm package or library accurately without guessing:
+- **Fetch official package documentation/README**:
+  ```bash
+  npm view <package-name> readme | head -n 120
+  ```
+- **Inspect exported functions and modules directly**:
+  ```bash
+  node -e "console.log(Object.keys(require('<package-name>')))"
+  ```
+- **Check package metadata, version, and official repository/docs**:
+  ```bash
+  npm view <package-name> description homepage
+  ```
+
+### C. TypeScript & Type Verification Guidance
+- **Verify project types and catch mistakes instantly**:
+  ```bash
+  npx tsc --noEmit
+  ```
+- **Quick scratch verification (test logic/math before applying to codebase)**:
+  ```bash
+  npx tsx -e "<quick test code>"
+  ```
+
+---
+
+## 3. Game & Simulation Architecture (Life Simulation)
+- **Rendering Layer (Phaser 3)**:
+  - Phaser 3 handles 2D canvas rendering, camera pan/zoom, grid tilemap, and character sprites.
+  - Keep rendering logic decoupled from game state.
+- **Simulation Layer (TypeScript / Node.js)**:
+  - Game state is authoritative on the backend.
+  - Maintain dedicated engines: `NeedsEngine` (appetite, thirst, bladder, energy), `EmotionEngine`, `TimeEngine`, `ActionEngine`.
+  - Navigation uses A* pathfinding with grid-based collision detection.
+- **House Building Engine**:
+  - House layouts, rooms, walls, doors, and furniture are stored as structured JSON.
+  - Both User and AI (Aria) interact with construction via structured JSON actions.
+- **AI Integration**:
+  - Use structured JSON commands for AI movement, actions, and construction.
+  - Keep conversational responses natural and expressive.
+
+---
+
+## 4. Code Editing & Verification
+- When modifying TypeScript, run `npx tsc --noEmit` to verify type safety and catch errors immediately.
+- Preserve existing comments, docstrings, and working functionality.
+- Make surgical, targeted edits rather than rewriting entire files.

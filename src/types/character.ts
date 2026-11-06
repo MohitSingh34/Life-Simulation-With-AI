@@ -36,6 +36,52 @@ export interface CharacterClothing {
   footwear: string;
 }
 
+export interface CharacterAppearance {
+  body: string;
+  clothes: string;
+  head: string;
+  eyes: string;
+  ears: string;
+  face: string;
+  face_hair: string;
+  hair: string;
+  neck: string;
+  shoulders: string;
+  torso_outer: string;
+  torso_inner: string;
+  chest: string;
+  back: string;
+  arms: string;
+  upper_arm_left: string;
+  upper_arm_right: string;
+  elbow_left: string;
+  elbow_right: string;
+  forearm_left: string;
+  forearm_right: string;
+  wrist_left: string;
+  wrist_right: string;
+  hands: string;
+  hand_left: string;
+  hand_right: string;
+  fingers: string;
+  waist: string;
+  hips: string;
+  legs: string;
+  thigh_left: string;
+  thigh_right: string;
+  knee_left: string;
+  knee_right: string;
+  calf_left: string;
+  calf_right: string;
+  ankle_left: string;
+  ankle_right: string;
+  feet: string;
+  foot_left: string;
+  foot_right: string;
+  toes_left: string;
+  toes_right: string;
+}
+
 export interface HeldItem {
   objectId: string;
   hand: "left" | "right" | "both";
@@ -77,6 +123,7 @@ export interface CharacterState {
   needs: CharacterNeeds;
   emotions: CharacterEmotions;
   clothing: CharacterClothing;
+  appearance: CharacterAppearance;
   activity: CharacterActivity;
   holding: HeldItem | null;
   narrative?: AiNarrativeState;
@@ -91,6 +138,7 @@ export interface CharacterTemplate {
   defaultRoom: string;
   defaultPosition: string;
   clothing: CharacterClothing;
+  appearance: CharacterAppearance;
   personality?: CharacterPersonality;
   /** Heartbeat interval in simulation minutes for autonomous AI actions */
   pingIntervalMinutes?: number;
@@ -111,4 +159,3 @@ export interface NeedConfig {
   /** Critical message */
   criticalMessage: string;
 }
-
