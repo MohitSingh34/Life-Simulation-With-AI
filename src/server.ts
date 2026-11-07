@@ -10,6 +10,7 @@ import { ConversationManager } from "./ai/ConversationManager.js";
 import { HouseCommand } from "./types/house.js";
 import { AriaBuildProposal } from "./ai/AriaBuildPlanner.js";
 import { executeHomeMapCommands, getHomeFloorCoordinates } from "./ai/HomeMapCommandProcessor.js";
+import { executeAiActionCommands, getAiActionOptions } from "./ai/AiActionCommandProcessor.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,7 +70,7 @@ export function createServer(port = 3000) {
   }, 1000);
   const gemini = new GeminiWebProvider();
   const conversationManager = new ConversationManager();
-  const pendingHomeActionOutcomes = new Map<string, string[]>();
+  const pendingCommandOutcomes = new Map<string, string[]>();
 
   const server = http.createServer(async (req, res) => {
     if (req.method === "OPTIONS") {
@@ -324,7 +325,7 @@ export function createServer(port = 3000) {
         }
         const clockTime = engine.timeEngine.getFormattedClock();
         const conversationId = conversationManager.getActiveConversation().id;
-        const pendingOutcomes = pendingHomeActionOutcomes.get(conversationId) || [];
+        const pendingOutcomes = pendingCommandOutcomes.get(conversationId) || [];
         conversationManager.addMessage("player", body.message.trim(), clockTime);
 
         let rawDialogue: string;
@@ -404,6 +405,8 @@ export function createServer(port = 3000) {
             "You can request a precise floor map by outputting &&coordinates_of_home_floor&&. The game will send you room bounds, occupied objects, and free single-cell coordinate runs in its next tool-result message.",
             "To move an existing object, output &&&object_id-action:reposition;x,y;room_id&& (the room suffix is optional). Example: &&&desk_001-action:reposition;28,8;study_room&&. Use the exact object id from the supplied home layout and zero-based grid coordinates. The game will validate bounds, collisions, and doorways, then send the result back to you before your final reply.",
             "Home coordinates are zero-based grid cells: x increases to the right, y increases downward, and each object's x/y is its top-left cell. Room x/y/width/height define the valid floor area. The floor query returns free coordinates for 1x1 objects; larger items need adjacent free cells and are validated on move.",
+            "You can perform physical actions as Aria by emitting commands in this exact form: &&action:<action_id>&& or &&action:<action_id>;target:<object_id>&&. Use only action IDs and target IDs from the currently valid options below. Movement between rooms uses the configured walk_to_* actions; posture and position changes use their configured actions. Commands affect Aria only, never Mohit. The engine validates every command and reports whether it succeeded.",
+            `Currently valid actions and target objects for Aria (refreshes after each command): ${JSON.stringify(getAiActionOptions(engine))}`,
             ...(pendingOutcomes.length > 0
               ? [`Result of your previous home command(s); use this to maintain continuity: ${pendingOutcomes.join(" | ")}`]
               : []),
@@ -438,7 +441,7 @@ export function createServer(port = 3000) {
 
           try {
             rawDialogue = await gemini.generateReply(prompt);
-            pendingHomeActionOutcomes.delete(conversationId);
+            pendingCommandOutcomes.delete(conversationId);
           } catch (error) {
             console.error("Gemini dialogue request failed:", error);
             sendJson(
@@ -451,25 +454,32 @@ export function createServer(port = 3000) {
 
         if (gemini.isConfigured) {
           for (let round = 0; round < 3; round++) {
-            const toolResult = executeHomeMapCommands(rawDialogue, engine.houseBuilder);
-            rawDialogue = toolResult.response;
-            if (!toolResult.hasCommands) break;
+            const mapResult = executeHomeMapCommands(rawDialogue, engine.houseBuilder);
+            const actionResult = executeAiActionCommands(mapResult.response, engine);
+            rawDialogue = actionResult.response;
+            const commandOutcomes = [...mapResult.outcomes, ...actionResult.outcomes];
+
+            if (actionResult.hasCommands) {
+              realtimePersistence.persist();
+            }
+            if (!mapResult.hasCommands && !actionResult.hasCommands) break;
 
             if (round === 2) {
-              pendingHomeActionOutcomes.set(conversationId, toolResult.outcomes);
+              pendingCommandOutcomes.set(conversationId, commandOutcomes);
               break;
             }
 
             try {
               rawDialogue = await gemini.generateReply([
-                "Your previous response requested home-map tools. The game executed them.",
+                "Your previous response requested home or physical-action tools. The game processed them.",
                 `The player's original message was: ${JSON.stringify(body.message.trim())}`,
-                `Tool results: ${toolResult.outcomes.join(" ")}`,
-                "Now continue the same conversation in character. Respond naturally to the player's original message, acknowledge what happened, and do not repeat tool commands unless another map operation is needed.",
+                `Command results: ${commandOutcomes.join(" ")}`,
+                `Your currently valid physical actions and targets are: ${JSON.stringify(getAiActionOptions(engine))}`,
+                "Now continue the same conversation in character. Acknowledge only successful changes, respond naturally to the player's original message, and do not repeat commands that have already succeeded.",
               ].join("\n\n"));
             } catch (error) {
-              console.error("Could not send home-map tool results to Aria:", error);
-              pendingHomeActionOutcomes.set(conversationId, toolResult.outcomes);
+              console.error("Could not send command results to Aria:", error);
+              pendingCommandOutcomes.set(conversationId, commandOutcomes);
               break;
             }
           }
@@ -485,12 +495,12 @@ export function createServer(port = 3000) {
             const buildResult = engine.houseBuilder.executeCommand(buildCmd);
             if (buildResult.success) {
               realtimePersistence.persist();
-              pendingHomeActionOutcomes.set(conversationId, [
+              pendingCommandOutcomes.set(conversationId, [
                 `Your build command succeeded: ${buildResult.message}.`,
               ]);
             } else {
               console.warn("AI build command was rejected:", buildResult.message);
-              pendingHomeActionOutcomes.set(conversationId, [
+              pendingCommandOutcomes.set(conversationId, [
                 `Your build command failed: ${buildResult.message}.`,
               ]);
               parsed.dialogue = `I couldn't make that change: ${buildResult.message}`;
@@ -641,37 +651,16 @@ export function createServer(port = 3000) {
         return;
       }
 
-      // 7. API: Reset Story to Fresh Day 1 State
+      // 7. API: Reset physical needs to their initialized values
       if (req.method === "POST" && pathname === "/api/reset") {
-        const stateDir = path.resolve(__dirname, "../state");
-        try {
-          if (fs.existsSync(path.join(stateDir, "game-state.json"))) {
-            fs.unlinkSync(path.join(stateDir, "game-state.json"));
-          }
-          if (fs.existsSync(path.join(stateDir, "timings.txt"))) {
-            fs.unlinkSync(path.join(stateDir, "timings.txt"));
-          }
-          if (fs.existsSync(path.join(stateDir, "conversations.json"))) {
-            fs.unlinkSync(path.join(stateDir, "conversations.json"));
-          }
-          if (fs.existsSync(path.join(stateDir, "house-layout.json"))) {
-            fs.unlinkSync(path.join(stateDir, "house-layout.json"));
-          }
-        } catch (e) {
-          console.warn("Could not remove state files during reset:", e);
-        }
-
-        // Re-initialize engine, house, and conversations
-        engine.init();
-        engine.houseBuilder.resetToDefault();
-        realtimePersistence.start();
-        conversationManager.reset();
+        const resetAt = new Date();
+        realtimePersistence.update(resetAt);
+        engine.stateManager.resetPhysicalNeeds();
+        realtimePersistence.persist(resetAt);
 
         sendJson({
           success: true,
-          message: "Story and house layout have been reset to initial Day 1 state.",
-          activeConversation: conversationManager.getActiveConversation(),
-          layout: engine.houseBuilder.getLayout(),
+          message: "Mohit and Aria's physical needs have been reset to their starting values.",
         });
         return;
       }

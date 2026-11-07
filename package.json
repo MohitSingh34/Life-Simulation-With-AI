@@ -8,7 +8,7 @@
     "web": "tsx src/server.ts",
     "terminal": "tsx src/main.ts --terminal",
     "dev": "tsx watch src/main.ts",
-    "test": "tsx src/test_simulation.ts && tsx src/test_realtime_persistence.ts && tsx src/test_grooming_chores.ts && tsx src/test_living_balcony.ts && tsx src/test_study_social.ts && tsx src/test_bedroom_wardrobe.ts && tsx src/test_culinary_engine.ts && tsx src/test_house_builder.ts"
+    "test": "tsx src/test_simulation.ts && tsx src/test_reset_physical_needs.ts && tsx src/test_ai_action_commands.ts && tsx src/test_runtime_state_bindings.ts && tsx src/test_conversation_recovery.ts && tsx src/test_realtime_persistence.ts && tsx src/test_grooming_chores.ts && tsx src/test_living_balcony.ts && tsx src/test_study_social.ts && tsx src/test_bedroom_wardrobe.ts && tsx src/test_culinary_engine.ts && tsx src/test_house_builder.ts"
   },
   "dependencies": {
     "chalk": "^5.3.0",

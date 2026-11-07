@@ -872,12 +872,11 @@
     "category": "interaction",
     "duration": 180,
     "requiresTarget": true,
-    "targetTypes": ["fixture", "item"],
+    "targetTypes": ["fixture"],
     "preconditions": {
       "roomId": "kitchen"
     },
     "effects": {
-      "objectState": "empty",
       "objectStates": {
         "plate_001": "empty",
         "chai_cup_001": "empty"

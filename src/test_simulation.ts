@@ -174,6 +174,8 @@ function runAutomatedTest() {
   console.log("✓ Stepped out onto the balcony.");
 
   // Water plants (+10 happiness, -10 stress)
+  player.emotions.happiness = 50;
+  player.emotions.stress = 50;
   const preWaterHappiness = player.emotions.happiness;
   const preWaterStress = player.emotions.stress;
   const waterAction = engine.submitPlayerAction("water_plants");
@@ -218,4 +220,3 @@ function runAutomatedTest() {
 }
 
 runAutomatedTest();
-

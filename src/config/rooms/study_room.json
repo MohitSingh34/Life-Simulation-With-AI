@@ -44,7 +44,6 @@
     {
       "id": "study_door_area",
       "name": "At the Study Room Door",
-      "objectId": "door_study",
       "standable": true,
       "sittable": false,
       "lieable": false

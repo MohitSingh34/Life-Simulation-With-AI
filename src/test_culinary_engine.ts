@@ -19,8 +19,18 @@ function runCulinaryEngineTests() {
   assert.equal(player.location.roomId, "kitchen");
   console.log("✓ Player arrived in kitchen (posture: standing).\n");
 
-  // Step 2: Test Brass Masala Dabba (spice_box_001)
-  console.log("[TEST 2] Testing Brass Masala Dabba interactions...");
+  // Step 2: Verify glass states include the half-full state produced by sipping
+  console.log("[TEST 2] Testing drinking glass state transitions...");
+  const fillGlassRes = engine.submitPlayerAction("fill_glass_water", "drinking_glass_001");
+  assert.equal(fillGlassRes.result.status, "accepted");
+  const sipGlassRes = engine.submitPlayerAction("sip_water_glass", "drinking_glass_001");
+  assert.equal(sipGlassRes.result.status, "accepted");
+  assert.equal(engine.stateManager.getObjectState("drinking_glass_001").state, "half");
+  assert.ok(engine.configLoader.getObject("drinking_glass_001")?.possibleStates.includes("half"));
+  console.log("✓ Filling and sipping leave the glass in a configured 'half' state.\n");
+
+  // Step 3: Test Brass Masala Dabba (spice_box_001)
+  console.log("[TEST 3] Testing Brass Masala Dabba interactions...");
   const inspectSpiceRes = engine.submitPlayerAction("inspect_spices", "spice_box_001");
   assert.equal(inspectSpiceRes.result.status, "accepted", "inspect_spices must succeed");
 
@@ -36,14 +46,14 @@ function runCulinaryEngineTests() {
   assert.equal(engine.stateManager.getObjectState("spice_box_001").state, "closed");
   console.log("✓ Brass Masala Dabba inspected, opened, pinched, and closed.\n");
 
-  // Step 3: Test Countertop Wiping (wipe_counter on counter_001)
-  console.log("[TEST 3] Testing Countertop Wiping on counter_001...");
+  // Step 4: Test Countertop Wiping (wipe_counter on counter_001)
+  console.log("[TEST 4] Testing Countertop Wiping on counter_001...");
   const wipeRes = engine.submitPlayerAction("wipe_counter", "counter_001");
   assert.equal(wipeRes.result.status, "accepted", "wipe_counter must succeed");
   console.log("✓ Countertop wiping verified successfully.\n");
 
-  // Step 4: Test Brewing Normal Fresh Hot Tea (make_masala_chai and brew_tea)
-  console.log("[TEST 4] Testing Tea Brewing (make_masala_chai & brew_tea)...");
+  // Step 5: Test Brewing Normal Fresh Hot Tea (make_masala_chai and brew_tea)
+  console.log("[TEST 5] Testing Tea Brewing (make_masala_chai & brew_tea)...");
   const thirstBeforeTea = player.needs.thirst;
   const energyBeforeTea = player.needs.energy;
 
@@ -56,15 +66,15 @@ function runCulinaryEngineTests() {
   assert.equal(normalTeaRes.result.status, "accepted", "brew_tea must succeed");
   console.log("✓ Fresh tea brewing succeeded and deterministically altered needs.\n");
 
-  // Step 5: Test Cooking Breakfast (cook_breakfast)
-  console.log("[TEST 5] Testing Breakfast Cooking (Poha & Aloo Paratha)...");
+  // Step 6: Test Cooking Breakfast (cook_breakfast)
+  console.log("[TEST 6] Testing Breakfast Cooking (Poha & Aloo Paratha)...");
   const breakfastRes = engine.submitPlayerAction("cook_breakfast", "stove_001");
   assert.equal(breakfastRes.result.status, "accepted", "cook_breakfast must succeed");
   assert.equal(engine.stateManager.getObjectState("stove_001").state, "cooking");
   console.log("✓ Cook breakfast succeeded. Stove is now in 'cooking' state.\n");
 
-  // Step 6: Test Meal Serving and Dining Loop (cook_meal -> serve_meal -> eat_meal_from_plate -> wash_dishes)
-  console.log("[TEST 6] Testing Complete Meal Serving & Dining Loop...");
+  // Step 7: Test Meal Serving and Dining Loop (cook_meal -> serve_meal -> eat_meal_from_plate -> wash_dishes)
+  console.log("[TEST 7] Testing Complete Meal Serving & Dining Loop...");
   
   // A. Cook meal
   const cookMealRes = engine.submitPlayerAction("cook_meal", "stove_001");
@@ -107,10 +117,15 @@ function runCulinaryEngineTests() {
   // F. Stand up and wash dishes
   const standUpRes = engine.submitPlayerAction("stand_up");
   assert.equal(standUpRes.result.status, "accepted", "stand_up must succeed");
+  engine.stateManager.updateObjectState("chai_cup_001", (object) => {
+    object.state = "dirty";
+  });
 
   const washDishesRes = engine.submitPlayerAction("wash_dishes", "sink_001");
   assert.equal(washDishesRes.result.status, "accepted", "wash_dishes must succeed");
   assert.equal(engine.stateManager.getObjectState("plate_001").state, "empty");
+  assert.equal(engine.stateManager.getObjectState("chai_cup_001").state, "empty");
+  assert.equal(engine.stateManager.getObjectState("sink_001").state, "idle");
   console.log("  → Dirty plate washed at sink_001. Plate state returned to 'empty'.\n");
 
   // Step 7: Test Washing at alias sink_kitchen_001
@@ -119,6 +134,7 @@ function runCulinaryEngineTests() {
   const washDishesAliasRes = engine.submitPlayerAction("wash_dishes", "sink_kitchen_001");
   assert.equal(washDishesAliasRes.result.status, "accepted", "wash_dishes at sink_kitchen_001 alias must succeed");
   assert.equal(engine.stateManager.getObjectState("plate_001").state, "empty");
+  assert.equal(engine.stateManager.getObjectState("sink_001").state, "idle");
   console.log("✓ sink_kitchen_001 successfully aliased and cleaned dirty plate to 'empty'.\n");
 
   // Step 8: Test Brewing Tea for Two (brew_chai_duo with companion boost)

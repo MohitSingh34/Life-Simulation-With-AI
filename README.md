@@ -17,6 +17,7 @@ This project is intentionally built around a clear separation of concerns:
 life-simulation/
 ├── src/
 │   ├── ai/
+│   │   ├── AiActionCommandProcessor.ts
 │   │   ├── AIDecisionEngine.ts
 │   │   ├── ConversationManager.ts
 │   │   ├── GeminiWebProvider.ts
@@ -64,6 +65,9 @@ life-simulation/
 │   ├── main.ts
 │   ├── server.ts
 │   ├── test_realtime_persistence.ts
+│   ├── test_ai_action_commands.ts
+│   ├── test_reset_physical_needs.ts
+│   ├── test_runtime_state_bindings.ts
 │   ├── test_simulation.ts
 │   └── ...
 │
@@ -166,6 +170,8 @@ This is the AI layer.
 - `gemini_web_worker.py` supports the browser/AI bridge for Gemini interactions
 
 The AI is a companion layer: it can narrate and make recommendations, but the engine still owns the true in-game state.
+
+Aria can also perform configured physical actions. Her prompt receives the actions and target objects currently valid for her, and she can request an action using `&&action:<action_id>&&` or `&&action:<action_id>;target:<object_id>&&`. The engine validates and executes each command as Aria; movement and posture changes must use configured actions. The **Reset Needs** control restores both characters' initialized physical needs only—it preserves time, positions, objects, the home map, and conversations.
 
 ### `src/ui/`
 The terminal presentation layer.

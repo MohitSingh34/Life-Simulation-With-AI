@@ -6,7 +6,40 @@ import type { GeminiChatSummary } from "./GeminiWebProvider.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const STATE_DIR = path.resolve(__dirname, "../../state");
-const CONV_FILE = path.join(STATE_DIR, "conversations.json");
+
+function isStoredConversations(value: unknown): value is StoredConversations {
+  if (!value || typeof value !== "object") return false;
+  const data = value as Partial<StoredConversations>;
+  if (typeof data.activeId !== "string" || !Array.isArray(data.conversations)) {
+    return false;
+  }
+
+  return data.conversations.every((conversation) => {
+    if (!conversation || typeof conversation !== "object") return false;
+    const session = conversation as Partial<ConversationSession>;
+    if (
+      typeof session.id !== "string" ||
+      typeof session.title !== "string" ||
+      typeof session.createdAt !== "string" ||
+      typeof session.lastActiveAt !== "string" ||
+      !Array.isArray(session.messages)
+    ) {
+      return false;
+    }
+
+    return session.messages.every((message) => {
+      if (!message || typeof message !== "object") return false;
+      const chatMessage = message as Partial<ChatMessage>;
+      return (
+        typeof chatMessage.id === "string" &&
+        (chatMessage.sender === "player" || chatMessage.sender === "aria") &&
+        typeof chatMessage.text === "string" &&
+        typeof chatMessage.time === "string" &&
+        typeof chatMessage.timestamp === "number"
+      );
+    });
+  });
+}
 
 export interface ChatMessage {
   id: string;
@@ -34,8 +67,10 @@ interface StoredConversations {
 export class ConversationManager {
   private activeId: string = "";
   private sessions: Map<string, ConversationSession> = new Map();
+  private readonly conversationFile: string;
 
-  constructor() {
+  constructor(stateDir = STATE_DIR) {
+    this.conversationFile = path.join(stateDir, "conversations.json");
     this.load();
   }
 
@@ -160,18 +195,35 @@ export class ConversationManager {
   }
 
   private load(): void {
-    try {
-      if (fs.existsSync(CONV_FILE)) {
-        const raw = fs.readFileSync(CONV_FILE, "utf-8");
-        const data: StoredConversations = JSON.parse(raw);
+    if (fs.existsSync(this.conversationFile)) {
+      try {
+        const raw = fs.readFileSync(this.conversationFile, "utf-8");
+        const parsed: unknown = JSON.parse(raw);
+        if (!isStoredConversations(parsed)) {
+          throw new Error("Conversation file has an invalid data structure.");
+        }
+        const data = parsed;
         this.activeId = data.activeId || "";
         this.sessions.clear();
         for (const s of data.conversations || []) {
           this.sessions.set(s.id, s);
         }
+      } catch (error) {
+        const backupFile = `${this.conversationFile}.corrupt-${Date.now()}-${process.pid}.bak`;
+        try {
+          fs.copyFileSync(this.conversationFile, backupFile, fs.constants.COPYFILE_EXCL);
+        } catch (backupError) {
+          throw new Error(
+            `Could not preserve invalid conversation data at ${this.conversationFile}; ` +
+              `refusing to replace it.`,
+            { cause: backupError }
+          );
+        }
+        const reason = error instanceof Error ? error.message : String(error);
+        console.warn(
+          `Could not load conversations.json (${reason}). Original data was preserved at ${backupFile}; creating a new store.`
+        );
       }
-    } catch (err) {
-      console.warn("Could not load conversations.json, creating new store:", err);
     }
 
     if (this.sessions.size === 0) {
@@ -181,17 +233,17 @@ export class ConversationManager {
 
   private save(): void {
     try {
-      if (!fs.existsSync(STATE_DIR)) {
-        fs.mkdirSync(STATE_DIR, { recursive: true });
+      const stateDir = path.dirname(this.conversationFile);
+      if (!fs.existsSync(stateDir)) {
+        fs.mkdirSync(stateDir, { recursive: true });
       }
       const data: StoredConversations = {
         activeId: this.activeId,
         conversations: Array.from(this.sessions.values()),
       };
-      fs.writeFileSync(CONV_FILE, JSON.stringify(data, null, 2), "utf-8");
+      fs.writeFileSync(this.conversationFile, JSON.stringify(data, null, 2), "utf-8");
     } catch (err) {
       console.warn("Could not save conversations.json:", err);
     }
   }
 }
-

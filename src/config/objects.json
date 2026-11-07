@@ -284,12 +284,13 @@
     "roomId": "kitchen",
     "positionId": "counter_area",
     "defaultState": "empty",
-    "possibleStates": ["empty", "filled_water"],
+    "possibleStates": ["empty", "filled_water", "half"],
     "interactions": ["pick_up_item", "put_down_item", "fill_glass_water", "sip_water_glass", "drink_water_glass"],
     "description": "A clear glass tumbler for drinking water or juice.",
     "stateDescriptions": {
       "empty": "The glass is dry and clean.",
-      "filled_water": "Clear, refreshing water fills the glass to the brim."
+      "filled_water": "Clear, refreshing water fills the glass to the brim.",
+      "half": "About half a glass of refreshing water remains."
     },
     "portable": true,
     "icon": "🥛"
@@ -302,7 +303,7 @@
     "positionId": "counter_area",
     "defaultState": "empty",
     "possibleStates": ["empty", "with_food", "dirty"],
-    "interactions": ["pick_up_item", "put_down_item", "serve_meal", "eat_meal_from_plate", "wash_dishes"],
+    "interactions": ["pick_up_item", "put_down_item", "serve_meal", "eat_meal_from_plate"],
     "description": "A traditional polished stainless steel thali plate.",
     "stateDescriptions": {
       "empty": "The polished steel plate shines brightly, clean and ready for a meal.",
@@ -320,7 +321,7 @@
     "positionId": "counter_area",
     "defaultState": "empty",
     "possibleStates": ["empty", "steaming_chai", "dirty"],
-    "interactions": ["pick_up_item", "put_down_item", "sip_hot_chai", "drink_hot_chai", "wash_dishes"],
+    "interactions": ["pick_up_item", "put_down_item", "sip_hot_chai", "drink_hot_chai"],
     "description": "A traditional ceramic chai cup for hot, comforting everyday milk tea.",
     "stateDescriptions": {
       "empty": "The ceramic tea cup is dry, clean, and resting on the counter.",

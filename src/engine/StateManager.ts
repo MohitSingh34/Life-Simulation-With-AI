@@ -5,6 +5,7 @@ import {
   SimulationSnapshot,
   CharacterTemplate,
   CharacterAppearance,
+  CharacterNeeds,
   ObjectConfig,
   AiNarrativeState,
 } from "../types/index.js";
@@ -12,6 +13,7 @@ import {
 export class StateManager {
   private characters: Map<string, CharacterState> = new Map();
   private appearanceDefaults: Map<string, CharacterAppearance> = new Map();
+  private initialNeeds: Map<string, CharacterNeeds> = new Map();
   private objectStates: Map<string, ObjectState> = new Map();
   private narrative: AiNarrativeState = {};
   private time: SimulationTime = {
@@ -42,9 +44,19 @@ export class StateManager {
     };
     this.characters.clear();
     this.appearanceDefaults.clear();
+    this.initialNeeds.clear();
     for (const t of templates) {
       const isPlayer = t.type === "human";
       this.appearanceDefaults.set(t.id, { ...t.appearance });
+      const needs: CharacterNeeds = {
+        hunger: isPlayer ? 45 : 30,
+        thirst: isPlayer ? 40 : 25,
+        energy: isPlayer ? 80 : 85,
+        sleepiness: isPlayer ? 20 : 15,
+        hygiene: isPlayer ? 70 : 85,
+        bladder: isPlayer ? 50 : 20,
+      };
+      this.initialNeeds.set(t.id, { ...needs });
       const charState: CharacterState = {
         id: t.id,
         name: t.name,
@@ -58,14 +70,7 @@ export class StateManager {
           orientation: isPlayer ? "left" : "front",
           movement: "stationary",
         },
-        needs: {
-          hunger: isPlayer ? 45 : 30,
-          thirst: isPlayer ? 40 : 25,
-          energy: isPlayer ? 80 : 85,
-          sleepiness: isPlayer ? 20 : 15,
-          hygiene: isPlayer ? 70 : 85,
-          bladder: isPlayer ? 50 : 20,
-        },
+        needs,
         emotions: {
           happiness: 75,
           stress: 15,
@@ -115,6 +120,16 @@ export class StateManager {
 
   public getCharacter(id: string): CharacterState | undefined {
     return this.characters.get(id);
+  }
+
+  public resetPhysicalNeeds(): void {
+    for (const character of this.characters.values()) {
+      const initialNeeds = this.initialNeeds.get(character.id);
+      if (!initialNeeds) {
+        throw new Error(`Initial physical needs for character ${character.id} are unavailable.`);
+      }
+      character.needs = { ...initialNeeds };
+    }
   }
 
   public getAllCharacters(): CharacterState[] {

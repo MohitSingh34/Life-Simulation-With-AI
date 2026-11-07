@@ -1,510 +1,494 @@
-# Universal Story Flow (In-Depth Action & Object Tree)
-> **Document Role**: Detailed Verbatim Action & Object Tree Hierarchy with Room Ambience, Flavor Text & Posture Condition Rules.  
-> **Modular Blueprint Companion**: See [UNIVERSAL_STORY.md](file:///home/no/applications/Game/life-simulation/story/UNIVERSAL_STORY.md) for the visual Mermaid diagrams, governing file lists, capability matrices, and multi-agent task verification.  
+# Universal Story Tree: Current Configured Paths
 
-This is an authoritative branching tree of what the current game configuration supports, verified against `src/config/` and the game engine (`ActionEngine`, `MovementEngine`, `StateManager`, `NeedsEngine`, `AIDecisionEngine`). Each choice is an action defined in `src/config/actions/`, and each object description comes from `src/config/objects.json`. Actions appear and succeed only when their configured room, posture, object state, and holding requirements are satisfied.
+This tree reflects configured rooms, actions, object states, and runtime rules. It is an index of possible branches, not a scripted sequence: an action appears or succeeds only when its current preconditions and target validation pass. For the world overview and implementation boundaries, see [`UNIVERSAL_STORY.md`](./UNIVERSAL_STORY.md).
+
+## Start
 
 ```text
-START
-└── Mohit is in the Bedroom
-    └── Wooden Bed: Mohit is lying on the bed (bed_center)
+Tuesday, 07:30 — Jabalpur home
+├── Mohit: bedroom / bed_center / lying; bed occupied by player_001
+│   ├── get_up → bedside / standing
+│   └── sit_up_in_bed → bed_center / sitting
+└── Aria: study_room / desk_chair / sitting; chair occupied by ai_001
+    └── stand_up → standing; desk chair becomes available
 ```
 
----
+The startup clock and need values are in [`StateManager.ts`](../src/engine/StateManager.ts). In the browser, **Reset Needs** restores the six startup physical needs for both characters; it does not restart this tree or reset the home.
 
-## 1. Body and Rest Choices
+## Movement and posture
 
-### When Mohit is lying on the bed (`bed_center`):
+All six rooms are connected into one reachable floor plan. Walking requires standing; room changes use the configured `walk_to_*` action and put the character at that room's door position.
+
 ```text
-Mohit is lying on the bed
-├── Turn Left [turn_left]
-│   └── Mohit faces left; remains lying at bed_center
-├── Turn Right [turn_right]
-│   └── Mohit faces right; remains lying at bed_center
-├── Sit Up in Bed [sit_up_in_bed]
-│   └── Direct posture transition from lying to sitting directly on the bed
-├── Sleep Through Night [sleep]
-│   └── Available while lying at bed_center; sleeps for 7 hours (25,200s; energy +80, sleepiness -85)
-├── Take a Power Nap [nap]
-│   └── Available while lying or sitting; recharges for 45 minutes (2,700s; energy +35, sleepiness -40)
-├── Meditate Peacefully [meditate]
-│   └── Available while lying, sitting, or kneeling; centers thoughts for 10 minutes (600s; stress -15)
-├── Bedtime Reading [bedtime_reading]
-│   └── Available when sitting or lying in bed, holding a book, and bedside lamp is turned on
-└── Get Up from Bed [get_up]
-    └── Posture becomes standing; Mohit moves to bedside
+Any room (standing)
+├── walk_to_bedroom
+├── walk_to_study_room
+├── walk_to_kitchen
+├── walk_to_toilet
+├── walk_to_living_room
+└── walk_to_balcony
+
+Bedroom
+├── lying or sitting on bed → get_up → bedside / standing
+├── lying on bed → sit_up_in_bed → bed / sitting
+├── standing or sitting → lie_down_bed → bed / lying
+└── standing → sit_down_bed → bed / sitting
+
+Study room
+└── standing → sit_down_study_chair → desk_chair / sitting
+
+Kitchen
+└── standing → sit_down_kitchen_stool → dining_chair / sitting
+
+Living room
+├── standing or lying → sit_on_sofa → sofa / sitting
+└── standing or sitting → lie_down_sofa → sofa / lying
+
+Balcony
+└── standing → sit_on_cane_chair → cane chair / sitting
 ```
 
----
+The runtime synchronizes occupancy for the bed, study chair, sofa, kitchen stool, and cane chair where configured. A destination that is already occupied cannot be claimed by the other character. `stand_up` is available from sitting, kneeling, squatting, or lying postures; `turn_left` and `turn_right` change orientation.
 
-### When Mohit is sitting on the bed edge (`bed_center`):
-```text
-Mohit is sitting on the bed edge
-├── Lie Down on Bed [lie_down_bed]
-│   └── Mohit reclines gently; posture becomes lying at bed_center
-├── Get Up from Bed [get_up]
-│   └── Posture becomes standing; Mohit moves to bedside
-├── Stand Up [stand_up]
-│   └── Posture becomes standing at current position (bed_center)
-├── Take a Power Nap [nap]
-│   └── Available while sitting or lying; rests for 45 minutes
-├── Meditate Peacefully [meditate]
-│   └── Centers thoughts for 10 minutes
-└── Bedtime Reading [bedtime_reading]
-    └── Available while holding a book and bedside lamp is on
-```
+## Branch by room
 
----
-
-### When Mohit is standing in the Bedroom:
-```text
-Mohit is standing in the Bedroom
-├── Lie Down on Bed [lie_down_bed]
-│   └── Mohit lies down; posture becomes lying at bed_center
-├── Sit on Bed Edge [sit_down_bed]
-│   └── Mohit sits down; posture becomes sitting at bed_center
-├── Make the Bed [make_bed]
-│   └── Straightens bedsheet and fluffs pillows; Wooden Bed state becomes neat
-├── Morning Body Stretch [stretch_body]
-│   └── Full-body standing stretch (+12 energy, -15 sleepiness)
-├── Tidy Up Space [tidy_room]
-│   └── Straightens bedroom blankets and scattered items (+10 hygiene, -10 stress)
-├── Turn Left [turn_left] / Turn Right [turn_right]
-│   └── Rotates body 90 degrees
-└── Walk to another reachable room (requires standing)
-    ├── Walk to Study Room [walk_to_study_room] (via door_bedroom_study)
-    ├── Walk to Kitchen [walk_to_kitchen] (via door_bedroom_kitchen)
-    ├── Walk to Toilet [walk_to_toilet] (via door_bedroom_toilet)
-    └── Walk to Living Room [walk_to_living_room] (via door_bedroom_living)
-```
-
----
-
-## 2. Bedroom
+### Bedroom
 
 ```text
 Bedroom
-├── Wooden Bed
-│   ├── "A spacious solid wood bed with a firm cotton mattress, crisp bedsheet, and soft pillows."
-│   ├── State `neat`: "The bedsheet is smoothly pulled tight with the pillows fluffed up neatly."
-│   ├── State `rumpled`: "The blanket is crumpled and the pillows are indented from use."
-│   ├── State `occupied_lying`: "Someone is resting comfortably in the bed."
-│   ├── State `occupied_sitting`: "Someone is sitting upright on the edge of the mattress."
-│   ├── Lie Down on Bed [lie_down_bed] (requires standing or sitting)
-│   ├── Sit on Bed Edge [sit_down_bed] (requires standing)
-│   ├── Sit Up in Bed [sit_up_in_bed] (requires lying at bed_center)
-│   ├── Get Up from Bed [get_up] (requires lying or sitting at bed_center; moves to bedside)
-│   ├── Make the Bed [make_bed] (requires standing)
-│   ├── Sleep Through Night [sleep] (requires lying at bed_center)
-│   └── Take a Power Nap [nap] (requires lying or sitting)
-│
-├── Bedside Table
-│   └── "A small wooden nightstand supporting a brass lamp and personal items."
-│
-├── Bedside Brass Lamp
-│   ├── Off: "The lamp is unlit, waiting for the evening."
-│   ├── On: "A soothing golden glow radiates from underneath the lampshade."
-│   ├── Turn On Bedside Lamp [turn_on_lamp] (when off)
-│   ├── Turn Off Bedside Lamp [turn_off_lamp] (when on)
-│   └── Bedtime Reading [bedtime_reading] (holding book, sitting/lying in bed, lamp on)
-│
-├── Teakwood Wardrobe
-│   ├── Closed: "The twin wooden doors are shut tight."
-│   ├── Open: "Hangers, neatly folded kurtas, jeans, and casual clothes are displayed inside."
-│   ├── Open Wardrobe [open_wardrobe] (requires standing; when closed)
-│   ├── Change Clothes [change_clothes] (requires wardrobe open; swaps outfit, +10 confidence)
-│   ├── Wear Sleepwear [wear_sleepwear] (Soft Cotton Kurta, Pyjama, Barefoot; stress -5)
-│   ├── Wear Casual Loungewear [wear_casual] (Comfortable T-Shirt, Track Pants, Sandals)
-│   ├── Wear Outdoor / Work Wear [wear_work_wear] (Crisp Linen Shirt, Tailored Trousers, Loafers)
-│   └── Close Wardrobe [close_wardrobe] (when open)
-│
-├── Copper Water Flask
-│   ├── Full: "The flask is heavy and cool to the touch, brimming with water."
-│   ├── Half: "The flask has a comfortable amount of water left."
-│   ├── Empty: "The copper bottle is empty and hollow."
-│   ├── Pick Up Item [pick_up_item] (requires empty hands; portable item)
-│   ├── Sip from Flask [sip_from_flask] (when full or half; sets state to half)
-│   ├── Drink from Copper Flask [drink_from_flask] (when full or half; sets state to empty)
-│   └── Put Down Item [put_down_item] (while holding the flask)
-│
-├── Mohit's Phone
-│   ├── "A smartphone charging beside the bed, with familiar photos and messages."
-│   ├── Pick Up Item [pick_up_item] (requires empty hands; carriable across all rooms)
-│   ├── Check Phone [check_phone] (stress -5, happiness +5)
-│   ├── Check Messages [check_messages] (loneliness -10, happiness +8)
-│   ├── Play Alarm [play_alarm] (gentle awakening chime)
-│   ├── Listen to Music on Phone [listen_music_phone] (stress -15, happiness +10)
-│   └── Put Down Item [put_down_item] (while holding the phone)
-│
-├── Other configured activities in Bedroom
-│   ├── Morning Body Stretch [stretch_body] (requires standing)
-│   ├── Tidy Up Space [tidy_room] (requires standing)
-│   └── Meditate Peacefully [meditate] (requires sitting, lying, or kneeling)
-│
-├── Turn Left [turn_left] / Turn Right [turn_right]
-│   └── Available in any posture; rotates orientation by 90 degrees
-│
-└── Walk (requires standing)
-    ├── Walk to Study Room [walk_to_study_room] (via door_bedroom_study)
-    ├── Walk to Kitchen [walk_to_kitchen] (via door_bedroom_kitchen)
-    ├── Walk to Toilet [walk_to_toilet] (via door_bedroom_toilet)
-    └── Walk to Living Room [walk_to_living_room] (via door_bedroom_living)
+├── Bed [bed_001]
+│   ├── Lie Down on Bed [lie_down_bed]
+│   ├── Sit on Bed Edge [sit_down_bed]
+│   ├── Sit Up in Bed [sit_up_in_bed]
+│   ├── Get Up from Bed [get_up]
+│   ├── Sleep Through Night [sleep] — lying at bed_center
+│   ├── Take a Power Nap [nap] — lying or sitting in bedroom
+│   └── Make the Bed [make_bed] — standing; sets bed state to neat
+├── Bedside Lamp [lamp_001]
+│   ├── Turn On [turn_on_lamp] — off → on
+│   └── Turn Off [turn_off_lamp] — on → off
+├── Wardrobe [wardrobe_001]
+│   ├── Open / Close [open_wardrobe, close_wardrobe]
+│   └── Change Clothes / Wear Sleepwear / Wear Casual / Wear Work Wear
+│       [change_clothes, wear_sleepwear, wear_casual, wear_work_wear]
+│       └── changing requires standing at wardrobe with it open
+├── Copper Flask [water_flask_001]
+│   ├── Sip [sip_from_flask] — full or half → half
+│   └── Drink [drink_from_flask] — full or half → empty
+├── Mohit's Phone [phone_001]
+│   └── Check Phone, Check Messages, Play Alarm, Listen to Music on Phone
+│       [check_phone, check_messages, play_alarm, listen_music_phone]
+└── Bedtime Reading [bedtime_reading]
+    └── bed_center, sitting or lying, holding a book, bedside lamp on
 ```
 
----
-
-## 3. Study Room
+### Study room
 
 ```text
-Study Room
-├── Study Desk
-│   ├── "A heavy wooden work desk with pen stands, a notebook, and adequate workspace."
-│   ├── Tidy the Desk [tidy_desk] (room: study_room)
-│   └── Write in Journal [journal_notes] (requires sitting)
-│
-├── Desk Chair
-│   ├── Available: "The chair is empty, waiting at the desk."
-│   ├── Occupied: "Someone is seated comfortably at the workstation."
-│   ├── Sit at Study Desk [sit_down_study_chair] (requires standing; moves to desk_chair)
-│   └── Stand Up [stand_up] (requires sitting)
-│
-├── Desktop Computer
-│   ├── Off: "The dark monitors reflect the quiet room."
-│   ├── On: "The wallpaper glows invitingly, ready for work or gaming."
-│   ├── In Use: "Code, articles, and media flicker across the glowing monitors."
-│   ├── Power On Computer [turn_on_computer] (when off)
-│   ├── Software Development Project [code_project] (requires sitting; +20 studiousness, +10 energy, -15 boredom)
-│   ├── Listen to Lo-Fi Study Beats [listen_lofi_music] (stress -15, happiness +10)
-│   ├── Work at Computer [use_computer] (requires sitting; when on or in_use)
-│   ├── Browse the Web [browse_web] (when on or in_use)
-│   ├── See Photos [view_photos] (when on or in_use)
-│   ├── Take a Selfie [take_selfie] (when on or in_use)
-│   ├── Record a Video [record_video] (when on or in_use)
-│   └── Shut Down Computer [turn_off_computer] (when on or in_use)
-│
-├── Bookshelf
-│   ├── "A study shelf holding textbooks, personal notebooks, and well-used reference books."
-│   ├── Browse the Bookshelf [browse_books] (inspects titles on shelf)
-│   ├── Read Math Textbook [read_math_book] (+15 studiousness, +5 energy, -10 boredom)
-│   ├── Read Physics Textbook [read_physics_book] (+15 studiousness, -10 boredom)
-│   ├── Read Psychology Book [read_psychology_book] (+15 sociability, -10 stress)
-│   ├── Read Mohit's Notebook [read_mohit_notebook] (+10 happiness, -15 stress)
-│   ├── Read Aria's Notebook [read_aria_notebook] (secret boundary tension; +20 guilt stress)
-│   ├── Pick Up Item [pick_up_item] (can pick up any portable book/item with empty hands)
-│   ├── Read Book [read_book] (daily activity in study_room or holding book)
-│   └── Put Down Item [put_down_item] (while holding an item)
-│
-├── Roommate Social Dynamics (Shared Presence with Aria)
-│   ├── Offer Chai to Roommate [offer_chai] (mutual happiness +15, stress -10)
-│   ├── Ask Aria About Her Day [ask_about_day] (loneliness -15, sociability +5)
-│   ├── Play Tactical Chess Match [play_chess] (boredom -25, studiousness +10)
-│   ├── Discuss Book Insights [discuss_book] (studiousness +10, sociability +10)
-│   └── Discuss Code Architecture [discuss_code] (studiousness +10, sociability +10)
-│
-├── Study Desk Lamp
-│   ├── Turn On Light [turn_on_room_light] (when off)
-│   └── Turn Off Light [turn_off_room_light] (when on)
-│
-├── Other configured activities in Study Room
-│   ├── Meditate Peacefully [meditate] (requires sitting, lying, or kneeling)
-│   ├── Morning Body Stretch [stretch_body] (requires standing)
-│   └── Tidy Up Space [tidy_room] (requires standing)
-│
-├── Turn Left [turn_left] / Turn Right [turn_right]
-│   └── Available in any posture; rotates orientation by 90 degrees
-│
-└── Walk (requires standing)
-    ├── Walk to Bedroom [walk_to_bedroom] (via door_bedroom_study)
-    ├── Walk to Kitchen [walk_to_kitchen] (via door_study_kitchen)
-    ├── Walk to Living Room [walk_to_living_room] (via door_study_living)
-    └── ❌ Walk to Toilet [walk_to_toilet] is NOT directly possible from Study Room.
-        There is no door connecting Study Room and Toilet in world.json.
-        To reach the Toilet, characters use BFS pathfinding through Bedroom or Kitchen.
+Study room
+├── Computer [computer_001]
+│   ├── Power On / Shut Down [turn_on_computer, turn_off_computer]
+│   ├── Work at Computer / Code Project [use_computer, code_project]
+│   ├── Browse Web / View Photos / Take Selfie / Record Video
+│   │   [browse_web, view_photos, take_selfie, record_video]
+│   └── computer actions that require it to be on/in use check that state
+├── Desk and chair [desk_001, chair_study]
+│   ├── Tidy Desk [tidy_desk]
+│   └── Sit at Desk [sit_down_study_chair] — occupied chair prevents another sitter
+├── Study Desk Lamp [study_lamp_001]
+│   └── Turn Light On / Off [turn_on_room_light, turn_off_room_light]
+├── Bookshelf and books [bookshelf_001]
+│   ├── Browse Books [browse_books]
+│   └── Pick up / read the configured math, physics, chemistry or psychology book
+│       [pick_up_math_book, read_math_book, pick_up_physics_book, read_physics_book,
+│        pick_up_chemistry_book, read_chemistry_book, pick_up_psychology_book,
+│        read_psychology_book]
+├── Notebooks
+│   ├── Pick up / read Mohit's notebook [pick_up_mohit_notebook, read_mohit_notebook]
+│   └── Pick up / read Aria's notebook [pick_up_aria_notebook, read_aria_notebook]
+├── Write in Journal [journal_notes]
+├── Listen to Lo-Fi Music [listen_lofi_music]
+└── Shared branches
+    ├── Play Chess [play_chess] — both together; sitting; study or living room
+    ├── Discuss Book [discuss_book] — both together
+    └── Discuss Code [discuss_code] — both together
 ```
 
----
+Reading is limited to the configured subject-specific actions and requirements. For bedtime reading, use the separate bedroom action. Actions that pick up items require the actor to have free hands; putting an item down uses `put_down_item`.
 
-## 4. Kitchen
+### Kitchen
 
 ```text
 Kitchen
-├── Brass Masala Dabba
-│   ├── Closed: "A traditional circular brass spice box with a snug lid keeping spices fresh."
-│   ├── Open: "Seven small brass katoris holding turmeric, mustard, cumin, and whole cloves."
-│   ├── Inspect Spices [inspect_spices] (inspects aromatic spices)
-│   ├── Open Masala Dabba [open_spice_box] (sets state to open)
-│   ├── Pinch Spices for Tempering [pinch_spices] (+5 tidiness, +3 happiness)
-│   └── Close Masala Dabba [close_spice_box] (sets state to closed)
-│
-├── Gas Stove
-│   ├── Off: "The stove burners are cool and extinguished."
-│   ├── On: "A steady blue ring of flame hisses softly."
-│   ├── Cooking: "A pan is sizzling pleasantly, releasing delicious aromas."
-│   ├── Ignite Gas Stove [turn_on_stove] (requires standing)
-│   ├── Brew Single Masala Chai [make_masala_chai] (thirst -20, energy +10, stress -10)
-│   ├── Brew Chai for Two [brew_chai_duo] (shared chai boost for Mohit and Aria)
-│   ├── Cook Morning Breakfast [cook_breakfast] (Poha & Aloo Paratha griddled on tawa)
-│   ├── Cook Fresh Meal [cook_meal] (dal, rice & phulkas; stove state becomes cooking)
-│   └── Turn Off Gas Stove [turn_off_stove] (switches stove off or idle)
-│
-├── Steel Dinner Plate
-│   ├── Empty: "The stainless steel thali plate shines brightly."
-│   ├── With Food: "A freshly cooked warm meal of dal, rice, warm rotis and sabzi is arranged."
-│   ├── Dirty: "Leftover traces of dal and spices, waiting to be washed at the sink."
-│   ├── Pick Up Item [pick_up_item] (requires empty hands; portable item)
-│   ├── Serve Cooked Meal [serve_meal] (holding plate, stove cooking; plate becomes with_food)
-│   ├── Eat Meal from Plate [eat_meal_from_plate] (seated at dining stool; hunger -50, plate dirty)
-│   └── Put Down Item [put_down_item] (while holding the plate)
-│
-├── Refrigerator
-│   ├── Closed: "The refrigerator stands humming quietly with its door sealed shut."
-│   ├── Open: "A rush of chilled air spills out, lighting up shelves filled with fresh food."
-│   ├── Open Refrigerator [open_fridge] (requires standing; when closed)
-│   │   ├── Take a Snack [get_food_from_fridge] (when open; hunger -15)
-│   │   └── Take a Cold Drink [get_drink_from_fridge] (when open; thirst -20)
-│   └── Close Refrigerator [close_fridge] (when open)
-│
-├── Granite Countertop
-│   ├── Clear: "A gleaming black granite slab used for chopping and meal preparation."
-│   ├── Has Items: "Prepared food and snack items are arranged on the counter."
-│   ├── Prepare a Snack [prepare_snack] (counter state becomes has_items)
-│   └── Wipe Kitchen Counter [wipe_counter] (counter cleaned; tidiness +10, stress -5)
-│
-├── Kitchen Sink (sink_001 / sink_kitchen_001)
-│   ├── Idle: "The stainless sink is dry and clean."
-│   ├── Running Tap: "A clean stream of water splashes smoothly down the stainless drain."
-│   ├── Turn On Kitchen Tap [turn_on_kitchen_tap]
-│   ├── Turn Off Kitchen Tap [turn_off_kitchen_tap]
+├── Refrigerator [fridge_001]
+│   ├── Open / Close [open_fridge, close_fridge]
+│   └── Take a Snack / Cold Drink [get_food_from_fridge, get_drink_from_fridge]
+│       └── fridge must be open
+├── Stove [stove_001]
+│   ├── Ignite / Turn Off [turn_on_stove, turn_off_stove]
+│   ├── Cook Breakfast / Cook Meal [cook_breakfast, cook_meal]
+│   ├── Brew Fresh Tea / Normal Tea / Chai for Two
+│   │   [make_masala_chai, brew_tea, brew_chai_duo]
+│   └── the configured cooking actions update stove/cup/plate states and needs
+├── Serving and eating
+│   ├── Pick up plate → serve meal [pick_up_item, serve_meal]
+│   │   └── serving requires the plate in hand and the stove in a permitted state
+│   ├── Sit on stool [sit_down_kitchen_stool]
+│   └── Eat plated meal [eat_meal_from_plate] — sitting at dining_chair;
+│       plate must be with_food; meal changes plate to dirty
+├── Water
+│   ├── Fill glass [fill_glass_water] — empty or half → filled_water
+│   ├── Sip glass [sip_water_glass] — filled_water → half
+│   └── Drink glass [drink_water_glass] — filled_water or half → empty
+├── Chai cup [chai_cup_001]
+│   ├── Brew actions can set steaming_chai
+│   ├── Sip [sip_hot_chai] — requires steaming_chai
+│   └── Drink [drink_hot_chai] — requires steaming_chai; sets cup dirty
+├── Masala dabba [spice_box_001]
+│   └── Open / inspect / pinch spices / close
+│       [open_spice_box, inspect_spices, pinch_spices, close_spice_box]
+├── Sink [sink_001]
+│   ├── Turn Tap On / Off [turn_on_kitchen_tap, turn_off_kitchen_tap]
 │   ├── Wash Hands [wash_hands_kitchen]
-│   └── Wash Dishes [wash_dishes] (cleans dirty plates, resetting state to empty)
-│
-├── Dining Stool
-│   ├── Available: "A tall wooden counter stool suited for quick meals or resting."
-│   ├── Occupied: "Someone is seated on the stool."
-│   ├── Sit on Kitchen Stool [sit_down_kitchen_stool] (requires standing; moves to dining_chair)
-│   └── Stand Up [stand_up] (requires sitting)
-│
-├── Glass Tumbler
-│   ├── Empty: "The glass is dry and clean."
-│   ├── Filled Water: "Clear, refreshing water fills the glass to the brim."
-│   ├── Fill Glass with Water [fill_glass_water] (requires room: kitchen; empty or half)
-│   ├── Sip Water [sip_water_glass] (when filled_water; sets state to half)
-│   ├── Drink Water from Glass [drink_water_glass] (when filled_water or half; sets state to empty)
-│   ├── Pick Up Item [pick_up_item] (requires empty hands; portable item)
-│   └── Put Down Item [put_down_item] (while holding the tumbler)
-│
-├── Trash Bin
-│   ├── Empty / Full: "Under-sink waste bin for food scraps."
-│   ├── Throw Kitchen Trash [throw_trash] (bin becomes full; tidiness +5)
-│   └── Empty Kitchen Bin [empty_bin] (bin emptied; tidiness +10)
-│
-├── Kitchen Ceiling Light
-│   ├── Turn On Light [turn_on_room_light] (when off)
-│   └── Turn Off Light [turn_off_room_light] (when on)
-│
-├── Other configured activities in Kitchen
-│   ├── Eat Quick Snack [eat_snack] (room: kitchen; satisfies hunger)
-│   ├── Eat Home-Cooked Meal [eat_meal] (room: kitchen; satisfies hunger & boosts energy)
-│   ├── Meditate Peacefully [meditate] (requires sitting, lying, or kneeling)
-│   ├── Morning Body Stretch [stretch_body] (requires standing)
-│   └── Tidy Up Space [tidy_room] (requires standing)
-│
-├── Turn Left [turn_left] / Turn Right [turn_right]
-│   └── Available in any posture; rotates orientation by 90 degrees
-│
-└── Walk (requires standing)
-    ├── Walk to Bedroom [walk_to_bedroom] (via door_bedroom_kitchen)
-    ├── Walk to Study Room [walk_to_study_room] (via door_study_kitchen)
-    ├── Walk to Toilet [walk_to_toilet] (via door_kitchen_toilet)
-    └── Walk to Living Room [walk_to_living_room] (via door_kitchen_living)
+│   └── Wash Dishes [wash_dishes] — sets plate and chai cup to empty;
+│       sink stays in its own idle/running_tap state
+├── Counter [counter_001]
+│   └── Prepare Snack / Wipe Counter [prepare_snack, wipe_counter]
+├── Kitchen Ceiling Light [kitchen_light_001]
+│   └── Turn Light On / Off [turn_on_room_light, turn_off_room_light]
+└── Shared chai [offer_chai]
+    └── both characters together in kitchen, living room, or study room
 ```
 
----
+The sink alias `sink_kitchen_001` resolves to the kitchen sink in the engine. `wash_dishes` uses the sink as its target; it does not require the dishes to start dirty.
 
-## 5. Toilet / Bathroom
+### Toilet and bathroom
 
 ```text
-Toilet
-├── Toilet Fixture
-│   ├── Clean: "The toilet is clean and ready for use."
-│   ├── In Use: "Currently in use."
-│   ├── Needs Flush: "Awaiting a flush."
-│   ├── Use Toilet [use_toilet] (room: toilet; completely empties bladder to 0)
-│   └── Flush Toilet [flush_toilet] (resets toilet state to clean)
-│
-├── Washbasin
-│   ├── Idle: "A ceramic sink with chrome faucet, soap dispenser, and toothbrush stand."
-│   ├── Running Tap: "A steady stream of clean tap water."
-│   ├── Wash Face with Cold Water [wash_face] (boosts hygiene, energy, awakens)
-│   ├── Brush Teeth [brush_teeth] (boosts hygiene +20)
-│   ├── Apply Daily Moisturizer [apply_moisturizer] (+8 confidence, -5 stress)
-│   └── Wash Hair [wash_hair] (+25 hygiene, refreshment)
-│
-├── Bathroom Mirror
-│   ├── Clear: "The mirror gives a crisp, true reflection."
-│   ├── Foggy: "Warm steam blankets the mirror surface in a hazy mist after showering."
-│   ├── Look in Mirror [look_in_mirror] (requires standing; reduces stress)
-│   └── Wipe Condensation from Mirror [wipe_mirror] (resets foggy mirror to clear; +10 happiness)
-│
-├── Towel Rack
-│   ├── "A stainless steel rack holding clean, fluffy cotton bath towels."
-│   └── Dry Off with Towel [dry_with_towel] (requires standing; hygiene to 100, warm comfort)
-│
-├── Laundry Basket
-│   ├── Empty / Filled: "A handwoven cane laundry hamper for used linens."
-│   ├── Put Clothes in Laundry [put_clothes_in_laundry] (basket becomes filled)
-│   └── Empty Laundry Basket [empty_laundry] (resets basket to empty)
-│
-├── Trash Bin
-│   ├── Empty / Full: "Small stainless steel pedal bin."
-│   ├── Throw Bathroom Trash [throw_trash] (bin becomes full; tidiness +5)
-│   └── Empty Bathroom Bin [empty_bin] (bin emptied; tidiness +10)
-│
-├── Grass Floor Broom
-│   ├── "A traditional phool jhadu resting neatly against the bathroom tiled corner."
-│   ├── Pick Up Item [pick_up_item] (carriable across all rooms)
-│   ├── Sweep the Floor [sweep_floor] (holding broom; sweeps floors in any room, +15 tidiness)
-│   └── Put Down Item [put_down_item] (while holding the broom)
-│
-├── Shower
-│   ├── Off: "The shower is off."
-│   ├── Running: "Warm streams of water cascade down in a relaxing deluge."
-│   ├── Turn On Shower [turn_on_shower] (when off; state becomes running)
-│   ├── Take a Refreshing Shower [take_shower] (standing; +65 hygiene, -25 stress, fogs mirror)
-│   └── Turn Off Shower [turn_off_shower] (when running; state becomes off)
-│
-├── Bathroom Light
-│   ├── Turn On Light [turn_on_room_light] (when off)
-│   └── Turn Off Light [turn_off_room_light] (when on)
-│
-├── Other configured activities in Toilet
-│   ├── Meditate Peacefully [meditate] (requires sitting, lying, or kneeling)
-│   ├── Morning Body Stretch [stretch_body] (requires standing)
-│   └── Tidy Up Space [tidy_room] (requires standing)
-│
-├── Turn Left [turn_left] / Turn Right [turn_right]
-│   └── Available in any posture; rotates orientation by 90 degrees
-│
-└── Walk (requires standing)
-    ├── Walk to Bedroom [walk_to_bedroom] (via door_bedroom_toilet)
-    ├── Walk to Kitchen [walk_to_kitchen] (via door_kitchen_toilet)
-    └── ❌ Walk to Study Room [walk_to_study_room] is NOT directly possible from Toilet.
-        There is no door connecting Toilet and Study Room in world.json.
-        To reach the Study Room, characters navigate through Bedroom or Kitchen.
+Bathroom
+├── Toilet [toilet_seat_001]
+│   ├── Use Toilet [use_toilet]
+│   └── Flush Toilet [flush_toilet]
+├── Washbasin [washbasin_001]
+│   ├── Wash Face [wash_face]
+│   ├── Brush Teeth [brush_teeth]
+│   ├── Apply Moisturizer [apply_moisturizer]
+│   └── Wash Hair [wash_hair]
+├── Shower [shower_001]
+│   ├── Turn On / Off [turn_on_shower, turn_off_shower]
+│   ├── Take a Shower [take_shower]
+│   ├── Take a Hot Shower [take_hot_shower]
+│   └── Take a Cold Shower [take_cold_shower]
+├── After shower
+│   ├── Dry Off with Towel [dry_with_towel]
+│   ├── Look in Mirror [look_in_mirror]
+│   └── Wipe Steamy Mirror [wipe_mirror] — mirror must be foggy
+├── Laundry
+│   └── Put Clothes in Basket / Empty Basket
+│       [put_clothes_in_laundry, empty_laundry]
+├── Cleanup
+│   ├── Throw Away Trash / Empty Bin [throw_trash, empty_bin]
+│   └── Pick up Broom / Sweep Floor [pick_up_item, sweep_floor]
+└── Turn Bathroom Light On / Off [turn_on_room_light, turn_off_room_light]
 ```
 
----
+The configured `take_shower` and `take_hot_shower` paths fog the mirror in the runtime; `wipe_mirror` clears it. Do not infer that every shower variant fogs it.
 
-## 6. Living Room & Balcony
+### Living room
 
 ```text
-Living Room
-├── Comfortable Plush Sofa
-│   ├── Available / Occupied: "A generous three-seater sofa dressed in warm earthy fabric with handloom cushions."
-│   ├── Sit on Sofa [sit_down_sofa] (requires standing; moves to sofa_area)
-│   ├── Relax on Sofa [relax_on_sofa] (requires sitting; stress -15, happiness +10)
-│   └── Stand Up [stand_up] (requires sitting)
-│
-├── Smart TV & Soundbar Speaker
-│   ├── Off: "The sleek wall-mounted panel rests dark against the textured wall."
-│   ├── Streaming: "Vibrant high-definition visuals illuminate the room with ambient backlighting."
-│   ├── Turn On Smart TV [turn_on_smart_tv] (sets state to streaming)
-│   ├── Watch Movie on TV [watch_movie_tv] (requires sitting on sofa, TV streaming; -35 boredom)
-│   ├── Play Acoustic Room Music [play_room_music] (TV streaming; -15 stress, +10 happiness)
-│   └── Turn Off Smart TV [turn_off_smart_tv] (sets state to off)
-│
-├── Teakwood Coffee Table
-│   ├── "A low Sheesham coffee table with brass corner inlay, holding coasters and art magazines."
-│   └── Organize Coffee Table [organize_living_table] (+10 tidiness, -5 stress)
-│
-├── Indoor Money Plant
-│   ├── "A thriving indoor pothos in a terracotta planter, trailing lush green heart-shaped leaves."
-│   └── Prune Money Plant [prune_house_plant] (+8 happiness, +5 tidiness)
-│
-├── Living Room Light
-│   ├── Turn On Light [turn_on_room_light] (when off)
-│   └── Turn Off Light [turn_off_room_light] (when on)
-│
-├── Turn Left [turn_left] / Turn Right [turn_right]
-│   └── Available in any posture; rotates orientation by 90 degrees
-│
-└── Walk (requires standing)
-    ├── Walk to Bedroom [walk_to_bedroom] (via door_bedroom_living)
-    ├── Walk to Study Room [walk_to_study_room] (via door_study_living)
-    ├── Walk to Kitchen [walk_to_kitchen] (via door_kitchen_living)
-    └── Step onto Balcony [walk_to_balcony] (via door_living_balcony)
+Living room
+├── Sofa [sofa_001]
+│   ├── Sit / Lie Down [sit_on_sofa, lie_down_sofa]
+│   └── Relax [relax_on_sofa]
+├── TV and soundbar [tv_speaker_001]
+│   ├── Turn TV On / Off [turn_on_tv, turn_off_tv]
+│   ├── Watch TV [watch_tv]
+│   └── Play / Stop Speaker Music [play_music_speaker, stop_music_speaker]
+├── Coffee Table [coffee_table_001]
+│   └── Wipe Table [wipe_coffee_table]
+├── Indoor plant [house_plant_001]
+│   └── Inspect / Wipe Leaves [inspect_plant, wipe_plant_leaves]
+└── Shared branches
+    ├── Offer Chai [offer_chai] — both together
+    ├── Ask About the Day [ask_about_day] — both together
+    ├── Discuss Book / Code [discuss_book, discuss_code] — both together
+    └── Play Chess [play_chess] — both together and sitting
+```
 
----
+### Balcony
+
+```text
+Balcony
+├── Step Outside / Lean on Railing
+│   [step_out_balcony, lean_on_balcony_railing]
+├── Planters [balcony_plants_001]
+│   ├── Water Plants [water_plants]
+│   └── Smell Flowers [smell_flowers]
+├── Watering Can [watering_can_001]
+│   ├── Refill [refill_watering_can]
+│   └── Pick Up [pick_up_item]
+└── Cane Chair [cane_chair_001]
+    └── Sit [sit_on_cane_chair]
+```
+
+`water_plants` is a configured action, but the current action does not change `balcony_plants_001`'s object state. It applies the configured need changes only.
+
+## Aria's action branch
+
+Aria's prompt receives her currently valid configured actions and targets. She may emit up to five commands in one response:
+
+```text
+&&action:<action_id>&&
+&&action:<action_id>;target:<object_id>&&
+```
+
+The server validates and executes each as Aria (`ai_001`). Use the exact IDs in the current options: target-required actions need a target, and room travel or posture changes must use configured actions. Results are returned to Aria before she continues. A rejected command does not mean the requested state change happened. This command path controls Aria only; home-map construction/reposition commands are separate.
+
+## End of a branch: what reset means
+
+**Reset Needs** returns the six physical needs for Mohit and Aria to their initialized values. It does not erase chats, rewind time, move either character, clear object state, release occupancy, reset activities, or restore the map. This action is a needs reset, not a new game.
+
+## Expanded story branches
+
+These are playable pathways through the configured actions, not mandatory quests. Follow a branch only if the listed current room, position, posture, held item, object state, and shared-room requirements are satisfied. In the action register in [`UNIVERSAL_STORY.md`](./UNIVERSAL_STORY.md), the config's exact JSON preconditions/effects and durations are listed for every action.
+
+### Branch A: Wake, wash, dress, and get ready
+
+```text
+Mohit starts lying on bed_center
+├── get_up (bedroom, bed_center, lying or sitting)
+│   └── standing at bedside; bed occupancy released
+├── optional: turn_left / turn_right
+│   └── change facing direction; position unchanged
+├── walk_to_toilet (must be standing; accessible room connection)
+│   ├── use_toilet → bladder decreases by 100
+│   ├── wash_face → hygiene +15, energy +10, sleepiness -15
+│   ├── brush_teeth (standing) → hygiene +25, happiness +5, stress -5
+│   ├── wash_hair (standing) → hygiene +30, happiness +10, stress -15
+│   └── optional moisturizer (standing)
+│       └── hygiene +10; comfort effect increases happiness/reduces stress
+├── walk_to_bedroom (standing)
+├── walk_to_wardrobe (via position change/action availability)
+│   ├── open_wardrobe → closed becomes open
+│   ├── wear_sleepwear / wear_casual / wear_work_wear / change_clothes
+│   │   └── require wardrobe_area, standing, and wardrobe open
+│   └── close_wardrobe → state becomes closed
+└── walk to kitchen or another connected room
+```
+
+The bathroom actions above are each discrete actions. Their configured durations are 60s for face washing, 180s for brushing teeth, 240s for washing hair, and 90s for moisturizer. The shower variants take 300s (cold) or 600s (regular/hot); their configured need and mirror effects are listed in the full action register.
+
+### Branch B: Choose rest or sleep
+
+```text
+Bedroom
+├── Stand → lie_down_bed → bed_center / lying
+│   ├── sleep (bedroom + bed_center + lying)
+│   │   ├── configured duration: 25,200 seconds
+│   │   ├── action changes: energy +90, sleepiness -95, hunger +25,
+│   │   │   thirst +20, bladder +35
+│   │   └── sleep tick uses faster energy recovery and sleepiness reduction
+│   └── nap (bedroom + lying or sitting)
+│       └── 2,700 seconds; configured energy +35 and sleepiness -40
+├── Stand → sit_down_bed → bed_center / sitting
+│   └── eligible posture for nap and bedtime reading, not sleep
+└── Make Bed (standing, target bed_001)
+    └── sets bed state neat; energy -2
+```
+
+Sleep and nap apply their need deltas when the configured action is executed. In simulation-time mode, the action duration advances clock/needs; in wall-clock mode, real-time persistence advances needs separately. The game does not play out a real-time seven-hour animation.
+
+### Branch C: Use a light, read, and study
+
+```text
+Study room
+├── Walk to computer_area
+│   ├── turn_on_computer (computer off → on)
+│   ├── sit_down_study_chair (if the chair is free)
+│   ├── use_computer (seated; computer on/in_use)
+│   │   └── computer becomes in_use; energy -8, sleepiness +8
+│   ├── code_project (computer on/in_use; sitting or standing)
+│   │   └── studiousness +20, energy +10, boredom -15; activity recorded
+│   ├── browse_web / view_photos / take_selfie / record_video
+│   │   └── computer must be on/in_use; relevant effects are action-specific
+│   └── turn_off_computer (off; allowed from on/in_use)
+├── Walk to desk and chair
+│   ├── tidy_desk → desk tidy; energy -2
+│   ├── turn_on_room_light / turn_off_room_light → target lamp off/on transition
+│   └── journal_notes (sitting) → stress -20, energy +5
+├── Study books
+│   ├── Pick up the chosen book/notebook (hands must be free)
+│   ├── read_math_book → studiousness +15, energy +5, boredom -10
+│   ├── read_physics_book / read_chemistry_book → studiousness +15, boredom -10
+│   ├── read_psychology_book → sociability +15, stress -10
+│   ├── read_mohit_notebook → happiness +10, stress -15
+│   └── read_aria_notebook → configured stress +20; see privacy note below
+└── listen_lofi_music (sitting or standing)
+    └── stress -15, happiness +10
+```
+
+The bookshelf's object state is `stocked`; books start `on_shelf`. `browse_books` requires the bookshelf as target. Book pickup actions require the item to be `on_shelf` and free hands. Some reading actions have subject-specific behavior in `ActionEngine`, so their runtime results can include extra need/social changes beyond the config row.
+
+### Branch D: Prepare and eat food
+
+```text
+Kitchen
+├── Take food from fridge
+│   ├── open_fridge (fridge closed; standing)
+│   ├── get_food_from_fridge (fridge open) → hunger -25
+│   ├── get_drink_from_fridge (fridge open) → thirst -35
+│   └── close_fridge (when open)
+├── Cook
+│   ├── cook_breakfast (standing; target stove)
+│   │   └── stove becomes cooking; hunger -35, energy +15, happiness +15, stress -10
+│   ├── cook_meal (standing; target stove)
+│   │   └── stove becomes cooking; hunger +10, stress -10, happiness +5
+│   ├── make_masala_chai / brew_tea (standing; target stove)
+│   │   └── chai cup becomes steaming_chai; hunger -10, thirst -30, energy +18,
+│   │       stress -15, happiness +15
+│   └── brew_chai_duo (standing; target stove)
+│       └── stove cooking, chai cup steaming; actor and same-room companion change
+├── Serve plate-based meal
+│   ├── pick_up_item on plate_001 (free hands)
+│   ├── serve_meal (standing in an allowed kitchen position; holding plate;
+│   │   stove cooking or on)
+│   │   └── plate with_food; stove idle
+│   ├── sit_down_kitchen_stool → dining_chair / sitting
+│   └── eat_meal_from_plate (dining_chair, sitting, plate with_food)
+│       └── plate dirty; hunger -50, energy +15, happiness +10
+├── Alternative: eat_meal or eat_snack
+│   └── kitchen only; configured hunger change -65 or -25
+└── Wash up
+    ├── stand_up
+    ├── wash_dishes at sink_001
+    │   └── plate and chai cup become empty; sink retains idle/running_tap state
+    └── wash_hands_kitchen at sink → hygiene +8
+```
+
+The meal cooking actions accept a stove target but do not require a separate `turn_on_stove` action in their configured preconditions. `serve_meal` explicitly accepts stove state `cooking` or `on`. `wash_dishes` currently cleans both configured dishes even when one was not dirty; it does not check the sink tap state.
+
+### Branch E: Drink water or chai
+
+```text
+Water
+├── Kitchen glass starts empty
+│   ├── fill_glass_water (glass empty/half) → filled_water
+│   ├── sip_water_glass (glass filled_water) → half; thirst -18
+│   └── drink_water_glass (glass filled_water/half) → empty; thirst -45
+└── Bedroom copper flask starts full
+    ├── sip_from_flask (full/half) → half; thirst -18
+    └── drink_from_flask (full/half) → empty; thirst -40
+
+Chai
+├── brew one of the configured chai actions → chai_cup_001 steaming_chai
+├── sip_hot_chai (steaming_chai) → thirst -15, energy +8, happiness +8, stress -10
+├── drink_hot_chai (steaming_chai) → cup dirty; thirst -35, hunger -10,
+│   energy +15, happiness +15, stress -15
+├── wash_dishes → chai cup empty
+└── offer_chai (shared room; configured room among kitchen/living/study)
+    └── actor and companion effects apply from the social action config
+```
+
+### Branch F: Clean, groom, laundry, and trash
+
+```text
+Bathroom cleaning loop
+├── take_shower or take_hot_shower
+│   └── fog mirror_001 and mirror_bathroom_001
+├── dry_with_towel (standing, bathroom)
+│   └── towel-rack target is inferred; hygiene/comfort/mood effects apply
+├── wipe_mirror (standing at washbasin_area or mirror_area; mirror foggy)
+│   └── both mirror aliases clear; happiness +5
+└── take_cold_shower
+    └── cold-shower needs apply; it does not invoke mirror fogging
+
+Laundry
+├── put_clothes_in_laundry (standing, toilet room)
+│   └── basket → has_clothes
+└── empty_laundry (standing, toilet room)
+    └── basket → empty
+
+Trash and sweeping
+├── throw_trash / empty_bin
+│   └── standing, kitchen or toilet; engine selects that room's bin
+├── pick up broom (only if hands free)
+└── sweep_floor (standing; hold broom or be in its room)
+    └── needs change and room ambience narrative changes; floor cleanliness is not stored
+
+Kitchen cleaning
+├── turn_on_kitchen_tap → sink running_tap
+├── turn_off_kitchen_tap → sink idle
+├── wipe_counter (standing; target counter) → hygiene +8, energy -2
+└── prepare_snack (target counter) → counter has_items and plate with_food
+```
+
+There are object state descriptions for the trash bins and laundry basket, but the trash actions do not enforce a complete `empty → has_trash → full` lifecycle. The action's target is selected from the current room by the engine. A broom can be used while held or while unheld in the same room.
+
+### Branch G: Rest in the living room or go outside
+
+```text
+Living room
+├── Sit on sofa / lie down on sofa → occupancy and posture update
+├── relax_on_sofa (sitting/lying at sofa_area)
+│   └── energy +10, stress -15, happiness +10, sleepiness +5
+├── watch_tv (sitting/lying in living room)
+│   └── stress -15, happiness +12, sleepiness +5, energy -2
+├── turn_on_tv / turn_off_tv (TV state on/off)
+├── play_music_speaker / stop_music_speaker (playing_music/off)
+├── wipe_coffee_table (standing; state clean; stress -5)
+└── inspect_plant / wipe_plant_leaves (plant target)
+    └── wipe leaves sets house plant to thriving
 
 Balcony
-├── Balcony Railing
-│   ├── "A sturdy wrought-iron railing with a polished teakwood top, looking over the quiet Jabalpur avenue."
-│   └── Look at City View [look_at_city_view] (standing at railing; stress -15, loneliness -10)
-│
-├── Balcony Planters
-│   ├── Normal / Blooming: "A vibrant assortment of potted bougainvillea, fragrant jasmine, and seasonal marigolds."
-│   ├── Water Balcony Plants [water_balcony_plants] (plants become blooming; +12 happiness)
-│   └── Smell Jasmine Flowers [smell_balcony_flowers] (+8 happiness, -8 stress)
-│
-├── Galvanized Watering Can
-│   ├── "A vintage green galvanized watering can with a brass rosette spout."
-│   ├── Pick Up Item [pick_up_item] (carriable across all rooms)
-│   └── Put Down Item [put_down_item] (while holding the watering can)
-│
-├── Handwoven Cane Chair
-│   ├── Available / Occupied: "A comfortable handwoven cane armchair with a soft indigo cotton cushion."
-│   ├── Sit in Cane Chair [sit_down_cane_chair] (requires standing; moves to cane_chair)
-│   ├── Sip Tea on Balcony [sip_tea_on_balcony] (requires sitting; stress -20, happiness +15)
-│   └── Stand Up [stand_up] (requires sitting)
-│
-├── Turn Left [turn_left] / Turn Right [turn_right]
-│   └── Available in any posture; rotates orientation by 90 degrees
-│
-└── Walk back inside (requires standing)
-    └── Walk into Living Room [walk_to_living_room] (via door_living_balcony)
+├── step_out_balcony / lean_on_balcony_railing
+│   └── move position to balcony_railing; configured need effects apply
+├── water_plants (standing; happiness +10, stress -10)
+│   └── CURRENT GAP: planter state does not change
+├── smell_flowers (standing; happiness +8, stress -8)
+├── refill_watering_can (standing; target can becomes full)
+└── sit_on_cane_chair (standing; chair occupancy checked and updated)
 ```
 
----
+### Branch H: Interact with Aria
 
-## 7. Shared Flow Rules & Architecture Verification
+```text
+Same-room presence
+├── ask_about_day → configured actor and roommate social effects
+├── discuss_book → configured study/social effects for both characters
+├── discuss_code → configured code/social effects for both characters
+├── offer_chai (kitchen, living room, or study room)
+│   └── room must also contain the other character
+└── play_chess (study or living room)
+    └── both characters present; actor sitting; configured effects on both
+```
 
-### Movement Topology & Door Constraints
-The apartment contains **6 distinct rooms** interconnected by 8 verified door connections in `src/config/world.json`:
-- **Bedroom** connects to: `study_room` (`door_bedroom_study`), `kitchen` (`door_bedroom_kitchen`), `toilet` (`door_bedroom_toilet`), and `living_room` (`door_bedroom_living`).
-- **Kitchen** connects to: `bedroom` (`door_bedroom_kitchen`), `study_room` (`door_study_kitchen`), `toilet` (`door_kitchen_toilet`), and `living_room` (`door_kitchen_living`).
-- **Study Room** connects to: `bedroom` (`door_bedroom_study`), `kitchen` (`door_study_kitchen`), and `living_room` (`door_study_living`).
-- **Toilet** connects to: `bedroom` (`door_bedroom_toilet`) and `kitchen` (`door_kitchen_toilet`).
-- **Living Room** connects to: `bedroom`, `kitchen`, `study_room`, and `balcony` (`door_living_balcony`).
-- **Balcony** connects to: `living_room` only (`door_living_balcony`).
-- **Direct Movement Restriction**: There is no direct door between Study Room and Toilet, or between Balcony and Bedroom. The engine verifies direct doorway legality via `MovementEngine.canMoveToRoom` and automatically resolves multi-step transitions using Breadth-First Search (BFS) pathfinding.
-- **Walking Posture**: All room-to-room walking actions (`walk_to_*`) require `posture: ["standing"]`.
+Each action validates the actor's current state and applies its configured deltas through `NeedsEngine`. The dialogue generated by the AI is separate from these deterministic changes. `ask_about_day`, `discuss_book`, and `discuss_code` do not specify a restricted room, but still require a shared room. For effects, positive hunger/thirst/sleepiness/bladder increases mean worse; positive energy/hygiene increases mean better.
 
-### Posture Transitions
-- **Lying down**:
-  - Valid body actions: `Turn Left [turn_left]`, `Turn Right [turn_right]`, `Sit Up in Bed [sit_up_in_bed]`, `Get Up from Bed [get_up]`.
-  - Valid rest/mind actions: `Sleep Through Night [sleep]` (at `bed_center`), `Take a Power Nap [nap]`, `Meditate Peacefully [meditate]`.
-  - Can read in bed via `Bedtime Reading [bedtime_reading]` when holding a book and bedside lamp is turned on.
-- **Sitting**:
-  - In Bed: `Lie Down on Bed [lie_down_bed]`, `Stand Up [stand_up]`, `Get Up from Bed [get_up]`.
-  - On Sofa: `sit_down_sofa`, `relax_on_sofa`, `watch_movie_tv`, `Stand Up [stand_up]`.
-  - In Cane Chair: `sit_down_cane_chair`, `sip_tea_on_balcony`, `Stand Up [stand_up]`.
-  - In Desk Chair: `sit_down_study_chair`, `code_project`, `journal_notes`, `play_chess`, `Stand Up [stand_up]`.
-  - At Dining Stool: `sit_down_kitchen_stool`, `eat_meal_from_plate`, `Stand Up [stand_up]`.
-- **Standing**:
-  - Required for all walking, stretching (`stretch_body`), tidying (`tidy_room`), making the bed (`make_bed`), showering (`take_shower`), looking in the mirror (`look_in_mirror`), wiping the mirror (`wipe_mirror`), wardrobe outfit changing (`change_clothes`, `wear_sleepwear`, `wear_casual`, `wear_work_wear`), opening the fridge (`open_fridge`), cooking (`cook_breakfast`, `cook_meal`, `make_masala_chai`), and watering plants (`water_balcony_plants`).
+## Household map and room movement are different layers
 
-### Portable Items & Inventory
-- Portable objects: `water_flask_001`, `drinking_glass_001`, `plate_001`, `phone_001`, `broom_001`, `watering_can_001`, and all six study books (`math_book_001`, `physics_book_001`, `chemistry_book_001`, `psychology_book_001`, `mohit_notebook_001`, `aria_notebook_001`).
-- `pick_up_item` requires empty hands (`holding: "none"`).
-- `put_down_item` drops the carried item into the actor's current room and sub-room position.
-- Consumables and carried utility tools can be transported and used in any room where their action preconditions are met (e.g. broom sweeping floors across all rooms, checking phone messages anywhere).
+```text
+Configured simulation positions
+├── Each room position may bind a character to an object (bed, chair, etc.)
+├── walk_to_* selects configured doorway position
+└── posture/location actions update occupancy in the shared object state
 
-### Verification & Test Suite Status
-All items previously identified as discrepancies or missing have been fully implemented, synchronized, and verified with 100% test pass rate across all 7 automated test suites:
-1. `src/test_simulation.ts` — Core engine, movement, AI dialogue, snapshot persistence, and BFS pathfinding.
-2. `src/test_realtime_persistence.ts` — Real-time clock and offline biological needs progression.
-3. `src/test_grooming_chores.ts` — Bathroom grooming, mirror steam wiping, towel drying, laundry basket, trash bins, and multi-room broom sweeping.
-4. `src/test_living_balcony.ts` — Living room, plush sofa, smart TV, coffee table, money plant, balcony railing, flower planters, watering can, and cane chair.
-5. `src/test_study_social.ts` — Subject-specific books (Math, Physics, Psychology), desktop coding, lo-fi beats, roommate chess, and shared tea encounters.
-6. `src/test_bedroom_wardrobe.ts` — Direct bed rising/reclining, wardrobe dressing outfits, phone portability, bedside lamp ambiance, and bedtime reading.
-7. `src/test_culinary_engine.ts` — Brass masala dabba, countertop wiping, single and duo masala chai brewing, breakfast cooking, meal serving onto thali, dining loop, and sink dishwashing.
+House builder map
+├── Separate layout coordinates for placed furniture and room geometry
+├── Aria may query floor coordinates or request a build/reposition command
+└── map edits do not mean character teleports or replace walk_to_* actions
+```
+
+The AI's map command formats are distinct from `&&action:...&&` commands. Physical movement uses the configured simulation action IDs. The browser's Phaser canvas presents the home map; HTML renders the action, needs, and conversation UI.
+
+## What persists across a restart
+
+| State file / store | Purpose | Effect of **Reset Needs** |
+|---|---|---|
+| `state/game-state.json` | Saved simulation snapshot and wall-clock checkpoint | Preserved; only needs are updated and persisted |
+| `state/timings.txt` | Realtime checkpoint log | Preserved |
+| `state/conversations.json` | Conversation list, active conversation, messages | Preserved |
+| House-builder layout state | User-placed/moved home objects | Preserved |
+| Current in-memory action/object/character states | Shared running simulation | Needs change only |
+
+If `conversations.json` is malformed, the updated loader copies the original bytes to a uniquely named `.corrupt-*.bak` file before writing a fresh conversation store. This recovers future startup cases; it cannot reconstruct messages already overwritten by an earlier startup that had no backup behavior.

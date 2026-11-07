@@ -1,7 +1,7 @@
 {
   "id": "jabalpur_home_layout_001",
   "name": "Jabalpur Residence",
-  "version": 4,
+  "version": 2,
   "grid": {
     "cols": 40,
     "rows": 38,
@@ -312,7 +312,7 @@
         "nap"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.212Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "bedside_table_001",
@@ -333,7 +333,7 @@
         "read_in_bed"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "lamp_001",
@@ -355,7 +355,7 @@
         "turn_off_lamp"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "phone_001",
@@ -379,7 +379,7 @@
         "listen_music_phone"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "wardrobe_001",
@@ -405,7 +405,7 @@
         "wear_outdoor"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "desk_001",
@@ -428,7 +428,7 @@
         "read_book"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "desk_chair_001",
@@ -450,7 +450,7 @@
         "stand_up"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "computer_001",
@@ -473,7 +473,7 @@
         "listen_lofi_music"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "bookshelf_001",
@@ -499,7 +499,7 @@
         "read_aria_notebook"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "chess_set_001",
@@ -520,7 +520,7 @@
         "play_chess"
       ],
       "placedBy": "ai_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "stove_001",
@@ -545,7 +545,7 @@
         "brew_chai_duo"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "counter_001",
@@ -567,7 +567,7 @@
         "prepare_snack"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "plate_001",
@@ -589,7 +589,7 @@
         "eat_meal_from_plate"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "chai_cup_001",
@@ -611,7 +611,7 @@
         "drink_hot_chai"
       ],
       "placedBy": "ai_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "sink_001",
@@ -634,7 +634,7 @@
         "drink_water_glass"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "fridge_001",
@@ -656,7 +656,7 @@
         "open_fridge"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "dining_chair_001",
@@ -678,7 +678,7 @@
         "stand_up"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "toilet_001",
@@ -700,7 +700,7 @@
         "flush_toilet"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "washbasin_001",
@@ -708,8 +708,8 @@
       "name": "Ceramic Bathroom Washbasin",
       "type": "fixture",
       "roomId": "toilet",
-      "x": 26,
-      "y": 14,
+      "x": 27,
+      "y": 15,
       "width": 3,
       "height": 2,
       "rotation": 0,
@@ -723,7 +723,7 @@
         "wipe_mirror"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "shower_001",
@@ -745,7 +745,7 @@
         "take_quick_bath"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "sofa_001",
@@ -768,7 +768,7 @@
         "stand_from_sofa"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "table_001",
@@ -790,7 +790,7 @@
         "play_chess"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "tv_cabinet_001",
@@ -811,7 +811,7 @@
         "watch_tv"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "tv_001",
@@ -832,7 +832,7 @@
         "watch_tv"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "soundbar_001",
@@ -853,7 +853,7 @@
         "listen_living_music"
       ],
       "placedBy": "player_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     },
     {
       "id": "plant_001",
@@ -875,31 +875,9 @@
         "wipe_plant_leaves"
       ],
       "placedBy": "ai_001",
-      "placedAt": "2026-11-05T20:06:32.213Z"
-    },
-    {
-      "id": "monstera_mw402gpn",
-      "templateId": "monstera_001",
-      "name": "Potted Monstera Deliciosa",
-      "type": "plant",
-      "roomId": "toilet",
-      "x": 21,
-      "y": 14,
-      "width": 2,
-      "height": 2,
-      "rotation": 0,
-      "icon": "🌿",
-      "color": "#16a34a",
-      "state": "healthy",
-      "isSolid": false,
-      "interactions": [
-        "water_balcony_plants",
-        "inspect_plant"
-      ],
-      "placedBy": "ai_001",
-      "placedAt": "2026-11-05T20:30:24.539Z"
+      "placedAt": "2026-11-07T02:50:47.520Z"
     }
   ],
-  "lastModified": "2026-11-06T15:23:55.202Z",
+  "lastModified": "2026-11-07T06:17:32.409Z",
   "modifiedBy": "player_001"
 }

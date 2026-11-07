@@ -1,408 +1,329 @@
-# Universal Story Blueprint (Modular Capability Map)
-> **Role**: Authoritative System Topology, Object-Action Matrix & Cross-Room Interaction Specification.  
-> **Narrative Tree Companion**: See [`UNIVERSAL_STORY_TREE.md`](file:///home/no/applications/Game/life-simulation/story/UNIVERSAL_STORY_TREE.md) for the in-depth, verbatim branching action tree with full flavor text and step-by-step room walkthroughs.  
-> **Source of Truth**: Grounded directly against `src/config/` (rooms, objects, actions, world) and `src/engine/` (`ActionEngine`, `MovementEngine`, `StateManager`, `NeedsEngine`, `AIDecisionEngine`).  
-> **Status Legend**:  
-> - `✅ Ready`: Fully implemented, wired, and verified with 100% test coverage across all test suites.  
-> - `⚠️ Discrepancy`: Action defined in JSON, but blocked at runtime due to mismatched target types, missing interaction lists, or missing connections.  
-> - `❌ Missing`: Action referenced on an object, but missing an action definition in `src/config/actions/`.
+# Universal Story: The Shared Home
 
----
+This is a guide to the game that currently exists, not a promise of planned features. Mohit and Aria occupy one simulation: they have individual bodies and needs, share rooms and object state, and can affect one another through configured social actions. The configuration and runtime listed below are authoritative; flavor text is descriptive.
 
-## 🗺️ Architectural Room Topology & Connectivity Graph
+## What the simulation starts with
 
-```mermaid
-graph TD
-    classDef room fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
-    classDef exterior fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#f8fafc;
+The configured home is one ground floor in Jabalpur, India, with six rooms. At initialization, the simulation clock is Tuesday at 07:30.
 
-    BR["🛏️ Bedroom<br/>(bed_center, bedside, wardrobe_area, door_area)"]:::room
-    SR["📚 Study Room<br/>(desk_chair, bookshelf_area, door_area)"]:::room
-    KT["🍳 Kitchen<br/>(stove_area, counter_area, dining_chair, fridge_area, door_area)"]:::room
-    TL["🚿 Toilet / Bathroom<br/>(shower_area, toilet_area, washbasin_area, door_area)"]:::room
-    LR["🛋️ Living Room<br/>(sofa_area, coffee_table_area, tv_cabinet_area, door_area)"]:::room
-    BC["🌿 Balcony<br/>(balcony_railing, planters_area, cane_chair, door_area)"]:::exterior
+| Character | Starting place and posture | Starting needs (0–100) |
+|---|---|---|
+| Mohit (`player_001`) | Lying on the bed in the bedroom | Hunger 45, thirst 40, energy 80, sleepiness 20, hygiene 70, bladder 50 |
+| Aria (`ai_001`) | Sitting on the desk chair in the study | Hunger 30, thirst 25, energy 85, sleepiness 15, hygiene 85, bladder 20 |
 
-    BR <==>|"door_bedroom_study"| SR
-    BR <==>|"door_bedroom_kitchen"| KT
-    BR <==>|"door_bedroom_toilet"| TL
-    BR <==>|"door_bedroom_living"| LR
+Hunger, thirst, sleepiness, and bladder rise as they worsen. Energy and hygiene rise as they improve. The configured needs also decay or recover with time; resting and sleep have special handling. Need values are bounded by the engine.
 
-    SR <==>|"door_study_kitchen"| KT
-    SR <==>|"door_study_living"| LR
+At startup the bed is occupied by Mohit and the study chair by Aria. Sitting or lying on a configured seat/resting place updates its `occupiedBy` state; an occupied place rejects another character's attempt to use it. Leaving releases that occupancy. The two characters' positions, postures, held items, needs, emotions, and activities are separate; household object states are shared.
 
-    KT <==>|"door_kitchen_toilet"| TL
-    KT <==>|"door_kitchen_living"| LR
+## The home and its routes
 
-    LR <==>|"door_living_balcony"| BC
+Every room is reachable from its connected neighbors while standing. Movement actions place the character at that room's configured doorway position. The kitchen–toilet and bedroom–toilet connections are configured closed but are not locked, so the movement engine still treats them as reachable.
 
-    SR -.-x|"❌ NO DIRECT DOOR (BFS: SR -> BR/KT -> TL)"| TL
-    BC -.-x|"❌ NO DIRECT DOOR (Must step through Living Room)"| BR
+| Room | Places and notable configured objects | What the room supports |
+|---|---|---|
+| Bedroom | Bed, bedside table and lamp, wardrobe, copper flask, Mohit's phone | Resting, sleeping and napping; bedside lighting; wardrobe changes; drinking from the flask; phone actions |
+| Study room | Desk, occupied/available desk chair, computer, chess set, bookshelf and six books/notebooks | Computer work and media; reading; journaling; music; desk lamp; chess and roommate conversations |
+| Kitchen | Stove, refrigerator, countertop, sink, stool, glass, plate, chai cup, masala dabba, ceiling light and trash bin | Cooking, food and drink, dishes, kitchen cleanup and shared chai |
+| Toilet/bathroom | Toilet, washbasin, two mirror IDs, shower, towel rack, laundry basket, trash bin and broom | Toilet use, washing and grooming, showers, laundry and bathroom cleanup |
+| Living room | Sofa, coffee table, TV/soundbar and indoor money plant | Resting, TV, music, table and plant interactions, social activities |
+| Balcony | Planters, watering can and cane chair | Sitting outside, railing actions, plant-related actions and smelling flowers |
+
+The room-to-room actions are `walk_to_bedroom`, `walk_to_study_room`, `walk_to_kitchen`, `walk_to_toilet`, `walk_to_living_room`, and `walk_to_balcony`. They require standing. Other location and posture changes use configured actions such as `get_up`, `stand_up`, `sit_down_study_chair`, `sit_on_sofa`, or `lie_down_bed`; there is no general free-coordinate character movement action.
+
+## A day in the home
+
+### Waking, resting and getting ready
+
+Mohit begins lying in bed. `get_up` moves him to the bedside; `sit_up_in_bed` changes him to sitting on the bed. The bed supports sitting and lying and keeps track of occupancy. Once standing, he can make the bed, use the bedside lamp, open the wardrobe, and choose sleepwear, casual clothes, or work wear. Changing clothes requires standing at the wardrobe with it open.
+
+`sleep` is configured for a lying character at `bed_center`; `nap` is configured in the bedroom while lying or sitting. Their configured durations are seven hours and 45 minutes. The engine applies the configured need effects and advances simulation time according to action duration outside wall-clock mode. This is a state-based simulation, not a continuous sleep animation.
+
+### Food, water and household work
+
+In the kitchen, the refrigerator must be opened before its snack and drink actions. A glass can be filled, sipped, or emptied by drinking; the glass supports `empty`, `filled_water`, and `half`. The copper flask supports `full`, `half`, and `empty`.
+
+The stove supports configured breakfast, meal, and chai actions. A prepared meal can be served onto the plate when the serving requirements are met, eaten while seated at the kitchen stool, and then washed at the sink. `wash_dishes` targets the sink and sets the configured plate and chai-cup states to `empty`; it does not set the sink to `empty`. The action does not require the cup or plate to be dirty, so it can also leave an already-empty dish unchanged.
+
+Other kitchen interactions include opening and closing the fridge, switching the stove and tap, making snacks, washing hands, wiping the countertop, and using the masala dabba. The configured chai actions change the chai-cup state and character needs as listed in the action data. `brew_chai_duo` also applies configured need changes to the roommate when both characters share the room.
+
+### Hygiene and keeping the home in order
+
+The bathroom supports toilet use and flushing; washing the face, brushing teeth, hair washing and moisturizer; hot, regular and cold showers; towel drying; mirror inspection and wiping; and laundry actions. The regular and hot shower actions fog the mirror in the engine, and `wipe_mirror` clears it when the character is standing at the mirror/washbasin and the mirror is foggy. The cold-shower action does not use that mirror-fogging path.
+
+The laundry basket can hold clothes and be emptied. Trash actions are available in the kitchen and bathroom. The broom can be picked up and used to sweep. `tidy_room` and `sweep_floor` affect character needs; the available configured implementation does not model a persistent cleanliness level for every floor or room.
+
+### Study and quiet activities
+
+The study's computer can be powered on for computer work, web browsing, viewing photos, selfies, and video recording. The desk chair can be occupied by only one character at a time. The bookshelf contains math, physics, chemistry, psychology, Mohit's, and Aria's books/notebooks. Reading actions have configured posture, room, and item requirements; bedtime reading has its own bed, held-book, and lamp requirements.
+
+The study also supports journaling, lo-fi music, desk tidying, and chess. Chess is available as a social activity in the study or living room while both characters share the room and the actor is sitting.
+
+### Living room and balcony
+
+The living room provides the sofa, TV/soundbar, coffee table and indoor plant. A character can sit or lie on the sofa, relax, watch TV, control the TV or speaker, wipe the table, and inspect or wipe the plant leaves.
+
+The balcony provides the cane chair, planters and watering can. Configured actions include stepping outside, leaning on the railing, watering plants, smelling flowers, refilling the can, and sitting. Important runtime limit: `water_plants` changes configured character needs, but does not update the planter object's state. Treat `blooming`, `watered`, and `dry` as available object states, not as proof that the current watering action transitions between them.
+
+## Mohit and Aria together
+
+Both characters exist in the same room and object-state model; their interactions are not just dialogue. Configured shared actions include offering chai, asking about the day, playing chess, discussing a book, and discussing code. Their preconditions specify when another character must be present and, for some actions, which rooms or postures qualify. Effects are applied through the engine to the actor and/or roommate as configured.
+
+Aria can also issue physical actions from her response:
+
+```text
+&&action:<action_id>&&
+&&action:<action_id>;target:<object_id>&&
 ```
 
-### Movement & Spatial Navigation Rules
-- **Locomotion Requirement**: Characters MUST be in `standing` posture to walk across doorways.
-- **Topology Enforcement**: Verified by `MovementEngine.ts`. Multi-room pathfinding uses Breadth-First Search (BFS) for autonomous AI navigation.
-- **Sub-room Positions**: Moving into a room places the character at its configured landing area (`*_door_area`) or default landing coordinates.
+Her prompt receives the action IDs currently validated for her and valid target IDs with their current states. Commands run as `ai_001` through the same action engine used by the game. A response can contain at most five action commands. Invalid actions or targets are rejected and reported; Aria cannot use this mechanism to move Mohit. Room movement and posture changes must use configured actions, not arbitrary coordinates. The house-map build/reposition commands are a separate feature.
 
----
+## Time, saves and reset
 
-## 🧍 Module 1: Posture & Locomotion State Machine
+In simulation-time mode, action durations advance the clock and needs. The server can instead use wall-clock persistence. Action effects are applied when the action is executed; configured durations are not a promise of an animation or a continuously running multi-stage activity.
 
-> **Governing Files**:  
-> - Config: `src/config/actions/movement.json`, `src/config/actions/body_actions.json`, `src/config/world.json`  
-> - Engine: `src/engine/MovementEngine.ts`, `src/engine/ActionEngine.ts`, `src/engine/BodyStateEngine.ts`
+**Reset Needs** restores only each character's six physical needs to their initialized values. It preserves time, positions and postures, object states and occupancy, emotions, activities, the constructed home map, and conversation history. The reset baseline is Mohit's and Aria's starting needs in the table above.
 
-### 1. Posture Transition Graph
-```mermaid
-stateDiagram-v2
-    [*] --> Lying: Simulation Start (Mohit @ bed_center)
+## Where to verify the behavior
 
-    state Lying {
-        turn_left --> Lying: Rotate face left
-        turn_right --> Lying: Rotate face right
-        sleep --> Lying: Sleep 7h (energy +80, sleepiness -85)
-        nap --> Lying: Nap 45m (energy +35, sleepiness -40)
-        meditate --> Lying: Meditate 10m (stress -15)
-        sit_up_in_bed --> Sitting: Sit up directly on the bed
-    }
+- World and room connections: [`src/config/world.json`](../src/config/world.json)
+- Room positions and ambience: [`src/config/rooms/`](../src/config/rooms/)
+- Object states and object-to-action links: [`src/config/objects.json`](../src/config/objects.json)
+- Action requirements, durations, and effects: [`src/config/actions/`](../src/config/actions/)
+- Validation and execution: [`src/engine/ActionEngine.ts`](../src/engine/ActionEngine.ts)
+- Needs, starting state and reset baseline: [`src/engine/NeedsEngine.ts`](../src/engine/NeedsEngine.ts), [`src/engine/StateManager.ts`](../src/engine/StateManager.ts)
+- Aria's physical action commands: [`src/ai/AiActionCommandProcessor.ts`](../src/ai/AiActionCommandProcessor.ts), [`src/server.ts`](../src/server.ts)
 
-    Lying --> Standing: get_up (moves to bedside)
-    
-    state Sitting {
-        stand_up --> Standing: Stand up at current position
-        get_up --> Standing: Stand up (moves to bedside if on bed)
-        lie_down_bed --> Lying: Recline back onto bed
-        sit_down_sofa --> Sitting: Sit on living room sofa
-        sit_down_cane_chair --> Sitting: Sit on balcony cane chair
-        nap --> Sitting: Nap 45m
-        meditate --> Sitting: Meditate 10m
-    }
+Action availability is state-dependent. Always check the action's configured preconditions, object interactions, and current state rather than treating this narrative as an unconditional list of actions.
 
-    state Standing {
-        sit_down_bed --> Sitting: Sit on bed edge
-        sit_down_study_chair --> Sitting: Sit at study desk
-        sit_down_kitchen_stool --> Sitting: Sit at dining counter
-        sit_down_sofa --> Sitting: Sit on living room sofa
-        sit_down_cane_chair --> Sitting: Sit on balcony cane chair
-        lie_down_bed --> Lying: Lie down onto bed
-        stretch_body --> Standing: Stretch limbs (+12 energy)
-        tidy_room --> Standing: Tidy room items
-        walk_to_room --> Standing: Walk through connected door
-    }
-```
+## Physical needs: scales and thresholds
 
-### 2. Locomotion & Posture Matrix
-| Action ID | Category | Status | Preconditions | Effect & Posture Delta | Target Position |
-| :--- | :--- | :---: | :--- | :--- | :--- |
-| `get_up` | body | ✅ Ready | `posture: ["lying", "sitting"]`, in bedroom | Posture $\rightarrow$ `standing` | `bedside` |
-| `sit_up_in_bed` | body | ✅ Ready | `posture: ["lying"]`, pos: `bed_center` | Posture $\rightarrow$ `sitting` | `bed_center` |
-| `stand_up` | body | ✅ Ready | `posture: ["sitting"]` | Posture $\rightarrow$ `standing` | Current position |
-| `sit_down_bed` | body | ✅ Ready | `posture: ["standing"]`, in bedroom | Posture $\rightarrow$ `sitting` | `bed_center` |
-| `sit_down_study_chair`| body | ✅ Ready | `posture: ["standing"]`, in study | Posture $\rightarrow$ `sitting` | `desk_chair` |
-| `sit_down_kitchen_stool`| body| ✅ Ready | `posture: ["standing"]`, in kitchen | Posture $\rightarrow$ `sitting` | `dining_chair` |
-| `sit_down_sofa` | body | ✅ Ready | `posture: ["standing"]`, in living room | Posture $\rightarrow$ `sitting` | `sofa_area` |
-| `sit_down_cane_chair`| body | ✅ Ready | `posture: ["standing"]`, on balcony | Posture $\rightarrow$ `sitting` | `cane_chair` |
-| `lie_down_bed` | body | ✅ Ready | `posture: ["standing", "sitting"]`, bedroom | Posture $\rightarrow$ `lying` | `bed_center` |
-| `turn_left` / `turn_right` | body | ✅ Ready | Any posture | Orientation changes 90° | Unchanged |
-| `walk_to_bedroom` | movement | ✅ Ready | `posture: ["standing"]`, in connected room | Moves to bedroom | `bedroom_door_area` |
-| `walk_to_study_room` | movement | ✅ Ready | `posture: ["standing"]`, in connected room | Moves to study | `study_door_area` |
-| `walk_to_kitchen` | movement | ✅ Ready | `posture: ["standing"]`, in connected room | Moves to kitchen | `kitchen_door_area` |
-| `walk_to_toilet` | movement | ✅ Ready | `posture: ["standing"]`, in connected room | Moves to toilet | `toilet_door_area` |
-| `walk_to_living_room`| movement | ✅ Ready | `posture: ["standing"]`, in connected room | Moves to living room | `entrance_door_area` |
-| `walk_to_balcony` | movement | ✅ Ready | `posture: ["standing"]`, in living room | Moves to balcony | `balcony_door_area` |
+The six values below are stored independently for Mohit and Aria. All are clamped to 0–100. The table gives the configured per-minute baseline; it does not include action effects or the special resting/sleeping rates.
 
----
+| Need | Direction of worsening | Baseline change per minute | Warning | Critical |
+|---|---|---:|---:|---:|
+| Hunger | Increases | +0.2083 | 65 | 85 |
+| Thirst | Increases | +0.2381 | 60 | 80 |
+| Energy | Decreases | -0.07 | 30 or lower | 15 or lower |
+| Sleepiness | Increases | +0.07 | 70 | 90 |
+| Hygiene | Decreases | -0.04 | 35 or lower | 20 or lower |
+| Bladder | Increases | +0.09 | 70 | 90 |
 
-## 🛏️ Module 2: Bedroom (Rest, Wardrobe, Dressing & Nightstand)
+During an active `sleep` tick, the rates are overridden to energy +0.4/minute, sleepiness -0.5/minute, hunger +0.03/minute, and thirst +0.04/minute; other needs use baseline rates. While lying but not sleeping, energy improves +0.1/minute and sleepiness improves by -0.05/minute. Need changes from actions use the same bounds; need-like emotions/personality values in an effect object are routed to their matching state field.
 
-> **Governing Files**:  
-> - Config: `src/config/rooms/bedroom.json`, `src/config/objects.json`, `src/config/actions/daily_activities.json`, `src/config/actions/interactions.json`  
-> - Theme & UI: `public/themes/room-bedroom.css`, `public/app.js` (positions: `bed_center`, `bedside`, `wardrobe_area`, `bedroom_door_area`)
+## Full action register
 
-### 1. Bedroom Flow Diagram
-```mermaid
-flowchart TD
-    Bed[bed_001: Wooden Bed] -->|sleep (lying)| Rested[Sleep 7h: Energy 100%]
-    Bed -->|sit_up_in_bed (lying)| SittingBed[Posture: Sitting in Bed]
-    Bed -->|make_bed (standing)| BedNeat[State: neat]
+This register mirrors the currently loaded action configuration. Durations are simulation seconds. Target types are config filters; `—` means the action does not require an explicit target. Preconditions and effects are shown as compact JSON so values and IDs can be compared directly with `src/config/actions/`. A config entry is not automatically an implemented state transition; runtime-specific exceptions are noted after the tables.
 
-    Lamp[lamp_bedroom_001: Bedside Lamp] -->|turn_on_lamp| LampLit[State: on]
-    LampLit -->|bedtime_reading (holding book)| CozyRead[Sleepiness +10, Energy -5, Stress -15]
-    LampLit -->|turn_off_lamp| LampDark[State: off]
+### Movement and body
 
-    Wardrobe[wardrobe_001: Teakwood Wardrobe] -->|open_wardrobe| WardrobeOpen[State: open]
-    WardrobeOpen -->|wear_sleepwear| Sleepwear[Kurta-Pyjama, Barefoot, Stress -5]
-    WardrobeOpen -->|wear_casual| Casual[T-Shirt, Track Pants, Sandals]
-    WardrobeOpen -->|wear_work_wear| Formal[Linen Shirt, Tailored Trousers, Loafers]
-    WardrobeOpen -->|close_wardrobe| WardrobeClosed[State: closed]
+| ID | Name | Duration | Target types | Preconditions | Configured effects |
+|---|---|---:|---|---|---|
+| `walk_to_bedroom` | Walk to Bedroom | 5s | — | `{ "posture": ["standing"] }` | `{ "moveToRoom": "bedroom", "moveToPosition": "bedroom_door_area", "posture": "standing" }` |
+| `walk_to_study_room` | Walk to Study Room | 5s | — | `{ "posture": ["standing"] }` | `{ "moveToRoom": "study_room", "moveToPosition": "study_door_area", "posture": "standing" }` |
+| `walk_to_kitchen` | Walk to Kitchen | 5s | — | `{ "posture": ["standing"] }` | `{ "moveToRoom": "kitchen", "moveToPosition": "kitchen_door_area", "posture": "standing" }` |
+| `walk_to_toilet` | Walk to Toilet | 5s | — | `{ "posture": ["standing"] }` | `{ "moveToRoom": "toilet", "moveToPosition": "toilet_door_area", "posture": "standing" }` |
+| `walk_to_living_room` | Walk to Living Room | 5s | — | `{ "posture": ["standing"] }` | `{ "moveToRoom": "living_room", "moveToPosition": "entrance_door_area", "posture": "standing" }` |
+| `walk_to_balcony` | Walk to Balcony | 5s | — | `{ "posture": ["standing"] }` | `{ "moveToRoom": "balcony", "moveToPosition": "balcony_door_area", "posture": "standing" }` |
+| `get_up` | Get Up from Bed | 3s | — | `{ "roomId": "bedroom", "positionId": "bed_center", "posture": ["lying", "sitting"] }` | `{ "posture": "standing", "moveToPosition": "bedside" }` |
+| `sit_up_in_bed` | Sit Up in Bed | 2s | — | `{ "roomId": "bedroom", "positionId": "bed_center", "posture": ["lying"] }` | `{ "posture": "sitting", "moveToPosition": "bed_center" }` |
+| `stand_up` | Stand Up | 2s | — | `{ "posture": ["sitting", "kneeling", "squatting", "lying"] }` | `{ "posture": "standing" }` |
+| `lie_down_bed` | Lie Down on Bed | 3s | — | `{ "roomId": "bedroom", "posture": ["standing", "sitting"] }` | `{ "moveToPosition": "bed_center", "posture": "lying" }` |
+| `sit_down_bed` | Sit on Bed Edge | 2s | — | `{ "roomId": "bedroom", "posture": ["standing"] }` | `{ "moveToPosition": "bed_center", "posture": "sitting" }` |
+| `sit_down_study_chair` | Sit at Study Desk | 2s | — | `{ "roomId": "study_room", "posture": ["standing"] }` | `{ "moveToPosition": "desk_chair", "posture": "sitting" }` |
+| `sit_down_kitchen_stool` | Sit on Kitchen Stool | 2s | — | `{ "roomId": "kitchen", "posture": ["standing"] }` | `{ "moveToPosition": "dining_chair", "posture": "sitting" }` |
+| `sit_on_sofa` | Sit on Sofa | 2s | — | `{ "roomId": "living_room", "posture": ["standing", "lying"] }` | `{ "moveToPosition": "sofa_area", "posture": "sitting" }` |
+| `lie_down_sofa` | Lie Down on Sofa | 3s | — | `{ "roomId": "living_room", "posture": ["standing", "sitting"] }` | `{ "moveToPosition": "sofa_area", "posture": "lying" }` |
+| `sit_on_cane_chair` | Sit on Cane Chair | 2s | — | `{ "roomId": "balcony", "posture": ["standing"] }` | `{ "moveToPosition": "cane_chair", "posture": "sitting" }` |
+| `turn_left` | Turn Left | 1s | — | `{}` | `{ "orientation": "left" }` |
+| `turn_right` | Turn Right | 1s | — | `{}` | `{ "orientation": "right" }` |
 
-    Phone[phone_001: Mohit's Phone] -->|pick_up_item| CarryPhone[Carried across rooms]
-    CarryPhone -->|check_messages / play_alarm / listen_music_phone| PhoneDone[Mobile connectivity everywhere]
-```
+### Daily activities
 
-### 2. Bedroom Object & Action Matrix
-| Object Name & ID | Action ID | Status | Preconditions | State & Need Deltas | Agent Notes / Verification |
-| :--- | :--- | :---: | :--- | :--- | :--- |
-| **Wooden Bed**<br/>`bed_001` | `sleep` | ✅ Ready | `posture: ["lying"]`, pos: `bed_center` | Time +7h, Energy +80, Sleepiness -85 | Primary sleep cycle |
-| | `nap` | ✅ Ready | `posture: ["lying", "sitting"]` | Time +45m, Energy +35, Sleepiness -40 | Quick afternoon recharge |
-| | `sit_up_in_bed` | ✅ Ready | `posture: ["lying"]`, pos: `bed_center` | Posture $\rightarrow$ `sitting` | Direct rise in bed |
-| | `make_bed` | ✅ Ready | `posture: ["standing"]`, bed rumpled | Bed state $\rightarrow$ `neat`, Happiness +5 | Morning chore |
-| **Bedside Lamp**<br/>`lamp_bedroom_001` | `turn_on_lamp` | ✅ Ready | Lamp state: `off` | Lamp state $\rightarrow$ `on` | Warm brass illumination |
-| | `turn_off_lamp` | ✅ Ready | Lamp state: `on` | Lamp state $\rightarrow$ `off` | Lights off for sleep |
-| | `bedtime_reading` | ✅ Ready | Sitting/lying in bed, holding book, lamp `on`| Sleepiness +10, Stress -15, Studiousness +10| Nighttime relaxation |
-| **Teakwood Wardrobe**<br/>`wardrobe_001` | `open_wardrobe` | ✅ Ready | `posture: ["standing"]`, state: `closed` | Wardrobe state $\rightarrow$ `open` | Doors swing open |
-| | `close_wardrobe` | ✅ Ready | `posture: ["standing"]`, state: `open` | Wardrobe state $\rightarrow$ `closed` | Doors shut tight |
-| | `change_clothes` | ✅ Ready | Wardrobe open, standing | Confidence +10, Stress -5 | Swaps outfit |
-| | `wear_sleepwear` | ✅ Ready | Wardrobe open, standing | Kurta-Pyjama, Barefoot | Night rest attire |
-| | `wear_casual` | ✅ Ready | Wardrobe open, standing | T-Shirt & Track Pants | Home relaxation |
-| | `wear_work_wear` | ✅ Ready | Wardrobe open, standing | Linen Shirt & Trousers | Sharp outdoor wear |
-| **Copper Flask**<br/>`water_flask_001` | `pick_up_item` | ✅ Ready | `holding: "none"`, flask not held | Held in hand, portable | Carriable across rooms |
-| | `sip_from_flask` | ✅ Ready | State: `full` or `half` | Thirst -15, State $\rightarrow$ `half` | Preserves water |
-| | `drink_from_flask` | ✅ Ready | State: `full` or `half` | Thirst -35, State $\rightarrow$ `empty` | Drains bottle |
-| | `put_down_item` | ✅ Ready | Currently holding flask | Placed at current position | Can drop anywhere |
-| **Mohit's Phone**<br/>`phone_001` | `pick_up_item` | ✅ Ready | `holding: "none"` | Held in hand, fully portable | Carriable to all rooms |
-| | `check_phone` | ✅ Ready | In room or holding | Stress -5, Happiness +5 | Screen check |
-| | `check_messages` | ✅ Ready | In room or holding | Loneliness -10, Happiness +8 | WhatsApp / texts |
-| | `play_alarm` | ✅ Ready | In room or holding | Energy +5, Sleepiness -10 | Gentle chimes |
-| | `listen_music_phone`| ✅ Ready| In room or holding | Stress -15, Happiness +10 | Hindi indie & lo-fi |
+| ID | Name | Duration | Target types | Preconditions | Configured effects |
+|---|---|---:|---|---|---|
+| `sleep` | Sleep Through Night | 25,200s | — | `{ "roomId": "bedroom", "positionId": "bed_center", "posture": ["lying"] }` | `{ "needChanges": { "energy": 90, "sleepiness": -95, "hunger": 25, "thirst": 20, "bladder": 35 }, "activity": "sleep" }` |
+| `nap` | Take a Power Nap | 2,700s | — | `{ "roomId": "bedroom", "posture": ["lying", "sitting"] }` | `{ "needChanges": { "energy": 35, "sleepiness": -40 } }` |
+| `cook_meal` | Cook Fresh Meal | 1,200s | `appliance` | `{ "roomId": "kitchen", "posture": ["standing"] }` | `{ "objectState": "cooking", "objectStates": { "stove_001": "cooking" }, "needChanges": { "hunger": 10, "stress": -10, "happiness": 5 } }` |
+| `serve_meal` | Serve Meal onto Plate | 60s | `item`, `appliance` | `{ "roomId": "kitchen", "positionId": ["stove_area", "counter_area", "kitchen_door_area"], "posture": ["standing"], "holding": "plate_001", "requiredObjectStates": { "stove_001": ["cooking", "on"] } }` | `{ "objectStates": { "plate_001": "with_food", "stove_001": "idle" }, "needChanges": { "hunger": -5, "happiness": 5 } }` |
+| `eat_meal_from_plate` | Eat Meal from Plate | 600s | `item` | `{ "roomId": "kitchen", "positionId": "dining_chair", "posture": ["sitting"], "requiredObjectStates": { "plate_001": "with_food" } }` | `{ "objectStates": { "plate_001": "dirty" }, "needChanges": { "hunger": -50, "energy": 15, "happiness": 10 } }` |
+| `cook_breakfast` | Cook Breakfast (Poha & Aloo Paratha) | 600s | `appliance` | `{ "roomId": "kitchen", "posture": ["standing"] }` | `{ "objectState": "cooking", "objectStates": { "stove_001": "cooking" }, "needChanges": { "hunger": -35, "energy": 15, "happiness": 15, "stress": -10 } }` |
+| `eat_meal` | Eat Home-Cooked Meal | 900s | — | `{ "roomId": "kitchen" }` | `{ "needChanges": { "hunger": -65, "energy": 15, "thirst": 10 } }` |
+| `eat_snack` | Eat Quick Snack | 300s | — | `{ "roomId": "kitchen" }` | `{ "needChanges": { "hunger": -25 } }` |
+| `use_computer` | Work at Computer | 1,800s | `electronics` | `{ "roomId": "study_room", "posture": ["sitting"], "objectState": ["on", "in_use"] }` | `{ "objectState": "in_use", "needChanges": { "energy": -8, "sleepiness": 8 } }` |
+| `read_book` | Read Book | 1,500s | — | `{ "roomId": ["study_room", "bedroom"] }` | `{ "needChanges": { "energy": -5, "stress": -5 } }` |
+| `use_toilet` | Use Toilet | 120s | — | `{ "roomId": "toilet" }` | `{ "needChanges": { "bladder": -100 } }` |
+| `wash_face` | Wash Face with Cold Water | 60s | — | `{ "roomId": "toilet" }` | `{ "needChanges": { "hygiene": 15, "energy": 10, "sleepiness": -15 } }` |
+| `brush_teeth` | Brush Teeth | 180s | — | `{ "roomId": "toilet", "posture": ["standing"] }` | `{ "needChanges": { "hygiene": 25, "happiness": 5, "stress": -5 } }` |
+| `take_shower` | Take a Refreshing Shower | 600s | — | `{ "roomId": "toilet", "posture": ["standing"] }` | `{ "needChanges": { "hygiene": 65, "stress": -25, "energy": 15, "happiness": 10 }, "objectStates": { "mirror_001": "foggy", "mirror_bathroom_001": "foggy" } }` |
+| `take_hot_shower` | Take a Steaming Hot Shower | 600s | — | `{ "roomId": "toilet", "posture": ["standing"] }` | `{ "needChanges": { "hygiene": 70, "stress": -30, "energy": 10, "comfort": 15, "happiness": 15 }, "objectStates": { "mirror_001": "foggy", "mirror_bathroom_001": "foggy" } }` |
+| `take_cold_shower` | Take a Brisk Cold Shower | 300s | — | `{ "roomId": "toilet", "posture": ["standing"] }` | `{ "needChanges": { "hygiene": 65, "stress": -10, "energy": 25, "sleepiness": -30, "happiness": 5 } }` |
+| `dry_with_towel` | Dry Off with Towel | 60s | — | `{ "roomId": "toilet", "posture": ["standing"] }` | `{ "needChanges": { "hygiene": 10, "comfort": 10, "happiness": 10, "stress": -5 } }` |
+| `apply_moisturizer` | Apply Moisturizer | 90s | — | `{ "roomId": "toilet", "posture": ["standing"] }` | `{ "needChanges": { "hygiene": 10, "comfort": 10, "happiness": 10, "stress": -5 } }` |
+| `wash_hair` | Wash Hair | 240s | — | `{ "roomId": "toilet", "posture": ["standing"] }` | `{ "needChanges": { "hygiene": 30, "happiness": 10, "stress": -15 } }` |
+| `sweep_floor` | Sweep Floor | 180s | — | `{ "posture": ["standing"] }` | `{ "needChanges": { "hygiene": 10, "stress": -15, "happiness": 10, "energy": -5 } }` |
+| `meditate` | Meditate Peacefully | 600s | — | `{ "posture": ["sitting", "lying", "kneeling"] }` | `{ "needChanges": { "stress": -30, "energy": 10 } }` |
+| `make_masala_chai` | Brew Fresh Hot Tea | 360s | `appliance` | `{ "roomId": "kitchen", "posture": ["standing"] }` | `{ "objectStates": { "chai_cup_001": "steaming_chai" }, "needChanges": { "hunger": -10, "thirst": -30, "energy": 18, "stress": -15, "happiness": 15 } }` |
+| `brew_tea` | Brew Normal Tea | 360s | `appliance` | `{ "roomId": "kitchen", "posture": ["standing"] }` | `{ "objectStates": { "chai_cup_001": "steaming_chai" }, "needChanges": { "hunger": -10, "thirst": -30, "energy": 18, "stress": -15, "happiness": 15 } }` |
+| `brew_chai_duo` | Brew Hot Tea for Two | 420s | `appliance` | `{ "roomId": "kitchen", "posture": ["standing"] }` | `{ "objectState": "cooking", "objectStates": { "stove_001": "cooking", "chai_cup_001": "steaming_chai" }, "needChanges": { "hunger": -10, "thirst": -30, "energy": 20, "stress": -20, "happiness": 20, "loneliness": -25 }, "companionNeedChanges": { "thirst": -25, "energy": 15, "stress": -15, "happiness": 20, "loneliness": -20 } }` |
+| `sip_hot_chai` | Sip Hot Chai | 60s | `item` | `{ "roomId": "kitchen", "requiredObjectStates": { "chai_cup_001": "steaming_chai" } }` | `{ "needChanges": { "thirst": -15, "energy": 8, "happiness": 8, "stress": -10 } }` |
+| `drink_hot_chai` | Drink Entire Cup of Chai | 180s | `item` | `{ "roomId": "kitchen", "requiredObjectStates": { "chai_cup_001": "steaming_chai" } }` | `{ "objectStates": { "chai_cup_001": "dirty" }, "needChanges": { "thirst": -35, "hunger": -10, "energy": 15, "happiness": 15, "stress": -15 } }` |
+| `journal_notes` | Write in Journal | 300s | — | `{ "roomId": "study_room", "posture": ["sitting"] }` | `{ "needChanges": { "stress": -20, "energy": 5 } }` |
+| `stretch_body` | Morning Body Stretch | 60s | — | `{ "posture": ["standing"] }` | `{ "needChanges": { "energy": 12, "sleepiness": -15 } }` |
+| `tidy_room` | Tidy Up Space | 240s | — | `{ "posture": ["standing"] }` | `{ "needChanges": { "hygiene": 10, "stress": -10, "energy": -5 } }` |
+| `relax_on_sofa` | Relax on Sofa | 600s | — | `{ "roomId": "living_room", "positionId": "sofa_area", "posture": ["sitting", "lying"] }` | `{ "needChanges": { "energy": 10, "stress": -15, "happiness": 10, "sleepiness": 5 } }` |
+| `watch_tv` | Watch TV | 1,800s | — | `{ "roomId": "living_room", "posture": ["sitting", "lying"] }` | `{ "needChanges": { "stress": -15, "happiness": 12, "sleepiness": 5, "energy": -2 } }` |
+| `step_out_balcony` | Step Out onto Balcony | 60s | — | `{ "roomId": "balcony", "posture": ["standing"] }` | `{ "moveToPosition": "balcony_railing", "needChanges": { "stress": -10, "energy": 5 } }` |
+| `lean_on_balcony_railing` | Lean on Balcony Railing | 300s | — | `{ "roomId": "balcony", "posture": ["standing"] }` | `{ "moveToPosition": "balcony_railing", "needChanges": { "stress": -15, "happiness": 10 } }` |
+| `water_plants` | Water Balcony Plants | 180s | — | `{ "roomId": "balcony", "posture": ["standing"] }` | `{ "needChanges": { "happiness": 10, "stress": -10 } }` |
+| `smell_flowers` | Smell Jasmine Flowers | 30s | — | `{ "roomId": "balcony", "posture": ["standing"] }` | `{ "needChanges": { "happiness": 8, "stress": -8 } }` |
+| `change_clothes` | Change Clothes | 60s | — | `{ "roomId": "bedroom", "positionId": "wardrobe_area", "posture": ["standing"], "objectState": "open" }` | `{ "clothing": { "upper": "Comfortable T-Shirt", "lower": "Grey Track Pants", "footwear": "Slip-on Sandals" }, "needChanges": { "stress": -5 }, "emotionChanges": { "confidence": 10, "stress": -5 } }` |
+| `wear_sleepwear` | Change into Sleepwear | 60s | — | `{ "roomId": "bedroom", "positionId": "wardrobe_area", "posture": ["standing"], "objectState": "open" }` | `{ "clothing": { "upper": "Soft Cotton Kurta", "lower": "Soft Cotton Pyjama", "footwear": "Barefoot" }, "needChanges": { "stress": -5 }, "emotionChanges": { "confidence": 10, "stress": -5 } }` |
+| `wear_casual` | Change into Casual Loungewear | 60s | — | `{ "roomId": "bedroom", "positionId": "wardrobe_area", "posture": ["standing"], "objectState": "open" }` | `{ "clothing": { "upper": "Comfortable T-Shirt", "lower": "Grey Track Pants", "footwear": "Slip-on Sandals" }, "needChanges": { "stress": -5 }, "emotionChanges": { "confidence": 10, "stress": -5 } }` |
+| `wear_work_wear` | Change into Outdoor / Work Wear | 60s | — | `{ "roomId": "bedroom", "positionId": "wardrobe_area", "posture": ["standing"], "objectState": "open" }` | `{ "clothing": { "upper": "Crisp Linen Shirt", "lower": "Tailored Trousers", "footwear": "Leather Loafers" }, "needChanges": { "stress": -5 }, "emotionChanges": { "confidence": 10, "stress": -5 } }` |
+| `bedtime_reading` | Bedtime Reading | 1,200s | — | `{ "roomId": "bedroom", "positionId": "bed_center", "posture": ["lying", "sitting"], "holding": "any" }` | `{ "needChanges": { "energy": -5, "sleepiness": 10, "stress": -10, "boredom": -20 }, "emotionChanges": { "stress": -10, "happiness": 10 } }` |
+| `code_project` | Work on Coding Project | 2,400s | `electronics` | `{ "roomId": "study_room", "posture": ["sitting", "standing"], "objectState": ["on", "in_use"] }` | `{ "objectState": "in_use", "needChanges": { "studiousness": 20, "energy": 10, "boredom": -15 }, "activity": "code_project" }` |
+| `listen_lofi_music` | Listen to Lo-Fi Music | 1,800s | — | `{ "roomId": "study_room", "posture": ["sitting", "standing"] }` | `{ "needChanges": { "stress": -15, "happiness": 10 }, "activity": "listen_lofi_music" }` |
+| `read_math_book` | Study Math Textbook | 1,800s | `item` | `{ "roomId": "study_room", "posture": ["sitting", "standing"] }` | `{ "needChanges": { "studiousness": 15, "energy": 5, "boredom": -10 }, "activity": "read_math_book" }` |
+| `read_physics_book` | Study Physics Textbook | 1,800s | `item` | `{ "roomId": "study_room", "posture": ["sitting", "standing"] }` | `{ "needChanges": { "studiousness": 15, "boredom": -10 }, "activity": "read_physics_book" }` |
+| `read_chemistry_book` | Study Chemistry Textbook | 1,800s | `item` | `{ "roomId": "study_room", "posture": ["sitting", "standing"] }` | `{ "needChanges": { "studiousness": 15, "boredom": -10 }, "activity": "read_chemistry_book" }` |
+| `read_psychology_book` | Read Psychology Book | 1,500s | `item` | `{ "roomId": "study_room", "posture": ["sitting", "standing"] }` | `{ "needChanges": { "sociability": 15, "stress": -10 }, "activity": "read_psychology_book" }` |
+| `read_mohit_notebook` | Read Mohit's Notebook | 1,200s | `item` | `{ "roomId": "study_room", "posture": ["sitting", "standing"] }` | `{ "needChanges": { "happiness": 10, "stress": -15 }, "activity": "read_mohit_notebook" }` |
+| `read_aria_notebook` | Read Aria's Notebook | 600s | `item` | `{ "roomId": "study_room", "posture": ["sitting", "standing"] }` | `{ "needChanges": { "stress": 20 }, "activity": "read_aria_notebook" }` |
 
----
+### Social actions
 
-## 📚 Module 3: Study Room (Knowledge, Engineering & Roommate Social)
+| ID | Name | Duration | Preconditions | Configured effects |
+|---|---|---:|---|---|
+| `offer_chai` | Offer Cup of Chai to Roommate | 600s | `{ "roomId": ["kitchen", "living_room", "study_room"], "requiresSharedRoom": true }` | Actor: stress -15, happiness +15, loneliness -20, sociability +10. Roommate: stress -15, happiness +15, loneliness -20, sociability +5. Activity `offer_chai`. |
+| `ask_about_day` | Ask Aria About Her Day | 480s | `{ "requiresSharedRoom": true }` | Actor: loneliness -15, happiness +10, sociability +5, stress -5. Roommate: loneliness -15, happiness +10, stress -5. Activity `ask_about_day`. |
+| `play_chess` | Play Chess with Aria | 1,800s | `{ "roomId": ["study_room", "living_room"], "posture": ["sitting"], "requiresSharedRoom": true }` | Actor and roommate: boredom -25, happiness +15, studiousness +10, sociability +10, stress -10. Activity `play_chess`. |
+| `discuss_book` | Discuss Book with Aria | 600s | `{ "requiresSharedRoom": true }` | Actor: studiousness +10, sociability +10, boredom -15, loneliness -10. Roommate: studiousness +10, sociability +10, boredom -10. Activity `discuss_book`. |
+| `discuss_code` | Discuss Code Architecture with Aria | 600s | `{ "requiresSharedRoom": true }` | Actor: studiousness +10, sociability +10, boredom -15, happiness +10. Roommate: studiousness +5, sociability +10, boredom -10. Activity `discuss_code`. |
 
-> **Governing Files**:  
-> - Config: `src/config/rooms/study_room.json`, `src/config/objects.json`, `src/config/actions/daily_activities.json`, `src/config/actions/interactions.json`  
-> - Theme & UI: `public/themes/room-study.css`, `public/app.js` (positions: `desk_chair`, `bookshelf_area`, `study_door_area`)
+Social effects apply to other characters in the actor's current room. “Roommate” means another character sharing that room, not necessarily Aria by hard-coded identity. Activity effects are set for the action and marked completed when the action execution finishes.
 
-### 1. Study Room Flow Diagram
-```mermaid
-flowchart TD
-    PC[computer_001: Desktop PC] -->|turn_on_computer| PCOn[State: on]
-    PCOn -->|code_project (sitting)| CodeDone[Studiousness +20, Energy Satisfaction +10, Boredom -15]
-    PCOn -->|listen_lofi_music| MusicDone[Stress -15, Happiness +10]
-    PCOn -->|browse_web / view_photos / take_selfie| LeisureDone[Casual relaxation]
-    PCOn -->|turn_off_computer| PCOff[State: off]
+### Object interactions
 
-    Shelf[bookshelf_001: Bookshelf] -->|read_math_book| MathDone[Studiousness +15, Logic boost]
-    Shelf -->|read_physics_book| PhysDone[Studiousness +15, Mechanics boost]
-    Shelf -->|read_psychology_book| PsychDone[Sociability +15, Stress -10]
-    Shelf -->|read_mohit_notebook| SketchDone[Happiness +10, Stress -15]
-    Shelf -->|read_aria_notebook (secret)| GuiltDone[Guilt Stress +20, Roommate boundary friction]
+| ID | Name | Duration | Target types | Preconditions | Configured effects |
+|---|---|---:|---|---|---|
+| `open_fridge` | Open Refrigerator | 2s | `appliance` | `{ "roomId": "kitchen", "posture": ["standing"], "objectState": "closed" }` | `{ "objectState": "open" }` |
+| `close_fridge` | Close Refrigerator | 2s | `appliance` | `{ "roomId": "kitchen", "objectState": "open" }` | `{ "objectState": "closed" }` |
+| `turn_on_stove` | Ignite Gas Stove | 3s | `appliance` | `{ "roomId": "kitchen", "posture": ["standing"] }` | `{ "objectState": "on" }` |
+| `turn_off_stove` | Turn Off Gas Stove | 2s | `appliance` | `{ "roomId": "kitchen" }` | `{ "objectState": "off" }` |
+| `turn_on_lamp` | Turn On Bedside Lamp | 1s | `appliance` | `{ "roomId": "bedroom", "objectState": "off" }` | `{ "objectState": "on" }` |
+| `turn_off_lamp` | Turn Off Bedside Lamp | 1s | `appliance` | `{ "roomId": "bedroom", "objectState": "on" }` | `{ "objectState": "off" }` |
+| `turn_on_computer` | Power On Computer | 5s | `electronics` | `{ "roomId": "study_room", "objectState": "off" }` | `{ "objectState": "on" }` |
+| `turn_off_computer` | Shut Down Computer | 5s | `electronics` | `{ "roomId": "study_room", "objectState": ["on", "in_use"] }` | `{ "objectState": "off" }` |
+| `open_wardrobe` | Open Wardrobe | 2s | `furniture` | `{ "roomId": "bedroom", "posture": ["standing"] }` | `{ "objectState": "open" }` |
+| `close_wardrobe` | Close Wardrobe | 2s | `furniture` | `{ "roomId": "bedroom" }` | `{ "objectState": "closed" }` |
+| `fill_glass_water` | Fill Glass with Water | 4s | `item` | `{ "roomId": "kitchen", "objectState": ["empty", "half"] }` | `{ "objectState": "filled_water" }` |
+| `drink_water_glass` | Drink Water from Glass | 5s | `item` | `{ "objectState": ["filled_water", "half"] }` | `{ "objectState": "empty", "needChanges": { "thirst": -45 } }` |
+| `drink_from_flask` | Drink from Copper Flask | 4s | `item` | `{ "objectState": ["full", "half"] }` | `{ "objectState": "empty", "needChanges": { "thirst": -40 } }` |
+| `flush_toilet` | Flush Toilet | 3s | `fixture` | `{ "roomId": "toilet" }` | `{ "objectState": "clean" }` |
+| `look_in_mirror` | Look in Mirror | 3s | `fixture` | `{ "roomId": "toilet", "posture": ["standing"] }` | `{ "needChanges": { "stress": -5 } }` |
+| `wipe_mirror` | Wipe Steamy Mirror | 5s | — | `{ "roomId": "toilet", "positionId": ["washbasin_area", "mirror_area"], "posture": ["standing"], "objectState": "foggy" }` | `{ "objectState": "clear", "objectStates": { "mirror_001": "clear", "mirror_bathroom_001": "clear" }, "needChanges": { "happiness": 5 } }` |
+| `throw_trash` | Throw Away Trash | 3s | — | `{ "roomId": ["kitchen", "toilet"], "posture": ["standing"] }` | `{ "objectState": "has_trash", "needChanges": { "hygiene": 5, "happiness": 2 } }` |
+| `empty_bin` | Empty Trash Bin | 20s | — | `{ "roomId": ["kitchen", "toilet"], "posture": ["standing"] }` | `{ "objectState": "empty", "needChanges": { "hygiene": 10, "happiness": 5, "stress": -5 } }` |
+| `put_clothes_in_laundry` | Put Clothes in Laundry Basket | 5s | — | `{ "roomId": "toilet", "posture": ["standing"] }` | `{ "objectState": "has_clothes", "objectStates": { "laundry_basket_001": "has_clothes" }, "needChanges": { "hygiene": 5, "happiness": 5 } }` |
+| `empty_laundry` | Empty Laundry Basket | 15s | — | `{ "roomId": "toilet", "posture": ["standing"] }` | `{ "objectState": "empty", "objectStates": { "laundry_basket_001": "empty" }, "needChanges": { "happiness": 5, "stress": -5 } }` |
+| `turn_on_kitchen_tap` | Turn On Kitchen Tap | 1s | `fixture` | `{ "roomId": "kitchen" }` | `{ "objectState": "running_tap" }` |
+| `turn_off_kitchen_tap` | Turn Off Kitchen Tap | 1s | `fixture` | `{ "roomId": "kitchen" }` | `{ "objectState": "idle" }` |
+| `pick_up_item` | Pick Up Item | 2s | Any configured target interaction | `{ "holding": "none" }` | `{ "pickUp": true }` |
+| `pick_up_math_book` | Pick Math Textbook | 2s | `item` | `{ "roomId": "study_room", "holding": "none", "objectState": "on_shelf" }` | `{ "pickUp": true }` |
+| `pick_up_physics_book` | Pick Physics Textbook | 2s | `item` | `{ "roomId": "study_room", "holding": "none", "objectState": "on_shelf" }` | `{ "pickUp": true }` |
+| `pick_up_chemistry_book` | Pick Chemistry Textbook | 2s | `item` | `{ "roomId": "study_room", "holding": "none", "objectState": "on_shelf" }` | `{ "pickUp": true }` |
+| `pick_up_psychology_book` | Pick Psychology Book | 2s | `item` | `{ "roomId": "study_room", "holding": "none", "objectState": "on_shelf" }` | `{ "pickUp": true }` |
+| `pick_up_mohit_notebook` | Pick Mohit's Notebook | 2s | `item` | `{ "roomId": "study_room", "holding": "none", "objectState": "on_shelf" }` | `{ "pickUp": true }` |
+| `pick_up_aria_notebook` | Pick Aria's Notebook | 2s | `item` | `{ "roomId": "study_room", "holding": "none", "objectState": "on_shelf" }` | `{ "pickUp": true }` |
+| `put_down_item` | Put Down Item | 2s | — | `{ "holding": "any" }` | `{ "putDown": true }` |
+| `make_bed` | Make the Bed | 60s | `furniture` | `{ "roomId": "bedroom", "posture": ["standing"] }` | `{ "objectState": "neat", "needChanges": { "energy": -2 } }` |
+| `wipe_counter` | Wipe Kitchen Counter | 45s | `surface`, `fixture`, `furniture` | `{ "roomId": "kitchen", "posture": ["standing"] }` | `{ "needChanges": { "hygiene": 8, "energy": -2 } }` |
+| `sip_water_glass` | Sip Water | 3s | `item` | `{ "objectState": "filled_water" }` | `{ "objectState": "half", "needChanges": { "thirst": -18 } }` |
+| `sip_from_flask` | Sip from Flask | 3s | `item` | `{ "objectState": ["full", "half"] }` | `{ "objectState": "half", "needChanges": { "thirst": -18 } }` |
+| `browse_books` | Browse the Bookshelf | 10s | `furniture` | `{ "roomId": "study_room" }` | `{}` |
+| `browse_web` | Browse the Web | 600s | `electronics` | `{ "roomId": "study_room", "objectState": ["on", "in_use"] }` | `{ "objectState": "in_use", "needChanges": { "energy": -3, "sleepiness": 2 } }` |
+| `view_photos` | See Photos | 300s | `electronics` | `{ "roomId": "study_room", "objectState": ["on", "in_use"] }` | `{ "objectState": "in_use", "needChanges": { "energy": 1 } }` |
+| `take_selfie` | Take a Selfie | 30s | `electronics` | `{ "roomId": "study_room", "objectState": ["on", "in_use"] }` | `{ "objectState": "in_use" }` |
+| `record_video` | Record a Video | 60s | `electronics` | `{ "roomId": "study_room", "objectState": ["on", "in_use"] }` | `{ "objectState": "in_use" }` |
+| `turn_on_room_light` | Turn On Light | 1s | `appliance` | `{ "objectState": "off" }` | `{ "objectState": "on" }` |
+| `turn_off_room_light` | Turn Off Light | 1s | `appliance` | `{ "objectState": "on" }` | `{ "objectState": "off" }` |
+| `get_food_from_fridge` | Take a Snack | 15s | `appliance` | `{ "roomId": "kitchen", "objectState": "open" }` | `{ "needChanges": { "hunger": -25 } }` |
+| `get_drink_from_fridge` | Take a Cold Drink | 10s | `appliance` | `{ "roomId": "kitchen", "objectState": "open" }` | `{ "needChanges": { "thirst": -35 } }` |
+| `prepare_snack` | Prepare a Snack | 60s | `furniture` | `{ "roomId": "kitchen" }` | `{ "objectState": "has_items", "objectStates": { "plate_001": "with_food", "counter_001": "has_items" } }` |
+| `wash_hands_kitchen` | Wash Hands | 30s | `fixture` | `{ "roomId": "kitchen" }` | `{ "needChanges": { "hygiene": 8 } }` |
+| `wash_dishes` | Wash the Dishes | 180s | `fixture` | `{ "roomId": "kitchen" }` | `{ "objectStates": { "plate_001": "empty", "chai_cup_001": "empty" }, "needChanges": { "hygiene": 8, "energy": -2, "happiness": 5 } }` |
+| `tidy_desk` | Tidy the Desk | 120s | `furniture` | `{ "roomId": "study_room" }` | `{ "objectState": "tidy", "needChanges": { "energy": -2 } }` |
+| `check_phone` | Check Phone | 30s | `electronics` | `{}` | `{ "needChanges": { "boredom": -3 } }` |
+| `check_messages` | Check Messages | 60s | `electronics` | `{}` | `{ "needChanges": { "boredom": -10, "loneliness": -10 }, "emotionChanges": { "happiness": 5, "loneliness": -10 } }` |
+| `play_alarm` | Play Alarm | 15s | `electronics` | `{}` | `{ "needChanges": { "sleepiness": -15 } }` |
+| `listen_music_phone` | Listen to Music on Phone | 300s | `electronics` | `{}` | `{ "needChanges": { "boredom": -15, "stress": -10 }, "emotionChanges": { "happiness": 10, "stress": -10 } }` |
+| `turn_on_shower` | Turn On Shower | 5s | `fixture` | `{ "roomId": "toilet", "objectState": "off" }` | `{ "objectState": "running" }` |
+| `turn_off_shower` | Turn Off Shower | 2s | `fixture` | `{ "roomId": "toilet", "objectState": "running" }` | `{ "objectState": "off" }` |
+| `turn_on_tv` | Turn On TV | 2s | `appliance` | `{ "roomId": "living_room", "objectState": "off" }` | `{ "objectState": "on" }` |
+| `turn_off_tv` | Turn Off TV | 2s | `appliance` | `{ "roomId": "living_room", "objectStateNot": "off" }` | `{ "objectState": "off" }` |
+| `play_music_speaker` | Play Music on Soundbar | 2s | `appliance` | `{ "roomId": "living_room" }` | `{ "objectState": "playing_music", "needChanges": { "stress": -15, "happiness": 15 } }` |
+| `stop_music_speaker` | Stop Speaker Music | 2s | `appliance` | `{ "roomId": "living_room", "objectState": "playing_music" }` | `{ "objectState": "off" }` |
+| `wipe_coffee_table` | Wipe Coffee Table | 60s | `surface`, `furniture` | `{ "roomId": "living_room", "posture": ["standing"] }` | `{ "objectState": "clean", "needChanges": { "stress": -5 } }` |
+| `inspect_plant` | Inspect Money Plant | 30s | `plant` | `{ "roomId": "living_room" }` | `{ "needChanges": { "stress": -5, "happiness": 5 } }` |
+| `wipe_plant_leaves` | Wipe Plant Leaves | 60s | `plant` | `{ "roomId": "living_room", "posture": ["standing"] }` | `{ "objectState": "thriving", "needChanges": { "stress": -5, "happiness": 8 } }` |
+| `refill_watering_can` | Refill Watering Can | 30s | `tool` | `{ "roomId": "balcony", "posture": ["standing"] }` | `{ "objectState": "full" }` |
+| `open_spice_box` | Open Brass Masala Dabba | 5s | `item`, `surface` | `{ "roomId": "kitchen" }` | `{ "objectState": "open", "objectStates": { "spice_box_001": "open" } }` |
+| `close_spice_box` | Close Brass Masala Dabba | 5s | `item`, `surface` | `{ "roomId": "kitchen" }` | `{ "objectState": "closed", "objectStates": { "spice_box_001": "closed" } }` |
+| `inspect_spices` | Inspect Masala Dabba Spices | 15s | `item`, `surface` | `{ "roomId": "kitchen" }` | `{ "needChanges": { "stress": -5, "happiness": 5 } }` |
+| `pinch_spices` | Pinch Spices for Cooking | 10s | `item`, `surface` | `{ "roomId": "kitchen", "posture": ["standing"] }` | `{ "needChanges": { "stress": -3, "happiness": 5 } }` |
 
-    Social[Roommate Social Encounters] -->|offer_chai (shared room)| TeaBond[Mutual happiness +15, stress -10]
-    Social -->|ask_about_day (shared room)| ChatBond[Loneliness -15, camaraderie]
-    Social -->|play_chess (shared room, sitting)| ChessMatch[Boredom -25, tactical fun]
-    Social -->|discuss_book / discuss_code| IntellectBond[Studiousness +10, sociability +10]
-```
+### Interactions: reading these entries correctly
 
-### 2. Study Room Object & Action Matrix
-| Object Name & ID | Action ID | Status | Preconditions | State & Need Deltas | Agent Notes / Verification |
-| :--- | :--- | :---: | :--- | :--- | :--- |
-| **Desktop Computer**<br/>`computer_001` | `turn_on_computer` | ✅ Ready | State: `off` | PC state $\rightarrow$ `on` | Power LED lit |
-| | `code_project` | ✅ Ready | `posture: ["sitting"]`, PC `on`/`in_use`| Studiousness +20, Energy +10, Boredom -15| Software engineering |
-| | `listen_lofi_music`| ✅ Ready | PC `on` or `in_use` | Stress -15, Happiness +10 | Study background beats |
-| | `use_computer` | ✅ Ready | `posture: ["sitting"]`, PC `on` | PC $\rightarrow$ `in_use`, Boredom -25 | General computer tasks |
-| | `browse_web` | ✅ Ready | PC `on` or `in_use` | Boredom -20, Stress -5 | Casual internet surfing |
-| | `turn_off_computer`| ✅ Ready | PC `on` or `in_use` | PC state $\rightarrow$ `off` | System shutdown |
-| **Subject Books**<br/>(Bookshelf catalog) | `read_math_book` | ✅ Ready | Pos: `desk_chair` or holding | Studiousness +15, Energy +5, Boredom -10| Calculus & linear algebra |
-| | `read_physics_book`| ✅ Ready | Pos: `desk_chair` or holding | Studiousness +15, Boredom -10 | Optics & mechanics |
-| | `read_psychology_book`| ✅ Ready| Pos: `desk_chair` or holding | Sociability +15, Stress -10 | Cognitive empathy |
-| | `read_mohit_notebook`| ✅ Ready | Pos: `desk_chair` or holding | Happiness +10, Stress -15 | Ideas, dreams & sketches |
-| | `read_aria_notebook`| ✅ Ready | In room (Aria reacts if present)| Alone: Guilt Stress +20; Present: Confrontation| Roommate boundary dynamic |
-| **Roommate Dynamics**<br/>(Shared Presence) | `offer_chai` | ✅ Ready | Both in same room | Mutual Happiness +15, Stress -10 | Shared Jabalpur tea |
-| | `ask_about_day` | ✅ Ready | Both in same room | Loneliness -15, Sociability +5 | Warm daily check-in |
-| | `play_chess` | ✅ Ready | Both in study/living, sitting | Boredom -25, Studiousness +10 | Sheesham wooden board |
-| | `discuss_book` | ✅ Ready | Both in same room | Studiousness +10, Sociability +10 | Intellectual discourse |
-| | `discuss_code` | ✅ Ready | Both in same room | Studiousness +10, Sociability +10 | Architecture whiteboard |
+- For targeted actions, the object must list the action in its `interactions`, be within the actor's room or held by that actor, and match the configured target type. Portable pickup also requires free hands.
+- If a target is omitted, the engine tries the held item, the object at the actor's current position, then a matching object in the current room. Some non-target actions also have explicit implicit targets: mirror, laundry basket, towel rack, or room trash bin.
+- `objectState` changes the effective target object; `objectStates` changes the listed IDs. Both may be present. The state register is under `src/config/objects.json`.
+- `objectState` preconditions are checked against the target/current-position object. `requiredObjectStates` checks the named object IDs separately. Special validation also exists for shared-room actions, bed reading, wardrobe use, mirror wiping, sweeping, trash-bin presence, and object occupancy.
 
----
+## Object-state register
 
-## 🍳 Module 4: Kitchen (Culinary Life Engine, Spice Box & Dining)
+These are configured states, not a claim that every state transition is implemented by an action. Portable items can move when picked up and put down; the household map's build/reposition state is separate from the room object's configured state.
 
-> **Governing Files**:  
-> - Config: `src/config/rooms/kitchen.json`, `src/config/objects.json`, `src/config/actions/daily_activities.json`, `src/config/actions/interactions.json`  
-> - Theme & UI: `public/themes/room-kitchen.css`, `public/app.js` (positions: `stove_area`, `counter_area`, `dining_chair`, `fridge_area`, `kitchen_door_area`)
+| Room | Object IDs | Configured states |
+|---|---|---|
+| Bedroom | `bed_001` | `neat`, `rumpled`, `occupied_lying`, `occupied_sitting` |
+| Bedroom | `bedside_table_001` | `normal` |
+| Bedroom | `lamp_001` | `off`, `on` |
+| Bedroom | `wardrobe_001` | `closed`, `open` |
+| Bedroom | `water_flask_001` | `full`, `half`, `empty` |
+| Bedroom | `phone_001` | `on`, `off` |
+| Study room | `desk_001` | `tidy`, `cluttered` |
+| Study room | `chair_study` | `available`, `occupied` |
+| Study room | `computer_001` | `off`, `on`, `in_use` |
+| Study room | `chess_set_001` | `arranged`, `in_play` |
+| Study room | `bookshelf_001` | `stocked` |
+| Study room | `study_lamp_001` | `off`, `on` |
+| Study room | `math_book_001`, `physics_book_001`, `chemistry_book_001`, `psychology_book_001`, `mohit_notebook_001`, `aria_notebook_001` | `on_shelf` |
+| Kitchen | `stove_001` | `off`, `on`, `cooking`, `idle` |
+| Kitchen | `fridge_001` | `closed`, `open` |
+| Kitchen | `counter_001` | `clear`, `has_items`, `clean` |
+| Kitchen | `sink_001` | `idle`, `running_tap` |
+| Kitchen | `kitchen_chair_001` | `available`, `occupied` |
+| Kitchen | `drinking_glass_001` | `empty`, `filled_water`, `half` |
+| Kitchen | `plate_001` | `empty`, `with_food`, `dirty` |
+| Kitchen | `chai_cup_001` | `empty`, `steaming_chai`, `dirty` |
+| Kitchen | `spice_box_001` | `closed`, `open` |
+| Kitchen | `kitchen_light_001` | `off`, `on` |
+| Kitchen | `trash_bin_001` | `empty`, `has_trash`, `full` |
+| Toilet | `toilet_seat_001` | `clean`, `in_use`, `needs_flush` |
+| Toilet | `washbasin_001` | `idle`, `running_tap` |
+| Toilet | `mirror_001`, `mirror_bathroom_001` | `clear`, `foggy` |
+| Toilet | `shower_001` | `off`, `running` |
+| Toilet | `towel_rack_001` | `hanging_towel`, `empty` |
+| Toilet | `laundry_basket_001` | `empty`, `has_clothes`, `full` |
+| Toilet | `trash_bin_toilet_001` | `empty`, `has_trash`, `full` |
+| Toilet | `broom_001` | `idle`, `sweeping` |
+| Toilet | `bathroom_light_001` | `off`, `on` |
+| Living room | `sofa_001` | `neat`, `occupied_sitting`, `occupied_lying` |
+| Living room | `coffee_table_001` | `clean`, `cluttered` |
+| Living room | `tv_speaker_001` | `off`, `on`, `playing_music` |
+| Living room | `house_plant_001` | `thriving`, `needs_water` |
+| Balcony | `balcony_plants_001` | `blooming`, `watered`, `dry` |
+| Balcony | `watering_can_001` | `full`, `empty` |
+| Balcony | `cane_chair_001` | `vacant`, `occupied` |
 
-### 1. Kitchen Flow Diagram
-```mermaid
-flowchart TD
-    Spices[spice_box_001: Brass Masala Dabba] -->|open_spice_box| SpiceOpen[State: open]
-    SpiceOpen -->|pinch_spices| Seasoning[Tidiness +5, Culinary happiness]
-    SpiceOpen -->|close_spice_box| SpiceClosed[State: closed]
-
-    Stove[stove_001: Gas Stove] -->|make_masala_chai| FreshChai[Ginger-cardamom tea brewed]
-    Stove -->|brew_chai_duo (with Aria)| SharedChai[Chai for two: mutual mood & thirst boost]
-    Stove -->|cook_breakfast| BreakfastDone[Poha / Aloo Paratha griddled, Stove: cooking]
-    Stove -->|cook_meal| MealDone[Dal, rice & phulkas cooked, Stove: cooking]
-
-    Serving[Serving & Dining Loop] -->|serve_meal (holding plate)| Plated[plate_001 state: with_food, stove reset to idle]
-    Plated -->|sit_down_kitchen_stool| SeatedDining[Posture: sitting @ dining_chair]
-    SeatedDining -->|eat_meal_from_plate| FullMeal[Hunger -50, Energy +15, Plate state: dirty]
-
-    Cleanup[Kitchen Sink & Cleaning] -->|wash_dishes (at sink_001 / sink_kitchen_001)| PlateClean[Plate state reset to: empty]
-    Cleanup -->|wipe_counter (on counter_001)| CounterClean[Tidiness +10, Stress -5]
-```
-
-### 2. Kitchen Object & Action Matrix
-| Object Name & ID | Action ID | Status | Preconditions | State & Need Deltas | Agent Notes / Verification |
-| :--- | :--- | :---: | :--- | :--- | :--- |
-| **Brass Masala Dabba**<br/>`spice_box_001` | `open_spice_box` | ✅ Ready | State: `closed` | State $\rightarrow$ `open` | Aromatic spices revealed |
-| | `pinch_spices` | ✅ Ready | State: `open` | Happiness +3, Tidiness +5 | Turmeric, mustard & cardamom |
-| | `close_spice_box` | ✅ Ready | State: `open` | State $\rightarrow$ `closed` | Snaps shut tightly |
-| **Gas Stove**<br/>`stove_001` | `make_masala_chai` | ✅ Ready | Standing at stove | Thirst -20, Energy +10, Stress -10 | Single cup ginger tea |
-| | `brew_chai_duo` | ✅ Ready | Standing at stove, Aria present | Mutual Thirst -25, Happiness +15 | Shared Jabalpur tea |
-| | `cook_breakfast` | ✅ Ready | Standing at stove | Stove $\rightarrow$ `cooking`, Hunger -15 | Poha & Aloo Paratha |
-| | `cook_meal` | ✅ Ready | Standing at stove, state `off`/`on`| Stove $\rightarrow$ `cooking`, Hunger -30 | Full Indian dinner |
-| | `turn_off_stove` | ✅ Ready | State `on` or `cooking` | Stove $\rightarrow$ `off` / `idle` | Burner extinguished |
-| **Steel Plate**<br/>`plate_001` | `pick_up_item` | ✅ Ready | `holding: "none"` | Plate held in hand | Fully portable |
-| | `serve_meal` | ✅ Ready | Holding plate, stove `cooking` | Plate $\rightarrow$ `with_food`, Stove $\rightarrow$ `idle` | Ladles food onto thali |
-| | `eat_meal_from_plate`| ✅ Ready| Seated @ dining stool, plate `with_food`| Hunger -50, Energy +15, Plate $\rightarrow$ `dirty`| Wholesome meal |
-| | `put_down_item` | ✅ Ready | Holding plate | Placed on counter/table | Droppable anywhere |
-| **Granite Counter**<br/>`counter_001` | `wipe_counter` | ✅ Ready | In kitchen | Tidiness +10, Stress -5 | Polished black granite |
-| **Kitchen Sink**<br/>`sink_001` / `sink_kitchen_001`| `wash_dishes`| ✅ Ready| Dirty dishes in room | Plate $\rightarrow$ `empty`, Tidiness +15 | Aliased & synchronized |
-
----
-
-## 🚿 Module 5: Toilet / Bathroom (Grooming, Steam Dynamics & Chores)
-
-> **Governing Files**:  
-> - Config: `src/config/rooms/toilet.json`, `src/config/objects.json`, `src/config/actions/daily_activities.json`, `src/config/actions/interactions.json`  
-> - Theme & UI: `public/themes/room-bathroom.css`, `public/app.js` (positions: `shower_area`, `toilet_area`, `washbasin_area`, `toilet_door_area`)
-
-### 1. Bathroom Flow Diagram
-```mermaid
-flowchart TD
-    Shower[shower_001: Shower] -->|take_shower (standing)| Showered[Hygiene 100%, Stress -25, Mirror state: foggy]
-    Showered -->|dry_with_towel (towel_rack_001)| FullyDry[Hygiene 100%, Warm comfort, Happiness +5]
-    Showered -->|wipe_mirror (mirror_001)| MirrorClean[Mirror condensation wiped, state: clear]
-
-    Basin[washbasin_001: Washbasin] -->|brush_teeth| TeethClean[Hygiene +20, Morning freshness]
-    Basin -->|apply_moisturizer| SkinFresh[Confidence +8, Stress -5]
-    Basin -->|wash_hair| HairClean[Hygiene +25, Refreshment]
-
-    Housekeeping[Housekeeping & Chores] -->|put_clothes_in_laundry| LaundryFull[laundry_basket_001: filled]
-    LaundryFull -->|empty_laundry| LaundryClean[Laundry basket emptied]
-    Housekeeping -->|throw_trash (bathroom/kitchen)| TrashFull[trash_bin state: full]
-    TrashFull -->|empty_bin| TrashClean[Trash disposed of]
-    Housekeeping -->|sweep_floor (holding broom_001)| FloorSwept[Tidiness +15, multi-room clean floors]
-```
-
-### 2. Bathroom Object & Action Matrix
-| Object Name & ID | Action ID | Status | Preconditions | State & Need Deltas | Agent Notes / Verification |
-| :--- | :--- | :---: | :--- | :--- | :--- |
-| **Shower**<br/>`shower_001` | `take_shower` | ✅ Ready | Standing in shower | Hygiene +65, Stress -25, Mirror $\rightarrow$ `foggy`| Steamy hot shower |
-| **Towel Rack**<br/>`towel_rack_001` | `dry_with_towel` | ✅ Ready | Posture standing in bathroom | Hygiene $\rightarrow$ 100, Comfort +5 | Plush cotton towel |
-| **Bathroom Mirror**<br/>`mirror_001` | `wipe_mirror` | ✅ Ready | Mirror state `foggy`, at washbasin | Mirror state $\rightarrow$ `clear`, Happiness +10 | Wipes condensation |
-| | `look_in_mirror` | ✅ Ready | Standing at mirror | Stress -5, Confidence check | Reflection inspection |
-| **Washbasin**<br/>`washbasin_001` | `brush_teeth` | ✅ Ready | Standing at washbasin | Hygiene +20 | Oral care routine |
-| | `apply_moisturizer` | ✅ Ready | Standing at washbasin | Confidence +8, Stress -5 | Jabalpur skincare |
-| | `wash_hair` | ✅ Ready | Standing at washbasin | Hygiene +25, Refreshment | Shampoo wash |
-| **Laundry Basket**<br/>`laundry_basket_001`| `put_clothes_in_laundry`| ✅ Ready| Standing in bathroom | Basket $\rightarrow$ `filled`, Tidiness +8 | Dirty linen management |
-| | `empty_laundry` | ✅ Ready | Basket state: `filled` | Basket $\rightarrow$ `empty`, Tidiness +12 | Washing machine prep |
-| **Trash Bins**<br/>`trash_bin_toilet_001` / `trash_bin_kitchen_001`| `throw_trash`| ✅ Ready| In room with bin | Bin $\rightarrow$ `full`, Tidiness +5 | Waste disposal |
-| | `empty_bin` | ✅ Ready | Bin state: `full` | Bin $\rightarrow$ `empty`, Tidiness +10 | Emptied into municipal bin |
-| **Grass Broom**<br/>`broom_001` | `pick_up_item` | ✅ Ready | Near broom | Held in hand, portable | Carriable across all rooms |
-| | `sweep_floor` | ✅ Ready | Holding broom or near broom | Tidiness +15, Stress -5 | Multi-room floor sweeping |
-
----
-
-## 🛋️ Module 6: Living Room & Balcony (Leisure, Media & Jabalpur Vistas)
-
-> **Governing Files**:  
-> - Config: `src/config/rooms/living_room.json`, `src/config/rooms/balcony.json`, `src/config/objects.json`, `src/config/actions/daily_activities.json`, `src/config/actions/interactions.json`  
-> - Theme & UI: `public/themes/room-living_room.css`, `public/themes/room-balcony.css`, `public/app.js` (positions: `sofa_area`, `coffee_table_area`, `tv_cabinet_area`, `balcony_railing`, `planters_area`, `cane_chair`)
-
-### 1. Living Room & Balcony Flow Diagram
-```mermaid
-flowchart TD
-    Sofa[sofa_001: Plush Sofa] -->|sit_down_sofa| SeatedSofa[Posture: sitting @ sofa_area]
-    SeatedSofa -->|relax_on_sofa| ChilledOut[Stress -15, Happiness +10]
-    SeatedSofa -->|watch_movie_tv (with tv_speaker_001 on)| MovieTime[Boredom -35, Entertainment]
-
-    TV[tv_speaker_001: Smart TV & Soundbar] -->|turn_on_smart_tv| TVPlaying[State: streaming, warm backlight]
-    TVPlaying -->|play_room_music| SoundbarBeats[Rich acoustic atmosphere]
-    TVPlaying -->|turn_off_smart_tv| TVOff[State: off]
-
-    CoffeeTable[coffee_table_001: Coffee Table] -->|organize_living_table| TableNeat[Tidiness +10, Stress -5]
-    Plant[house_plant_001: Money Plant] -->|prune_house_plant| PlantFresh[Happiness +8, Peaceful nature]
-
-    BalconyDoors[door_living_balcony] -->|walk_to_balcony| OutdoorAir[Fresh breeze over Jabalpur]
-    OutdoorAir -->|look_at_city_view| CityVistas[Stress -15, Loneliness -10]
-    OutdoorAir -->|water_balcony_plants (watering_can_001)| Greenery[Plants watered, Happiness +12]
-    OutdoorAir -->|sit_down_cane_chair| SeatedBalcony[Posture: sitting @ cane_chair]
-    SeatedBalcony -->|sip_tea_on_balcony| PurePeace[Serenity under the open sky]
-```
-
-### 2. Living Room & Balcony Object & Action Matrix
-| Object Name & ID | Action ID | Status | Preconditions | State & Need Deltas | Agent Notes / Verification |
-| :--- | :--- | :---: | :--- | :--- | :--- |
-| **Plush Sofa**<br/>`sofa_001` | `sit_down_sofa` | ✅ Ready | In living room, standing | Posture $\rightarrow$ `sitting`, pos: `sofa_area`| Warm fabric cushions |
-| | `relax_on_sofa` | ✅ Ready | Seated on sofa | Stress -15, Happiness +10 | Deep afternoon lounging |
-| **Smart TV & Soundbar**<br/>`tv_speaker_001` | `turn_on_smart_tv` | ✅ Ready | State: `off` | State $\rightarrow$ `streaming` | 4K display & audio on |
-| | `watch_movie_tv` | ✅ Ready | Sitting on sofa, TV `streaming`| Boredom -35, Happiness +15 | Bollywood & international cinema |
-| | `play_room_music` | ✅ Ready | TV state: `streaming` | Stress -15, Happiness +10 | Rich acoustics in room |
-| | `turn_off_smart_tv`| ✅ Ready | State: `streaming` | State $\rightarrow$ `off` | System powered down |
-| **Teakwood Coffee Table**<br/>`coffee_table_001`| `organize_living_table`| ✅ Ready| In living room | Tidiness +10, Stress -5 | Coasters & magazines |
-| **Money Plant**<br/>`house_plant_001` | `prune_house_plant`| ✅ Ready| In living room | Happiness +8, Tidiness +5 | Indoor greenery care |
-| **Balcony Planters**<br/>`balcony_plants_001` | `water_balcony_plants`| ✅ Ready| On balcony | State $\rightarrow$ `blooming`, Happiness +12| Bougainvillea & marigolds |
-| | `smell_balcony_flowers`| ✅ Ready| On balcony | Happiness +8, Stress -8 | Jasmine fragrance |
-| **Balcony Railing**<br/>`balcony_railing` | `look_at_city_view`| ✅ Ready| Standing at balcony railing | Stress -15, Loneliness -10 | Jabalpur street life & trees |
-| **Watering Can**<br/>`watering_can_001` | `pick_up_item` | ✅ Ready | On balcony | Held in hand, portable | Carriable |
-| **Balcony Cane Chair**<br/>`cane_chair_001` | `sit_down_cane_chair`| ✅ Ready| On balcony, standing | Posture $\rightarrow$ `sitting`, pos: `cane_chair`| Handwoven wicker |
-| | `sip_tea_on_balcony`| ✅ Ready| Sitting in cane chair | Stress -20, Happiness +15 | Sunset tea time |
-
----
-
-## 🤖 Module 7: Autonomous Roommate AI & Heartbeat Engine
-
-> **Governing Files**:  
-> - Engine: `src/ai/AIDecisionEngine.ts`, `src/engine/GameEngine.ts`, `src/engine/RealtimePersistence.ts`, `src/engine/MovementEngine.ts`  
-> - Config: `src/config/world.json` (`simulationConfig.ariaPingIntervalMinutes`), `character_template.json`
-
-### 1. Aria Autonomous Decision Pipeline
-```mermaid
-flowchart TD
-    IdlePing[10-Minute Idle Heartbeat / Player Step] --> CheckNeeds{Critical Need?}
-    
-    CheckNeeds -->|Bladder > 70| GoToilet[BFS Step to Toilet -> use_toilet]
-    CheckNeeds -->|Thirst > 60| GoKitchen[BFS Step to Kitchen -> drink_water_glass]
-    CheckNeeds -->|Hunger > 60| GoFridge[BFS Step to Kitchen -> get_food_from_fridge]
-    CheckNeeds -->|Sleepiness > 80| GoBed[BFS Step to Bedroom -> sleep / nap]
-    
-    CheckNeeds -->|Needs Satisfied| CheckProximity{Player in Same Room?}
-    CheckProximity -->|Yes| CompanionAction[offer_chai / ask_about_day / discuss_code]
-    CheckProximity -->|No| DailyRoutine[Study: read_book, code_project / Living: relax_sofa / Balcony: view]
-```
-
-### 2. Autonomous AI Features
-- **Configurable Heartbeat**: Defaults to 10 minutes (`engine.getAriaPingIntervalMinutes()`). Overridable via `world.json` or `ARIA_PING_INTERVAL_MINUTES` environment variable.
-- **BFS Pathfinding**: When biological needs demand another room, Aria plans multi-step journeys (e.g. `study_room` $\rightarrow$ `bedroom` $\rightarrow$ `toilet`) step-by-step.
-- **Companion Presence**: When in the same room as the player, Aria dynamically participates in conversations, studies, and tea-drinking.
-
----
-
-## 📋 Multi-Agent Task Verification Matrix
-
-All tasks delegated across sub-agents are 100% complete, fully wired, and verified with end-to-end automated tests:
-
-| Task ID | Area | Task Title | Governing Files | Status |
-| :--- | :--- | :--- | :--- | :---: |
-| **Task K-1** | Kitchen | **Masala Chai Brewing** | `kitchen.json`, `objects.json`, `daily_activities.json` | ✅ Verified (`test_culinary_engine.ts`) |
-| **Task K-2** | Kitchen | **Countertop Wiping** | `objects.json`, `interactions.json` | ✅ Verified (`test_culinary_engine.ts`) |
-| **Task K-3** | Kitchen | **Meal Serving Loop (`serve_meal`)** | `daily_activities.json`, `objects.json` | ✅ Verified (`test_culinary_engine.ts`) |
-| **Task K-4** | Kitchen | **Meal Dining Loop (`eat_meal_from_plate`)** | `daily_activities.json`, `objects.json` | ✅ Verified (`test_culinary_engine.ts`) |
-| **Task K-5** | Kitchen | **Brass Masala Dabba (`spice_box_001`)** | `kitchen.json`, `objects.json`, `interactions.json` | ✅ Verified (`test_culinary_engine.ts`) |
-| **Task B-1** | Bedroom | **Wardrobe Dressing (`wear_sleepwear/casual/work`)** | `bedroom.json`, `ActionEngine.ts`, `daily_activities.json` | ✅ Verified (`test_bedroom_wardrobe.ts`) |
-| **Task B-2** | Bedroom | **Phone Portability (`pick_up_item`)** | `objects.json`, `daily_activities.json` | ✅ Verified (`test_bedroom_wardrobe.ts`) |
-| **Task B-3** | Bedroom | **Bedside Table Action Clean** | `objects.json` | ✅ Verified (`test_bedroom_wardrobe.ts`) |
-| **Task B-4** | Bedroom | **Bedside Lamp Ambiance & Bedtime Reading** | `ActionEngine.ts`, `daily_activities.json` | ✅ Verified (`test_bedroom_wardrobe.ts`) |
-| **Task S-1** | Study | **Subject-Specific Books (Math, Physics, Psychology)**| `study_room.json`, `ActionEngine.ts`, `daily_activities.json` | ✅ Verified (`test_study_social.ts`) |
-| **Task S-2** | Study | **Desktop PC Engineering (`code_project`, lo-fi)** | `daily_activities.json`, `interactions.json` | ✅ Verified (`test_study_social.ts`) |
-| **Task S-3** | Study | **Roommate Social Encounters (`offer_chai`, `play_chess`)**| `daily_activities.json`, `ActionEngine.ts` | ✅ Verified (`test_study_social.ts`) |
-| **Task T-1** | Toilet | **Shower Steam & Mirror Fogging/Wiping** | `ActionEngine.ts`, `toilet.json`, `daily_activities.json` | ✅ Verified (`test_grooming_chores.ts`) |
-| **Task T-2** | Toilet | **Towel Drying & Oral Care** | `toilet.json`, `daily_activities.json` | ✅ Verified (`test_grooming_chores.ts`) |
-| **Task T-3** | Housekeeping | **Laundry Basket, Trash Bins & Broom Sweeping** | `toilet.json`, `kitchen.json`, `ActionEngine.ts` | ✅ Verified (`test_grooming_chores.ts`) |
-| **Task L-1** | Living | **Living Room Expansion (Sofa, Smart TV, Coffee Table)** | `living_room.json`, `objects.json`, `world.json` | ✅ Verified (`test_living_balcony.ts`) |
-| **Task L-2** | Balcony | **Balcony Expansion (Planters, Watering Can, Cane Chair)**| `balcony.json`, `objects.json`, `world.json` | ✅ Verified (`test_living_balcony.ts`) |
-| **Task A-1** | AI | **Aria 10-Min Heartbeat & BFS Pathfinding** | `AIDecisionEngine.ts`, `MovementEngine.ts`, `GameEngine.ts` | ✅ Verified (`test_simulation.ts`) |
+`mirror_bathroom_001` aliases the bathroom mirror state; `sink_kitchen_001` aliases `sink_001`; and `lamp_bedroom_001` aliases `lamp_001`. `door_study` and `door_toilet` are not configured room objects; the corresponding door-area positions have no object ID.

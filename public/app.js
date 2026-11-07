@@ -1401,7 +1401,22 @@ function handleActionClick(act) {
   let targetObjectId;
   if (act.requiresTarget) {
     const roomObjs = gameState.roomDetails.objects;
-    const match = roomObjs.find(o => !act.targetTypes || act.targetTypes.includes(o.type));
+    const { objectState, objectStateNot } = act.preconditions || {};
+    const match = roomObjs.find((object) => {
+      const objectTypes = Array.isArray(object.type) ? object.type : [object.type];
+      if (act.targetTypes && !objectTypes.some((type) => act.targetTypes.includes(type))) return false;
+      if (!(object.interactions || []).includes(act.id)) return false;
+      const state = object.currentState;
+      if (objectState) {
+        const allowed = Array.isArray(objectState) ? objectState : [objectState];
+        if (!allowed.includes(state)) return false;
+      }
+      if (objectStateNot) {
+        const blocked = Array.isArray(objectStateNot) ? objectStateNot : [objectStateNot];
+        if (blocked.includes(state)) return false;
+      }
+      return true;
+    });
     if (match) targetObjectId = match.id;
   }
   submitAction(act.id, targetObjectId);
@@ -1457,13 +1472,13 @@ function renderAiAvailableActions(actions) {
         <span class="ai-act-icon">${act.icon || '✨'}</span>
         <div class="ai-act-meta">
           <div class="ai-act-name">${act.name}</div>
-          <div class="ai-act-cat">${(act.category || 'general').toUpperCase()} · ${act.durationMinutes || 10}m</div>
+          <div class="ai-act-cat">${(act.category || 'general').toUpperCase()} · ${Math.ceil((act.duration || 0) / 60)}m</div>
         </div>
       </div>
       <button type="button" class="btn-ai-act-chip" title="Direct Aria to perform this">Act ›</button>
     `;
     item.addEventListener('click', () => {
-      triggerAiAction(act.id);
+      triggerAiAction(act.actionId);
     });
     aiAvailableActionsList.appendChild(item);
   }
@@ -1505,8 +1520,8 @@ async function triggerAiAction(actionId) {
   }
 }
 
-async function resetStory() {
-  const confirmed = window.confirm('Reset story and game state back to Day 1 Morning fresh state?');
+async function resetPhysicalNeeds() {
+  const confirmed = window.confirm("Reset Mohit and Aria's physical needs to their starting values? Time, positions, home layout, and chats will be kept.");
   if (!confirmed) return;
 
   try {
@@ -1516,20 +1531,17 @@ async function resetStory() {
     }
     const res = await fetch('/api/reset', { method: 'POST' });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to reset story');
+    if (!res.ok) throw new Error(data.error || 'Failed to reset physical needs');
 
-    showToast('🔄 Story reset to Day 1 Morning!');
-    if (data.activeConversation) {
-      activeConversation = data.activeConversation;
-    }
+    showToast('🔄 Physical needs reset to their starting values');
     await fetchState();
   } catch (err) {
-    console.error('Reset story error:', err);
-    showToast('Failed to reset story');
+    console.error('Reset physical needs error:', err);
+    showToast('Failed to reset physical needs');
   } finally {
     if (btnResetStory) {
       btnResetStory.disabled = false;
-      btnResetStory.textContent = '🔄 Reset Story';
+      btnResetStory.textContent = '🔄 Reset Needs';
     }
   }
 }
@@ -1865,7 +1877,7 @@ if (btnAiAct) {
   btnAiAct.addEventListener('click', () => triggerAiAction());
 }
 if (btnResetStory) {
-  btnResetStory.addEventListener('click', resetStory);
+  btnResetStory.addEventListener('click', resetPhysicalNeeds);
 }
 
 if (btnCloseObjModal) {
@@ -2479,3 +2491,55 @@ setInterval(refreshLiveVitals, 60 * 1000);
 
 // Refresh real weather every 10 minutes
 setInterval(fetchRealWeather, 10 * 60 * 1000);
+
+// Add grid coordinate tracking and room form auto-fill during map/build editing
+document.addEventListener('DOMContentLoaded', () => {
+  const mapContainer = document.getElementById('phaser-house-container');
+  const inputX = document.getElementById('room-location-x') || document.getElementById('room-x');
+  const inputY = document.getElementById('room-location-y') || document.getElementById('room-y');
+
+  let coordTooltip = document.getElementById('map-coord-tooltip');
+  if (!coordTooltip) {
+    coordTooltip = document.createElement('div');
+    coordTooltip.id = 'map-coord-tooltip';
+    coordTooltip.style.position = 'absolute';
+    coordTooltip.style.background = 'rgba(0, 0, 0, 0.85)';
+    coordTooltip.style.color = '#fff';
+    coordTooltip.style.padding = '4px 8px';
+    coordTooltip.style.fontSize = '12px';
+    coordTooltip.style.borderRadius = '4px';
+    coordTooltip.style.pointerEvents = 'none';
+    coordTooltip.style.display = 'none';
+    coordTooltip.style.zIndex = '9999';
+    document.body.appendChild(coordTooltip);
+  }
+
+  if (mapContainer) {
+    let latestCoord = { x: 0, y: 0 };
+    const tileSize = 32;
+
+    mapContainer.addEventListener('mousemove', (e) => {
+      const rect = mapContainer.getBoundingClientRect();
+      const relX = e.clientX - rect.left;
+      const relY = e.clientY - rect.top;
+      const gridX = Math.floor(relX / tileSize);
+      const gridY = Math.floor(relY / tileSize);
+
+      latestCoord = { x: gridX, y: gridY };
+
+      coordTooltip.style.display = 'block';
+      coordTooltip.style.left = `${e.pageX + 12}px`;
+      coordTooltip.style.top = `${e.pageY + 12}px`;
+      coordTooltip.textContent = `Grid X: ${gridX}, Y: ${gridY}`;
+    });
+
+    mapContainer.addEventListener('mouseleave', () => {
+      coordTooltip.style.display = 'none';
+    });
+
+    mapContainer.addEventListener('click', () => {
+      if (inputX) inputX.value = latestCoord.x;
+      if (inputY) inputY.value = latestCoord.y;
+    });
+  }
+});

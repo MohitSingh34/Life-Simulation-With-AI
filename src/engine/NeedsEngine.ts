@@ -14,7 +14,8 @@ export class NeedsEngine {
     const needConfigs = this.configLoader.getNeedConfigs();
 
     for (const char of this.stateManager.getAllCharacters()) {
-      const isSleeping = char.activity.current === "sleep";
+      const isSleeping =
+        char.activity.current === "sleep" && char.activity.status === "in_progress";
       const isResting = char.body.posture === "lying" || isSleeping;
 
       for (const nc of needConfigs) {
@@ -124,4 +125,3 @@ export class NeedsEngine {
     return alerts;
   }
 }
-
