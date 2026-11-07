@@ -72,6 +72,7 @@
     "defaultState": "clear",
     "possibleStates": ["clear", "has_items"],
     "interactions": ["serve_meal", "eat_meal_from_plate", "offer_chai"],
+    "seatCount": 4,
     "isSolid": true
   },
   {

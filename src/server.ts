@@ -13,6 +13,7 @@ import { executeHomeMapCommands, getHomeFloorCoordinates } from "./ai/HomeMapCom
 import { executeAiActionCommands } from "./ai/AiActionCommandProcessor.js";
 import { executeHelpCommands } from "./ai/HelpCommandProcessor.js";
 import { buildAriaTurnPrompt } from "./ai/AriaPromptBuilder.js";
+import { executeAutomaticMessageLoopCommands } from "./ai/AutomaticMessageLoopProcessor.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,76 +66,147 @@ export function createServer(port = 3000) {
   const gemini = new GeminiWebProvider();
   const conversationManager = new ConversationManager();
   const pendingCommandOutcomes = new Map<string, string[]>();
+  const idleIntervalMs = 10 * 60_000;
+  const typingGraceMs = 30_000;
+  let lastUserActivityMs = Date.now();
+  let userTypingUntilMs = 0;
+  let automaticTurnInProgress = false;
+  const markUserActive = () => {
+    lastUserActivityMs = Date.now();
+  };
+  const isUserIdle = () =>
+    Date.now() - lastUserActivityMs >= idleIntervalMs &&
+    Date.now() >= userTypingUntilMs;
 
   if (gemini.isConfigured) {
     realtimePersistence.setAriaPingHandler(async () => {
-      const activeConversation = conversationManager.getActiveConversation();
-      const conversationId = activeConversation.id;
-      const turnNumber = conversationManager.incrementPromptTurnCount(conversationId);
-      const checkInMessage =
-        "Scheduled simulation check-in: review the current state and decide whether to take a useful permitted action. You may do nothing. Keep any dialogue brief.";
-      let rawDialogue = await gemini.generateReplyForSession(
-        buildAriaTurnPrompt(
-          engine,
-          conversationManager,
-          conversationId,
-          turnNumber,
-          checkInMessage
-        ),
-        conversationId
-      );
-      for (let round = 0; round < 3; round++) {
-        const mapResult = executeHomeMapCommands(rawDialogue, engine.houseBuilder);
-        const helpResult = executeHelpCommands(mapResult.response, engine);
-        const actionResult = executeAiActionCommands(helpResult.response, engine);
-        rawDialogue = actionResult.response;
-        const outcomes = [...mapResult.outcomes, ...helpResult.outcomes, ...actionResult.outcomes];
-        if (actionResult.hasCommands || mapResult.hasCommands) {
-          realtimePersistence.persist();
-        }
-        if (!mapResult.hasCommands && !helpResult.hasCommands && !actionResult.hasCommands) break;
-        if (round === 2) {
-          pendingCommandOutcomes.set(conversationId, outcomes);
-          break;
-        }
-
-        rawDialogue = await gemini.generateReplyForSession(
+      if (!isUserIdle() || automaticTurnInProgress) return false;
+      automaticTurnInProgress = true;
+      try {
+        const activeConversation = conversationManager.getActiveConversation();
+        const conversationId = activeConversation.id;
+        const turnNumber = conversationManager.incrementPromptTurnCount(conversationId);
+        const automaticLoopEnabled = conversationManager.isAutomaticMessageLoopEnabled(conversationId);
+        const queuedMessages = automaticLoopEnabled
+          ? conversationManager.getQueuedPlayerMessages(conversationId)
+          : [];
+        const scheduledMessage = [
+          automaticLoopEnabled
+            ? "This is your scheduled self-directed automatic-loop turn. Review your and Mohit's current physical states and any updated game state, then decide whether to speak or take an action. You may do nothing."
+            : "This is your regular 10-minute idle check-in. Review your and Mohit's current physical states and any updated game state, then decide whether to speak, take an action, or do nothing.",
+          ...queuedMessages.map(
+            (message) => `Mohit sent at ${new Date(message.queuedAt).toISOString()} UTC while you were in automatic mode: ${JSON.stringify(message.text)}`
+          ),
+        ].join("\n");
+        let rawDialogue = await gemini.generateReplyForSession(
           buildAriaTurnPrompt(
             engine,
             conversationManager,
             conversationId,
             turnNumber,
-            "Continue in character after reviewing the engine results. Do not repeat commands that have already succeeded.",
-            outcomes
+            scheduledMessage
           ),
           conversationId
         );
-      }
-
-      const parsed = TagParser.parse(rawDialogue);
-      if (parsed.edits.build_command) {
-        try {
-          const command = JSON.parse(parsed.edits.build_command);
-          command.issuedBy = "ai_001";
-          const result = engine.houseBuilder.executeCommand(command);
-          pendingCommandOutcomes.set(conversationId, [
-            result.success
-              ? `Your build command succeeded: ${result.message}.`
-              : `Your build command failed: ${result.message}.`,
-          ]);
-          if (!result.success) {
-            parsed.dialogue = `I couldn't make that change: ${result.message}`;
-            parsed.edits.dialogue = parsed.dialogue;
+        for (let round = 0; round < 3; round++) {
+          const mapResult = executeHomeMapCommands(rawDialogue, engine.houseBuilder);
+          const helpResult = executeHelpCommands(mapResult.response, engine);
+          const actionResult = executeAiActionCommands(helpResult.response, engine);
+          const loopResult = executeAutomaticMessageLoopCommands(
+            actionResult.response,
+            conversationManager,
+            conversationId
+          );
+          rawDialogue = loopResult.response;
+          const outcomes = [
+            ...mapResult.outcomes,
+            ...helpResult.outcomes,
+            ...actionResult.outcomes,
+            ...loopResult.outcomes,
+          ];
+          if (actionResult.hasCommands || mapResult.hasCommands) {
+            realtimePersistence.persist();
           }
-        } catch (error) {
-          console.error("Could not parse Aria's scheduled build command:", error);
+          if (
+            !mapResult.hasCommands &&
+            !helpResult.hasCommands &&
+            !actionResult.hasCommands &&
+            !loopResult.hasCommands
+          ) break;
+          if (round === 2) {
+            pendingCommandOutcomes.set(conversationId, outcomes);
+            break;
+          }
+
+          rawDialogue = await gemini.generateReplyForSession(
+            buildAriaTurnPrompt(
+              engine,
+              conversationManager,
+              conversationId,
+              turnNumber,
+              "Continue in character after reviewing the engine results. Do not repeat commands that have already succeeded.",
+              outcomes
+            ),
+            conversationId
+          );
         }
+
+        const parsed = TagParser.parse(rawDialogue);
+        if (parsed.edits.build_command) {
+          try {
+            const command = JSON.parse(parsed.edits.build_command);
+            command.issuedBy = "ai_001";
+            const result = engine.houseBuilder.executeCommand(command);
+            pendingCommandOutcomes.set(conversationId, [
+              result.success
+                ? `Your build command succeeded: ${result.message}.`
+                : `Your build command failed: ${result.message}.`,
+            ]);
+            if (!result.success) {
+              parsed.dialogue = `I couldn't make that change: ${result.message}`;
+              parsed.edits.dialogue = parsed.dialogue;
+            }
+          } catch (error) {
+            console.error("Could not parse Aria's scheduled build command:", error);
+          }
+        }
+        if (Object.keys(parsed.edits).length > 0) {
+          engine.stateManager.updateNarrative(parsed.edits);
+        }
+        conversationManager.addMessage("aria", parsed.dialogue, engine.timeEngine.getFormattedClock());
+        const consumedMessageIds = queuedMessages.map((message) => message.id);
+        if (!conversationManager.isAutomaticMessageLoopEnabled(conversationId)) {
+          const messagesQueuedDuringTurn = conversationManager
+            .getQueuedPlayerMessages(conversationId)
+            .filter((message) => !consumedMessageIds.includes(message.id));
+          if (messagesQueuedDuringTurn.length > 0) {
+            pendingCommandOutcomes.set(conversationId, [
+              ...(pendingCommandOutcomes.get(conversationId) || []),
+              ...messagesQueuedDuringTurn.map(
+                (message) => `Mohit sent at ${new Date(message.queuedAt).toISOString()} UTC while you were finishing the automatic turn: ${JSON.stringify(message.text)}`
+              ),
+            ]);
+            consumedMessageIds.push(...messagesQueuedDuringTurn.map((message) => message.id));
+          }
+        }
+        conversationManager.clearQueuedPlayerMessages(conversationId, consumedMessageIds);
+        realtimePersistence.persist();
+        return true;
+      } finally {
+        automaticTurnInProgress = false;
       }
-      if (Object.keys(parsed.edits).length > 0) {
-        engine.stateManager.updateNarrative(parsed.edits);
+    });
+  } else {
+    realtimePersistence.setAriaPingHandler(async () => {
+      if (!isUserIdle() || automaticTurnInProgress) return false;
+      automaticTurnInProgress = true;
+      try {
+        engine.tickAutonomousAI();
+        realtimePersistence.persist();
+        return true;
+      } finally {
+        automaticTurnInProgress = false;
       }
-      conversationManager.addMessage("aria", parsed.dialogue, engine.timeEngine.getFormattedClock());
-      realtimePersistence.persist();
     });
   }
 
@@ -156,6 +228,9 @@ export function createServer(port = 3000) {
 
     const url = new URL(req.url || "/", `http://${req.headers.host}`);
     const pathname = url.pathname;
+    if (req.method === "POST" && pathname !== "/api/activity") {
+      markUserActive();
+    }
 
     // Helper for JSON responses
     const sendJson = (data: unknown, status = 200) => {
@@ -214,6 +289,7 @@ export function createServer(port = 3000) {
             y: state.y,
             heldBy: state.heldBy ?? null,
             occupiedBy: state.occupiedBy ?? null,
+            occupiedSeats: state.occupiedSeats ?? {},
           };
         });
         const houseLayout = engine.houseBuilder.getLayout();
@@ -225,6 +301,7 @@ export function createServer(port = 3000) {
               ...object,
               state: state.state,
               occupiedBy: state.occupiedBy ?? null,
+              occupiedSeats: state.occupiedSeats ?? {},
             };
           }),
         };
@@ -379,6 +456,18 @@ export function createServer(port = 3000) {
       }
 
       // 3. API: Talk to AI
+      if (req.method === "POST" && pathname === "/api/activity") {
+        const body = await parseBody<{ typing?: unknown }>();
+        markUserActive();
+        if (body.typing === true) {
+          userTypingUntilMs = Date.now() + typingGraceMs;
+        } else if (body.typing === false) {
+          userTypingUntilMs = 0;
+        }
+        sendJson({ success: true });
+        return;
+      }
+
       if (req.method === "POST" && pathname === "/api/talk") {
         const host = req.headers.host;
         let requestOrigin: string;
@@ -410,15 +499,30 @@ export function createServer(port = 3000) {
           return;
         }
 
+        const clockTime = engine.timeEngine.getFormattedClock();
+        const activeConversation = conversationManager.getActiveConversation();
+        const conversationId = activeConversation.id;
+        if (conversationManager.isAutomaticMessageLoopEnabled(conversationId)) {
+          const queuedMessage = conversationManager.enqueuePlayerMessage(
+            conversationId,
+            body.message.trim(),
+            clockTime
+          );
+          sendJson({
+            queued: true,
+            queuedMessageId: queuedMessage.id,
+            activeConversation: conversationManager.getActiveConversation(),
+            message: "Your message is queued for Aria's next automatic turn.",
+          }, 202);
+          return;
+        }
+
         const player = engine.getPlayer();
         const ai = engine.getAI();
         if (player.location.roomId !== ai.location.roomId) {
           sendJson({ error: "You and Aria must be in the same room to talk." }, 409);
           return;
         }
-        const clockTime = engine.timeEngine.getFormattedClock();
-        const activeConversation = conversationManager.getActiveConversation();
-        const conversationId = activeConversation.id;
         const turnNumber = gemini.isConfigured
           ? conversationManager.incrementPromptTurnCount(conversationId)
           : 0;
@@ -496,17 +600,28 @@ export function createServer(port = 3000) {
             const mapResult = executeHomeMapCommands(rawDialogue, engine.houseBuilder);
             const helpResult = executeHelpCommands(mapResult.response, engine);
             const actionResult = executeAiActionCommands(helpResult.response, engine);
-            rawDialogue = actionResult.response;
+            const loopResult = executeAutomaticMessageLoopCommands(
+              actionResult.response,
+              conversationManager,
+              conversationId
+            );
+            rawDialogue = loopResult.response;
             const commandOutcomes = [
               ...mapResult.outcomes,
               ...helpResult.outcomes,
               ...actionResult.outcomes,
+              ...loopResult.outcomes,
             ];
 
             if (actionResult.hasCommands) {
               realtimePersistence.persist();
             }
-            if (!mapResult.hasCommands && !helpResult.hasCommands && !actionResult.hasCommands) break;
+            if (
+              !mapResult.hasCommands &&
+              !helpResult.hasCommands &&
+              !actionResult.hasCommands &&
+              !loopResult.hasCommands
+            ) break;
 
             if (round === 2) {
               pendingCommandOutcomes.set(conversationId, commandOutcomes);

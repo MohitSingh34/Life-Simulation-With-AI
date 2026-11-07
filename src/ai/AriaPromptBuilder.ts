@@ -1,9 +1,12 @@
 import { ConversationManager } from "./ConversationManager.js";
-import { getCharacterActionOptions } from "./AiActionCommandProcessor.js";
 import { GameEngine } from "../engine/GameEngine.js";
 
 const TOOL_HELP_INSTRUCTION =
   "If u want to use any tool, first call how to use it using help tool call and write keywords from the list to get help. Request help with &&help:<keyword>&& or &&help:<keyword1>,<keyword2>&&. Only use the current action IDs and object IDs listed below; the engine is authoritative and validates every command.";
+const AUTOMATIC_LOOP_STATUS_LINE =
+  "Optional self-directed loop: use &&start_automatic_message_loop&& to enable or &&stop_automatic_message_loop&& to disable; regular 10-minute idle check-ins continue either way, tool/action results return for immediate follow-up, and player messages are queued while the optional loop is enabled.";
+const AUTOMATIC_LOOP_DETAILS =
+  "The regular 10-minute idle check-in always runs after the player has been inactive for 10 minutes; your optional loop does not change that cadence. Start the optional self-directed loop at any time with &&start_automatic_message_loop&&; then use each scheduled check-in to decide whether to speak, act, or do nothing, and player messages received meanwhile will be queued and included in your next scheduled turn. Stop only the optional loop with &&stop_automatic_message_loop&&; regular idle check-ins continue. When you issue an action/tool command, the game immediately sends you its result for a follow-up response, so review that result before concluding.";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -11,62 +14,25 @@ function isRecord(value: unknown): value is JsonRecord {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function getRoomObjects(engine: GameEngine, roomId: string): Array<Record<string, unknown>> {
-  const allConfigured = engine.configLoader.getAllObjects();
-  const configured = allConfigured
-    .filter((object) => {
-      const state = engine.stateManager.getObjectState(object.id);
-      return (state.roomId ?? object.roomId) === roomId && !state.heldBy;
-    })
-    .map((object) => {
-    const state = engine.stateManager.getObjectState(object.id);
-    return {
-      id: object.id,
-      name: object.name,
-      state: state.state,
-      positionId: state.positionId ?? object.positionId,
-      ...(Number.isFinite(state.x) ? { x: state.x } : {}),
-      ...(Number.isFinite(state.y) ? { y: state.y } : {}),
-      ...(state.occupiedBy ? { occupiedBy: state.occupiedBy } : {}),
-    };
-  });
-  const configuredIds = new Set(configured.map((object) => object.id));
-  const mappedPlacementIds = new Set(
-    allConfigured
-      .map((object) => object.houseTemplateId
-        ? engine.houseBuilder.getLayout().placedObjects.find(
-            (placed) => placed.templateId === object.houseTemplateId
-          )?.id
-        : undefined)
-      .filter((id): id is string => Boolean(id))
-  );
-  const placed = engine.houseBuilder.getLayout().placedObjects
-    .filter((object) => {
-      const state = engine.stateManager.getObjectState(object.id);
-      return (state.roomId ?? object.roomId) === roomId &&
-      !state.heldBy &&
-      !configuredIds.has(object.id) &&
-      !mappedPlacementIds.has(object.id);
-    })
-    .map((object) => {
-      const state = engine.stateManager.getObjectState(object.id);
-      return {
-        id: object.id,
-        name: object.name,
-        state: state.state,
-        positionId: state.positionId ?? object.id,
-        ...(Number.isFinite(state.x) ? { x: state.x } : {}),
-        ...(Number.isFinite(state.y) ? { y: state.y } : {}),
-      };
-    });
-  return [...configured, ...placed];
-}
-
 function getCurrentPromptState(engine: GameEngine): JsonRecord {
   const snapshot = engine.stateManager.getSnapshot();
   const layout = engine.houseBuilder.getLayout();
+  const now = new Date();
   return {
-    time: engine.timeEngine.getFormattedFull(),
+    timestampUtc: now.toISOString(),
+    localTime: new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      timeZoneName: "short",
+    }).format(now),
+    simulationTime: snapshot.time,
     characters: Object.values(snapshot.characters).map((character) => ({
       id: character.id,
       location: character.location,
@@ -79,9 +45,28 @@ function getCurrentPromptState(engine: GameEngine): JsonRecord {
     })),
     objects: snapshot.objects,
     narrative: snapshot.narrative,
+    homeConfiguration: {
+      grid: layout.grid,
+      rooms: layout.rooms,
+      walls: layout.walls,
+      doors: layout.doors,
+      windows: layout.windows,
+    },
     placedObjects: layout.placedObjects.map(({
       id, templateId, roomId, x, y, width, height, rotation, state, interactions,
-    }) => ({ id, templateId, roomId, x, y, width, height, rotation, state, interactions })),
+    }) => ({
+      id,
+      templateId,
+      roomId,
+      x,
+      y,
+      width,
+      height,
+      rotation,
+      state,
+      interactions,
+      seatCount: engine.houseBuilder.getTemplate(templateId)?.seatCount ?? 0,
+    })),
   };
 }
 
@@ -111,7 +96,7 @@ function keyedChanges(
 function summarizeStateChanges(previous: unknown, current: JsonRecord): JsonRecord | string {
   if (!isRecord(previous)) return "No earlier prompt snapshot is available; use the current state as authoritative.";
   const changes: JsonRecord = {};
-  for (const key of ["time", "narrative"] as const) {
+  for (const key of ["simulationTime", "narrative"] as const) {
     if (JSON.stringify(previous[key]) !== JSON.stringify(current[key])) {
       changes[key] = current[key];
     }
@@ -122,30 +107,56 @@ function summarizeStateChanges(previous: unknown, current: JsonRecord): JsonReco
       changes[key] = { changed: diff.changed, removed: diff.removed };
     }
   }
+  if (JSON.stringify(previous.homeConfiguration) !== JSON.stringify(current.homeConfiguration)) {
+    changes.homeConfiguration = current.homeConfiguration;
+  }
   return Object.keys(changes).length ? changes : "No simulation or configuration changes since the previous prompt.";
 }
 
-function getAvailableActionKeywords(
-  engine: GameEngine,
-  characterId: string
-): Record<string, string[]> {
-  const grouped: Record<string, string[]> = {};
-  for (const action of getCharacterActionOptions(engine, characterId)) {
-    const category = engine.configLoader.getAction(action.actionId)?.category ?? "other";
-    (grouped[category] ??= []).push(action.actionId);
-  }
-  return grouped;
-}
-
-function getActionTargets(engine: GameEngine, characterId: string): Record<string, string[]> {
-  return Object.fromEntries(
-    getCharacterActionOptions(engine, characterId)
-      .filter((action) => action.targets?.length)
-      .map((action) => [
-        action.actionId,
-        action.targets!.map((target) => target.id),
-      ])
-  );
+function getInitialCapabilities(engine: GameEngine): JsonRecord {
+  const layout = engine.houseBuilder.getLayout();
+  const actions = engine.configLoader.getAllActions().map((action) => ({
+    id: action.id,
+    name: action.name,
+    category: action.category,
+    description: action.description,
+    preconditions: action.preconditions,
+    targets: action.targetTypes ?? [],
+    command: action.requiresTarget || action.effects.moveToTargetPosition
+      ? `&&action:${action.id};target:<object_id>&&`
+      : `&&action:${action.id}&&`,
+  }));
+  const objects = engine.configLoader.getAllObjects().map((object) => ({
+    id: object.id,
+    name: object.name,
+    type: object.type,
+    roomId: object.roomId,
+    portable: object.portable,
+    interactions: object.interactions,
+  }));
+  return {
+    role: "You are Aria, the player's friend in an ongoing life simulation. It should feel alive. Always provide <dialogue> and <player_body>.",
+    commandGuide: [
+      TOOL_HELP_INSTRUCTION,
+      "Action commands: &&action:<action_id>&& or &&action:<action_id>;target:<object_id>&&.",
+      "Help commands: &&help:<keyword>&& or &&help:<keyword1>,<keyword2>&&. Ask for help before using an unfamiliar action.",
+      AUTOMATIC_LOOP_DETAILS,
+      "Only use configured action/object IDs. The engine is authoritative and validates each action.",
+    ],
+    actions,
+    objects,
+    homeConfiguration: {
+      grid: layout.grid,
+      rooms: layout.rooms,
+      walls: layout.walls,
+      doors: layout.doors,
+      windows: layout.windows,
+      placedObjects: layout.placedObjects.map((object) => ({
+        ...object,
+        seatCount: engine.houseBuilder.getTemplate(object.templateId)?.seatCount ?? 0,
+      })),
+    },
+  };
 }
 
 export function buildAriaTurnPrompt(
@@ -164,60 +175,54 @@ export function buildAriaTurnPrompt(
 
   const previousMetadata = isRecord(session.metadata) ? session.metadata : {};
   const previousState = previousMetadata.ariaPromptState;
-  const promptState = getCurrentPromptState(engine);
+  const isInitialPrompt =
+    previousMetadata.ariaPromptInitialized !== true || !isRecord(previousState);
+  const promptState = structuredClone(getCurrentPromptState(engine));
   const ai = engine.getAI();
   const player = engine.getPlayer();
+  const automaticLoopEnabled = conversations.isAutomaticMessageLoopEnabled(conversationId);
   const state = {
-    turn: turnNumber,
-    time: promptState.time,
+    timestampUtc: promptState.timestampUtc,
+    localTime: promptState.localTime,
     aria: {
       location: ai.location,
       body: ai.body,
       needs: ai.needs,
-      mood: engine.emotionEngine.getMoodSummary(ai.id),
-      clothing: ai.clothing,
-      activity: ai.activity.current,
       holding: ai.holding?.objectId ?? null,
     },
     player: {
       location: player.location,
       body: player.body,
       needs: player.needs,
-      mood: engine.emotionEngine.getMoodSummary(player.id),
-      clothing: player.clothing,
-      activity: player.activity.current,
       holding: player.holding?.objectId ?? null,
     },
-    ariaRoomObjects: getRoomObjects(engine, ai.location.roomId),
-    ...(player.location.roomId !== ai.location.roomId
-      ? { playerRoomObjects: getRoomObjects(engine, player.location.roomId) }
+    automaticMessageLoop: automaticLoopEnabled,
+    ...(isInitialPrompt
+      ? { initialization: getInitialCapabilities(engine) }
       : {}),
-    availableActions: {
-      aria: getAvailableActionKeywords(engine, ai.id),
-      player: getAvailableActionKeywords(engine, player.id),
-    },
-    actionTargets: {
-      aria: getActionTargets(engine, ai.id),
-      player: getActionTargets(engine, player.id),
-    },
-    helpKeywords: {
-      actions: ["movement", "body", "daily", "interaction", "social"],
-      home: ["place_object", "move_object", "remove_object", "add_room", "edit_room"],
-      map: ["coordinates_of_home_floor", "reposition"],
-      objects: getRoomObjects(engine, ai.location.roomId).map((object) => object.id),
-      ui: ["dialogue", "player_body", "player_pose", "player_mood", "room_ambience", "room_description", "ai_activity", "ai_location"],
-    },
-    stateChangesSincePreviousPrompt: summarizeStateChanges(previousState, promptState),
+    ...(isRecord(previousState)
+      ? { updatedGameState: summarizeStateChanges(previousState, promptState) }
+      : {}),
   };
 
   const parts = [
-    "You are Aria, the player's roommate in an ongoing life simulation. Reply naturally in character. On scheduled check-ins, decide whether to perform a permitted action or do nothing. Always provide <dialogue> and <player_body>.",
-    TOOL_HELP_INSTRUCTION,
-    `Current simulation state and available actions: ${JSON.stringify(state)}`,
+    isInitialPrompt ? `Initial game setup: ${JSON.stringify(state.initialization)}` : "",
+    `Current physical state and real timestamp: ${JSON.stringify({
+      timestampUtc: state.timestampUtc,
+      localTime: state.localTime,
+      simulationTime: promptState.simulationTime,
+      aria: state.aria,
+      player: state.player,
+      ...(state.updatedGameState ? { updatedGameState: state.updatedGameState } : {}),
+    })}`,
+    AUTOMATIC_LOOP_STATUS_LINE,
     ...(outcomes.length > 0 ? [`Results of your previous commands: ${outcomes.join(" | ")}`] : []),
     message,
   ].filter(Boolean);
 
-  conversations.setConversationMetadata(conversationId, { ariaPromptState: promptState });
+  conversations.setConversationMetadata(conversationId, {
+    ariaPromptState: promptState,
+    ariaPromptInitialized: true,
+  });
   return parts.join("\n\n");
 }

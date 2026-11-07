@@ -31,6 +31,8 @@ export interface ObjectConfig {
   houseTemplateId?: string;
   /** Specific default house placement represented by this configured object */
   houseObjectId?: string;
+  /** Number of distinct sitting places represented by this object. */
+  seatCount?: number;
 }
 
 /** Runtime state of an object */
@@ -45,4 +47,6 @@ export interface ObjectState {
   heldBy?: string | null;
   /** Who is using this object right now? */
   occupiedBy: string | null;
+  /** Per-seat occupants for furniture with multiple seats. */
+  occupiedSeats?: Record<string, string>;
 }

@@ -210,5 +210,23 @@
     },
     "successMessage": "You settle down into the woven cane chair, feeling the cool breeze on your face.",
     "icon": "🪑"
+  },
+  {
+    "id": "sit_on_seat",
+    "name": "Sit on Seat",
+    "description": "Sit on an available chair, sofa, stool, or seat in this room.",
+    "category": "body",
+    "duration": 2,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
+    "preconditions": {
+      "posture": ["standing", "sitting", "lying"]
+    },
+    "effects": {
+      "moveToTargetPosition": true,
+      "posture": "sitting"
+    },
+    "successMessage": "You settle into the available seat.",
+    "icon": "🪑"
   }
 ]

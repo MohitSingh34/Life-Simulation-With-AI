@@ -483,7 +483,9 @@ export class ActionEngine {
       char.location.roomId =
         this.objectInteractionEngine.getRoomId(request.targetObjectId) ?? char.location.roomId;
       char.location.positionId =
-        this.objectInteractionEngine.getPositionId(request.targetObjectId) ?? char.location.positionId;
+        (action.id === "sit_on_seat"
+          ? this.objectInteractionEngine.getAvailableSeatPositionId(request.targetObjectId, char.id)
+          : this.objectInteractionEngine.getPositionId(request.targetObjectId)) ?? char.location.positionId;
       delete char.location.mapPosition;
     } else if (effects.moveToPosition) {
       char.location.positionId = effects.moveToPosition;
@@ -809,7 +811,9 @@ export class ActionEngine {
         : undefined) ??
       char.location.roomId;
     const positionId = effects.moveToTargetPosition && targetObjectId
-      ? this.objectInteractionEngine.getPositionId(targetObjectId)
+      ? (action.id === "sit_on_seat"
+          ? this.objectInteractionEngine.getAvailableSeatPositionId(targetObjectId, char.id)
+          : this.objectInteractionEngine.getPositionId(targetObjectId))
       : effects.moveToPosition ?? char.location.positionId;
     if (!positionId) return false;
     const position = this.configLoader.getRoom(roomId)?.positions.find(
@@ -822,8 +826,17 @@ export class ActionEngine {
       this.objectInteractionEngine.getOccupancyObjectId(roomId, positionId) ??
       (effects.moveToTargetPosition ? targetObjectId : undefined);
     if (!occupancyObjectId) return true;
-    const occupant = this.stateManager.getObjectState(occupancyObjectId).occupiedBy;
-    return !occupant || occupant === char.id;
+    const objectState = this.stateManager.getObjectState(occupancyObjectId);
+    if (action.id === "sit_on_seat" && targetObjectId) {
+      const seatIndex = this.objectInteractionEngine.getSeatIndexForPosition(
+        occupancyObjectId,
+        positionId
+      );
+      const occupant = objectState.occupiedSeats?.[String(seatIndex)] ??
+        (seatIndex === 0 ? objectState.occupiedBy : null);
+      return !occupant || occupant === char.id;
+    }
+    return !objectState.occupiedBy || objectState.occupiedBy === char.id;
   }
 
   private syncCharacterOccupancy(
@@ -841,31 +854,56 @@ export class ActionEngine {
       char.body.posture
     );
 
-    if (previousObjectId && previousObjectId !== nextObjectId) {
-      this.stateManager.updateObjectState(previousObjectId, (objectState) => {
-        if (objectState.occupiedBy !== char.id) return;
-        objectState.occupiedBy = null;
-        const object = this.objectInteractionEngine.getObject(previousObjectId);
-        const releasedState = ["rumpled", "available", "vacant", "neat"].find(
-          (state) => object?.possibleStates.includes(state)
-        );
-        if (releasedState) objectState.state = releasedState;
-      });
+    if (previousObjectId && (
+      previousObjectId !== nextObjectId ||
+      previousPosition.positionId !== char.location.positionId
+    )) {
+      for (const occupancyId of this.objectInteractionEngine.getOccupancyObjectIds(previousObjectId)) {
+        this.stateManager.updateObjectState(occupancyId, (objectState) => {
+          const seatIndex = this.objectInteractionEngine.getSeatIndexForPosition(
+            previousObjectId,
+            previousPosition.positionId
+          );
+          if (objectState.occupiedSeats?.[String(seatIndex)] === char.id) {
+            delete objectState.occupiedSeats[String(seatIndex)];
+          }
+          if (objectState.occupiedBy === char.id) {
+            objectState.occupiedBy =
+              Object.values(objectState.occupiedSeats ?? {})[0] ?? null;
+          }
+          if (objectState.occupiedBy || Object.keys(objectState.occupiedSeats ?? {}).length > 0) return;
+          const object = this.objectInteractionEngine.getObject(occupancyId);
+          const releasedState = ["rumpled", "available", "vacant", "neat", "empty"].find(
+            (state) => object?.possibleStates.includes(state)
+          );
+          if (releasedState) objectState.state = releasedState;
+        });
+      }
     }
 
     if (nextObjectId) {
-      this.stateManager.updateObjectState(nextObjectId, (objectState) => {
-        objectState.occupiedBy = char.id;
-        const object = this.objectInteractionEngine.getObject(nextObjectId);
-        const occupiedState = char.body.posture === "lying"
-          ? "occupied_lying"
-          : "occupied_sitting";
-        if (object?.possibleStates.includes(occupiedState)) {
-          objectState.state = occupiedState;
-        } else if (object?.possibleStates.includes("occupied")) {
-          objectState.state = "occupied";
-        }
-      });
+      for (const occupancyId of this.objectInteractionEngine.getOccupancyObjectIds(nextObjectId)) {
+        this.stateManager.updateObjectState(occupancyId, (objectState) => {
+          const seatIndex = this.objectInteractionEngine.getSeatIndexForPosition(
+            nextObjectId,
+            char.location.positionId
+          );
+          objectState.occupiedSeats = {
+            ...objectState.occupiedSeats,
+            [String(seatIndex)]: char.id,
+          };
+          objectState.occupiedBy ??= char.id;
+          const object = this.objectInteractionEngine.getObject(occupancyId);
+          const occupiedState = char.body.posture === "lying"
+            ? "occupied_lying"
+            : "occupied_sitting";
+          if (object?.possibleStates.includes(occupiedState)) {
+            objectState.state = occupiedState;
+          } else if (object?.possibleStates.includes("occupied")) {
+            objectState.state = "occupied";
+          }
+        });
+      }
     }
   }
 

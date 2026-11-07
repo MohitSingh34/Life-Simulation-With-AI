@@ -49,6 +49,12 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface QueuedPlayerMessage {
+  id: string;
+  text: string;
+  queuedAt: number;
+}
+
 export interface ConversationSession {
   id: string;
   cid?: string;
@@ -122,6 +128,95 @@ export class ConversationManager {
         ? session.metadata as Record<string, unknown>
         : {};
     session.metadata = { ...metadata, ...updates };
+    this.save();
+  }
+
+  public isAutomaticMessageLoopEnabled(id: string): boolean {
+    const session = this.sessions.get(id);
+    if (!session) throw new Error(`Conversation "${id}" not found.`);
+    const metadata = session.metadata;
+    return Boolean(
+      metadata &&
+      typeof metadata === "object" &&
+      !Array.isArray(metadata) &&
+      (metadata as Record<string, unknown>).automaticMessageLoopEnabled === true
+    );
+  }
+
+  public setAutomaticMessageLoopEnabled(id: string, enabled: boolean): void {
+    this.setConversationMetadata(id, { automaticMessageLoopEnabled: enabled });
+  }
+
+  public enqueuePlayerMessage(
+    id: string,
+    text: string,
+    timeStr: string
+  ): ChatMessage {
+    const session = this.sessions.get(id);
+    if (!session) throw new Error(`Conversation "${id}" not found.`);
+    const message: ChatMessage = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      sender: "player",
+      text,
+      time: timeStr,
+      timestamp: Date.now(),
+    };
+    session.messages.push(message);
+    session.lastActiveAt = new Date().toISOString();
+    const metadata = session.metadata && typeof session.metadata === "object" && !Array.isArray(session.metadata)
+      ? session.metadata as Record<string, unknown>
+      : {};
+    const queued = Array.isArray(metadata.queuedPlayerMessages)
+      ? metadata.queuedPlayerMessages.filter((entry): entry is QueuedPlayerMessage =>
+          Boolean(
+            entry &&
+            typeof entry === "object" &&
+            typeof (entry as QueuedPlayerMessage).id === "string" &&
+            typeof (entry as QueuedPlayerMessage).text === "string" &&
+            typeof (entry as QueuedPlayerMessage).queuedAt === "number"
+          )
+        )
+      : [];
+    session.metadata = {
+      ...metadata,
+      queuedPlayerMessages: [...queued, {
+        id: message.id,
+        text: message.text,
+        queuedAt: message.timestamp,
+      }],
+    };
+    this.save();
+    return message;
+  }
+
+  public getQueuedPlayerMessages(id: string): QueuedPlayerMessage[] {
+    const session = this.sessions.get(id);
+    if (!session) throw new Error(`Conversation "${id}" not found.`);
+    const metadata = session.metadata;
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return [];
+    const queued = (metadata as Record<string, unknown>).queuedPlayerMessages;
+    return Array.isArray(queued)
+      ? queued.filter((entry): entry is QueuedPlayerMessage =>
+          Boolean(
+            entry &&
+            typeof entry === "object" &&
+            typeof (entry as QueuedPlayerMessage).id === "string" &&
+            typeof (entry as QueuedPlayerMessage).text === "string" &&
+            typeof (entry as QueuedPlayerMessage).queuedAt === "number"
+          )
+        )
+      : [];
+  }
+
+  public clearQueuedPlayerMessages(id: string, consumedIds: string[]): void {
+    const session = this.sessions.get(id);
+    if (!session) throw new Error(`Conversation "${id}" not found.`);
+    const metadata = session.metadata && typeof session.metadata === "object" && !Array.isArray(session.metadata)
+      ? session.metadata as Record<string, unknown>
+      : {};
+    const consumed = new Set(consumedIds);
+    const queued = this.getQueuedPlayerMessages(id).filter((message) => !consumed.has(message.id));
+    session.metadata = { ...metadata, queuedPlayerMessages: queued };
     this.save();
   }
 

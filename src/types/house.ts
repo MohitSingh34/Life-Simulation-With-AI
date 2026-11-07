@@ -113,6 +113,8 @@ export interface BuildItemTemplate {
   defaultState: string;
   possibleStates: string[];
   interactions: string[];
+  /** Number of distinct characters that can sit at this object. */
+  seatCount?: number;
   isSolid: boolean;
   allowedRooms?: string[];
   price?: number;

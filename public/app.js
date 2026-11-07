@@ -8,6 +8,8 @@ let gameState = null;
 let currentCategory = 'all';
 let activeConversation = null;
 let sendingMessage = false;
+let typingActivityActive = false;
+let lastTypingActivityReportMs = 0;
 let selectedCharacterDetails = null;
 let activeBackdropLayer = 0;
 let currentBackdropRoom = null;
@@ -175,6 +177,7 @@ const ariaMessageInput = document.getElementById('aria-message-input');
 const btnTalkAria = document.getElementById('btn-talk-aria');
 
 const actionsGrid = document.getElementById('actions-grid');
+const actionSearchInput = document.getElementById('action-search-input');
 const alertsContainer = document.getElementById('alerts-container');
 
 // Modals
@@ -368,6 +371,17 @@ function renderAtmosphericParticles() {
 let lastRenderedStateSignature = '';
 let statePollInProgress = false;
 
+function reportTypingActivity(typing) {
+  fetch('/api/activity', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ typing }),
+    keepalive: true
+  }).catch((error) => {
+    console.warn('Could not update Aria idle status:', error);
+  });
+}
+
 function startGameActivity(label) {
   const activityId = ++nextGameActivityId;
   activeGameActivities.set(activityId, label);
@@ -412,8 +426,8 @@ function getStateSignature(state) {
     alerts: state.alerts,
     availableActions: state.availableActions,
     aiAvailableActions: state.aiAvailableActions,
-    objectStates: state.world?.objects?.map(({ id, currentState, roomId, positionId, heldBy, occupiedBy }) => ({
-      id, currentState, roomId, positionId, heldBy, occupiedBy,
+    objectStates: state.world?.objects?.map(({ id, currentState, roomId, positionId, heldBy, occupiedBy, occupiedSeats }) => ({
+      id, currentState, roomId, positionId, heldBy, occupiedBy, occupiedSeats,
     })),
     houseLayout: state.houseLayout,
     narrative: state.narrative,
@@ -518,6 +532,11 @@ async function talkToAria() {
   }
 
   const finishActivity = startGameActivity('Waiting for Aria…');
+  if (typingActivityActive) {
+    typingActivityActive = false;
+    lastTypingActivityReportMs = 0;
+    reportTypingActivity(false);
+  }
   const nowClock = gameState ? format12Hour(gameState.time.clock) : 'Just now';
   const sentBubble = appendChatMessage('player', message, nowClock, true, true);
   ariaMessageInput.value = '';
@@ -561,7 +580,9 @@ async function talkToAria() {
       applyAiEdits(data.edits, true);
     }
 
-    showToast('💬 Aria replied');
+    showToast(data.queued
+      ? 'Message queued for Aria’s next automatic turn'
+      : '💬 Aria replied');
   } catch (err) {
     sentBubble.classList.add('message-failed');
     showToast(err.message || 'Could not talk to Aria right now');
@@ -1455,6 +1476,34 @@ function openObjectModal(objectId) {
   objInteractModal.showModal();
 }
 
+function isSeatableHouseObject(objectId) {
+  const placed = gameState?.houseLayout?.placedObjects?.find((object) => object.id === objectId);
+  const configured = (gameState?.world?.objects || []).find((object) => object.id === objectId);
+  const templateId = placed?.templateId || configured?.houseTemplateId;
+  const template = houseCatalog.find((item) => item.id === templateId);
+  return Boolean(
+    placed?.seatCount > 0 ||
+    configured?.seatCount > 0 ||
+    template?.seatCount > 0 ||
+    template?.category === 'seating' ||
+    /\b(chair|stool|sofa|bench|seat)\b/i.test(placed?.name || configured?.name || '') ||
+    /dining table.*(?:\d+\s*[- ]?seater|\d+\s+seats?)/i.test(placed?.name || configured?.name || '')
+  );
+}
+
+window.handlePhaserObjectClick = function (objectId) {
+  if (!isSeatableHouseObject(objectId)) return false;
+  const placed = gameState?.houseLayout?.placedObjects?.find((object) => object.id === objectId);
+  const configured = (gameState?.world?.objects || []).find((object) => object.id === objectId);
+  const roomId = placed?.roomId || configured?.roomId;
+  if (roomId && roomId !== gameState?.player?.location?.roomId) {
+    showToast('Move into this room before using its seats.');
+    return true;
+  }
+  submitAction('sit_on_seat', objectId);
+  return true;
+};
+
 // ============================================================
 // 8. ARIA CHAT STREAM & ACTIONS LIST
 // ============================================================
@@ -1474,10 +1523,17 @@ function renderAria(ai, player, narr = {}, isTogether = false) {
     }
   }
 
-  btnTalkAria.disabled = sendingMessage || !isTogether;
-  ariaMessageInput.disabled = !isTogether;
-  btnTalkAria.style.opacity = isTogether ? '1' : '0.5';
-  btnTalkAria.title = isTogether ? 'Send message to Aria' : 'Walk into the same room to talk';
+  const automaticLoopEnabled =
+    activeConversation?.metadata?.automaticMessageLoopEnabled === true;
+  const canSend = isTogether || automaticLoopEnabled;
+  btnTalkAria.disabled = sendingMessage || !canSend;
+  ariaMessageInput.disabled = !canSend;
+  btnTalkAria.style.opacity = canSend ? '1' : '0.5';
+  btnTalkAria.title = automaticLoopEnabled
+    ? 'Queue a message for Aria’s next automatic turn'
+    : isTogether
+      ? 'Send message to Aria'
+      : 'Walk into the same room to talk';
 
   if (activeConversation && activeConversation.messages) {
     renderChatStream(activeConversation.messages);
@@ -1540,12 +1596,23 @@ function appendChatMessage(sender, text, timeStr, autoScroll = true, animate = f
 
 function renderActions(actions) {
   actionsGrid.innerHTML = '';
-  const filtered = currentCategory === 'all'
+  const categoryFiltered = currentCategory === 'all'
     ? actions
     : actions.filter(a => a.category === currentCategory);
+  const query = actionSearchInput?.value.trim().toLocaleLowerCase() || '';
+  const filtered = query
+    ? categoryFiltered.filter((action) =>
+        `${action.name} ${action.description} ${action.category}`
+          .toLocaleLowerCase()
+          .includes(query)
+      )
+    : categoryFiltered;
 
   if (filtered.length === 0) {
-    actionsGrid.innerHTML = `<p style="color: var(--text-faint); font-size: 13px; padding: 12px; font-style: italic;">Nothing to do in this category right now.</p>`;
+    const emptyMessage = query
+      ? 'No available actions match your search.'
+      : 'Nothing to do in this category right now.';
+    actionsGrid.innerHTML = `<p style="color: var(--text-faint); font-size: 13px; padding: 12px; font-style: italic;">${emptyMessage}</p>`;
     return;
   }
 
@@ -2029,11 +2096,30 @@ document.querySelectorAll('.cat-pill').forEach((btn) => {
     if (gameState) renderActions(gameState.availableActions);
   });
 });
+actionSearchInput?.addEventListener('input', () => {
+  if (gameState) renderActions(gameState.availableActions);
+});
 
 // Chat Send & Enter key
 btnTalkAria.addEventListener('click', talkToAria);
 ariaMessageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') talkToAria();
+});
+ariaMessageInput.addEventListener('input', () => {
+  if (!ariaMessageInput.value.trim()) return;
+  const now = Date.now();
+  if (!typingActivityActive || now - lastTypingActivityReportMs >= 10_000) {
+    typingActivityActive = true;
+    lastTypingActivityReportMs = now;
+    reportTypingActivity(true);
+  }
+});
+ariaMessageInput.addEventListener('blur', () => {
+  if (typingActivityActive) {
+    typingActivityActive = false;
+    lastTypingActivityReportMs = 0;
+    reportTypingActivity(false);
+  }
 });
 ariaDetailsToggle?.addEventListener('click', () => toggleCharacterDetails('aria'));
 playerDetailsToggle?.addEventListener('click', () => toggleCharacterDetails('player'));

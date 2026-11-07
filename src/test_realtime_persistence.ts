@@ -55,6 +55,33 @@ try {
   pingPersistence.update(new Date(start.getTime() + 10 * 60_000));
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(pingCount, 1);
+
+  const deferredEngine = new GameEngine();
+  deferredEngine.init();
+  const deferredPersistence = new RealtimePersistence(
+    deferredEngine,
+    path.join(temporaryDirectory, "deferred-ping")
+  );
+  deferredPersistence.start(start);
+  let deferredPingCount = 0;
+  deferredPersistence.setAriaPingHandler(async () => {
+    deferredPingCount++;
+    return deferredPingCount > 1;
+  });
+  deferredPersistence.update(new Date(start.getTime() + 10 * 60_000));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  deferredPersistence.update(new Date(start.getTime() + 10 * 60_000 + 30_000));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(deferredPingCount, 1);
+  deferredPersistence.update(new Date(start.getTime() + 11 * 60_000));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(deferredPingCount, 2);
+  deferredPersistence.update(new Date(start.getTime() + 20 * 60_000 + 59_000));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(deferredPingCount, 2);
+  deferredPersistence.update(new Date(start.getTime() + 21 * 60_000));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(deferredPingCount, 3);
 } finally {
   fs.rmSync(temporaryDirectory, { recursive: true, force: true });
 }

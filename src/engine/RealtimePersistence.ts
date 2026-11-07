@@ -23,8 +23,9 @@ export class RealtimePersistence {
   private lastAiPingCheckpointMs = 0;
   private lastLocalDate = "";
   private lastLoggedMinuteMs: number | null = null;
-  private ariaPingHandler?: () => Promise<void>;
+  private ariaPingHandler?: () => Promise<boolean | void>;
   private ariaPingInProgress = false;
+  private ariaPingRetryAfterMs = 0;
 
   constructor(
     private readonly engine: GameEngine,
@@ -35,7 +36,7 @@ export class RealtimePersistence {
     this.timingsPath = path.join(dataDirectory, "timings.txt");
   }
 
-  public setAriaPingHandler(handler: () => Promise<void>): void {
+  public setAriaPingHandler(handler: () => Promise<boolean | void>): void {
     this.ariaPingHandler = handler;
   }
 
@@ -86,19 +87,31 @@ export class RealtimePersistence {
 
     let aiPingTriggered = false;
     if (elapsedSinceAiPing >= pingInterval) {
-      this.lastAiPingCheckpointMs += Math.floor(elapsedSinceAiPing / pingInterval) * pingInterval * MINUTE_MS;
       if (this.ariaPingHandler) {
-        if (!this.ariaPingInProgress) {
+        if (!this.ariaPingInProgress && now.getTime() >= this.ariaPingRetryAfterMs) {
           this.ariaPingInProgress = true;
+          const handledCheckpoint = now.getTime();
           void this.ariaPingHandler()
+            .then((handled) => {
+              if (handled === false) {
+                this.ariaPingRetryAfterMs = now.getTime() + MINUTE_MS;
+                return;
+              }
+              this.lastAiPingCheckpointMs = handledCheckpoint;
+              this.ariaPingRetryAfterMs = 0;
+              this.writeSnapshot();
+            })
             .catch((error) => {
               console.error("Autonomous Aria check-in failed:", error);
+              this.ariaPingRetryAfterMs = now.getTime() + MINUTE_MS;
             })
             .finally(() => {
               this.ariaPingInProgress = false;
             });
         }
       } else {
+        this.lastAiPingCheckpointMs +=
+          Math.floor(elapsedSinceAiPing / pingInterval) * pingInterval * MINUTE_MS;
         try {
           this.engine.tickAutonomousAI();
           aiPingTriggered = true;

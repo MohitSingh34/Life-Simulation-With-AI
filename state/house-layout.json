@@ -1,7 +1,7 @@
 {
   "id": "jabalpur_home_layout_001",
   "name": "Jabalpur Residence",
-  "version": 2,
+  "version": 3,
   "grid": {
     "cols": 40,
     "rows": 38,
@@ -876,8 +876,30 @@
       ],
       "placedBy": "ai_001",
       "placedAt": "2026-11-07T02:50:47.520Z"
+    },
+    {
+      "id": "dining_chair_mw6kxysm",
+      "templateId": "dining_chair_001",
+      "name": "Cushioned Dining Chair",
+      "type": "furniture",
+      "roomId": "kitchen",
+      "x": 10,
+      "y": 18,
+      "width": 2,
+      "height": 2,
+      "rotation": 0,
+      "icon": "🪑",
+      "color": "#d97706",
+      "state": "empty",
+      "isSolid": true,
+      "interactions": [
+        "sit_down_kitchen_stool",
+        "stand_up"
+      ],
+      "placedBy": "player_001",
+      "placedAt": "2026-11-07T15:50:18.982Z"
     }
   ],
-  "lastModified": "2026-11-07T06:17:32.409Z",
+  "lastModified": "2026-11-07T15:50:18.982Z",
   "modifiedBy": "player_001"
 }

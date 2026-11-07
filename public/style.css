@@ -2870,6 +2870,43 @@ body.build-map-fullscreen .build-catalog-card {
   color: #fff;
 }
 
+.action-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+  padding: 8px 11px;
+  color: var(--text-muted);
+  background: var(--bg-card-inner);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.action-search:focus-within {
+  border-color: var(--gold-warm);
+  box-shadow: 0 0 0 2px rgba(245, 190, 90, 0.12);
+}
+
+.action-search > span {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.action-search input {
+  width: 100%;
+  min-width: 0;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-size: 13px;
+}
+
+.action-search input::placeholder {
+  color: var(--text-faint);
+}
+
 .action-category-pills {
   display: flex;
   gap: 6px;

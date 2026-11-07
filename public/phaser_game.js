@@ -331,6 +331,13 @@ class HouseScene extends Phaser.Scene {
     if (gesture.moved || gesture.button !== 0) return;
 
     if (gesture.target) {
+      if (
+        !this.isBuildMode &&
+        typeof window.handlePhaserObjectClick === 'function' &&
+        window.handlePhaserObjectClick(gesture.target.obj.id)
+      ) {
+        return;
+      }
       if (!this.isBuildMode && typeof window.openObjectModal === 'function') {
         window.openObjectModal(gesture.target.obj.id);
       }
@@ -1134,6 +1141,27 @@ class HouseScene extends Phaser.Scene {
       }
 
       const { roomId, positionId } = character;
+      const seatMatch = /^(.*)__seat_(\d+)$/.exec(positionId || '');
+      if (seatMatch) {
+        const seatObject = this.layout.placedObjects.find(
+          (object) => object.roomId === roomId && object.id === seatMatch[1]
+        );
+        if (seatObject) {
+          const centerX = seatObject.x + seatObject.width / 2;
+          const centerY = seatObject.y + seatObject.height / 2;
+          const offsets = [
+            { x: 0, y: -seatObject.height / 2 - 0.45 },
+            { x: seatObject.width / 2 + 0.45, y: 0 },
+            { x: 0, y: seatObject.height / 2 + 0.45 },
+            { x: -seatObject.width / 2 - 0.45, y: 0 }
+          ];
+          const offset = offsets[Number(seatMatch[2]) % offsets.length];
+          return {
+            x: (centerX + offset.x) * this.CELL_SIZE,
+            y: (centerY + offset.y) * this.CELL_SIZE
+          };
+        }
+      }
       // Check placed objects first
       if (this.layout?.placedObjects) {
         const obj = this.layout.placedObjects.find(
