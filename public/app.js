@@ -8,9 +8,13 @@ let gameState = null;
 let currentCategory = 'all';
 let activeConversation = null;
 let sendingMessage = false;
+let selectedCharacterDetails = null;
 let activeBackdropLayer = 0;
 let currentBackdropRoom = null;
 let backdropChangeId = 0;
+const activeGameActivities = new Map();
+let nextGameActivityId = 0;
+let gameActivityRevealTimer = null;
 let currentWeatherType = 'clear'; // clear, cloudy, rainy, stormy, foggy
 let liveWeatherInfo = null;
 
@@ -134,6 +138,14 @@ const ariaNeedsBox = document.getElementById('aria-needs-box');
 const ariaBodyDescription = document.getElementById('aria-body-description');
 const ariaClothing = document.getElementById('aria-clothing');
 const ariaAppearance = document.getElementById('aria-appearance');
+const ariaDetailsToggle = document.getElementById('aria-details-toggle');
+const playerDetailsToggle = document.getElementById('player-details-toggle');
+const playerDetailsPanel = document.getElementById('player-details-panel');
+const playerAvatarStatus = document.getElementById('player-avatar-status');
+const playerBodyStatusPill = document.getElementById('player-body-status-pill');
+const playerDetailsDescription = document.getElementById('player-details-description');
+const playerDetailsClothing = document.getElementById('player-details-clothing');
+const playerDetailsAppearance = document.getElementById('player-details-appearance');
 const playerQuickActionsRow = document.getElementById('player-quick-actions-row');
 const playerQuickActionsCount = document.getElementById('player-quick-actions-count');
 const aiAvailableActionsList = document.getElementById('ai-available-actions-list');
@@ -187,6 +199,8 @@ const btnCloseModal = document.getElementById('btn-close-modal');
 const btnModalDismiss = document.getElementById('btn-modal-dismiss');
 const btnCopyJson = document.getElementById('btn-copy-json');
 const toastEl = document.getElementById('toast');
+const gameProcessingIndicator = document.getElementById('game-processing-indicator');
+const gameProcessingLabel = document.getElementById('game-processing-label');
 
 // ============================================================
 // 1. FREE LIVE WEATHER API (Open-Meteo for Jabalpur, MP, India)
@@ -351,11 +365,69 @@ function renderAtmosphericParticles() {
 // 3. API METHODS & STATE MANAGEMENT
 // ============================================================
 
+let lastRenderedStateSignature = '';
+let statePollInProgress = false;
+
+function startGameActivity(label) {
+  const activityId = ++nextGameActivityId;
+  activeGameActivities.set(activityId, label);
+  if (gameProcessingLabel) gameProcessingLabel.textContent = label;
+  if (gameActivityRevealTimer) clearTimeout(gameActivityRevealTimer);
+  gameActivityRevealTimer = setTimeout(() => {
+    if (!activeGameActivities.size || !gameProcessingIndicator) return;
+    gameProcessingIndicator.hidden = false;
+    gameProcessingIndicator.setAttribute('aria-hidden', 'false');
+    document.body.setAttribute('aria-busy', 'true');
+  }, 140);
+
+  let finished = false;
+  return () => {
+    if (finished) return;
+    finished = true;
+    activeGameActivities.delete(activityId);
+    if (activeGameActivities.size) {
+      const currentLabel = [...activeGameActivities.values()].at(-1);
+      if (gameProcessingLabel && currentLabel) gameProcessingLabel.textContent = currentLabel;
+      return;
+    }
+
+    if (gameActivityRevealTimer) {
+      clearTimeout(gameActivityRevealTimer);
+      gameActivityRevealTimer = null;
+    }
+    if (gameProcessingIndicator) {
+      gameProcessingIndicator.hidden = true;
+      gameProcessingIndicator.setAttribute('aria-hidden', 'true');
+    }
+    document.body.removeAttribute('aria-busy');
+  };
+}
+
+function getStateSignature(state) {
+  return JSON.stringify({
+    player: state.player,
+    ai: state.ai,
+    roomDetails: state.roomDetails,
+    time: state.time,
+    alerts: state.alerts,
+    availableActions: state.availableActions,
+    aiAvailableActions: state.aiAvailableActions,
+    objectStates: state.world?.objects?.map(({ id, currentState, roomId, positionId, heldBy, occupiedBy }) => ({
+      id, currentState, roomId, positionId, heldBy, occupiedBy,
+    })),
+    houseLayout: state.houseLayout,
+    narrative: state.narrative,
+    events: state.events,
+    conversationMessageIds: state.activeConversation?.messages?.map((message) => message.id),
+  });
+}
+
 async function fetchState() {
   try {
     const res = await fetch('/api/state');
     if (!res.ok) throw new Error('Failed to fetch state');
     gameState = await res.json();
+    lastRenderedStateSignature = getStateSignature(gameState);
     if (gameState.activeConversation) {
       activeConversation = gameState.activeConversation;
     }
@@ -366,7 +438,35 @@ async function fetchState() {
   }
 }
 
+async function pollGameState() {
+  if (statePollInProgress || document.hidden || sendingMessage) return;
+  statePollInProgress = true;
+  try {
+    const res = await fetch('/api/state');
+    if (!res.ok) throw new Error(`Failed to poll game state (HTTP ${res.status})`);
+    const nextState = await res.json();
+    const signature = getStateSignature(nextState);
+    gameState = nextState;
+    if (nextState.activeConversation) {
+      activeConversation = nextState.activeConversation;
+    }
+    if (signature !== lastRenderedStateSignature) {
+      lastRenderedStateSignature = signature;
+      renderAll();
+    }
+  } catch (err) {
+    console.warn('Game state polling failed:', err);
+  } finally {
+    statePollInProgress = false;
+  }
+}
+
 async function submitAction(actionId, targetObjectId) {
+  const actionName = gameState?.availableActions?.find((action) => action.id === actionId)?.name;
+  const activityLabel = actionId.startsWith('walk_to_')
+    ? `Walking to ${capitalize(actionId.slice('walk_to_'.length).replace(/_/g, ' '))}…`
+    : `${actionName || 'Updating the simulation'}…`;
+  const finishActivity = startGameActivity(activityLabel);
   try {
     const res = await fetch('/api/action', {
       method: 'POST',
@@ -384,9 +484,27 @@ async function submitAction(actionId, targetObjectId) {
     }
 
     await fetchState();
+    if (data.success) {
+      window.dispatchEvent(new CustomEvent('houseStateUpdated', {
+        detail: {
+          feedback: {
+            actor: 'player',
+            floatText: {
+              actor: 'player',
+              text: actionName || 'Action complete',
+              color: '#a7f3d0'
+            }
+          }
+        }
+      }));
+    }
+    return data.success === true;
   } catch (err) {
     console.error('Action error:', err);
     showToast('Action could not be performed');
+    return false;
+  } finally {
+    finishActivity();
   }
 }
 
@@ -399,6 +517,7 @@ async function talkToAria() {
     return;
   }
 
+  const finishActivity = startGameActivity('Waiting for Aria…');
   const nowClock = gameState ? format12Hour(gameState.time.clock) : 'Just now';
   const sentBubble = appendChatMessage('player', message, nowClock, true, true);
   ariaMessageInput.value = '';
@@ -418,6 +537,8 @@ async function talkToAria() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Gemini could not reply');
+
+    await fetchState();
 
     if (data.activeConversation) {
       activeConversation = data.activeConversation;
@@ -445,6 +566,7 @@ async function talkToAria() {
     sentBubble.classList.add('message-failed');
     showToast(err.message || 'Could not talk to Aria right now');
   } finally {
+    finishActivity();
     sendingMessage = false;
     ariaTyping.hidden = true;
     ariaTyping.classList.remove('is-visible');
@@ -494,6 +616,7 @@ function renderAll() {
 
   // 4. Aria Body Needs (Equal Maintenance, visible only when in same room)
   renderAriaNeeds(ai, isTogether, roomDetails?.room?.name);
+  renderCharacterDetails(player);
 
   // 5. Top-Down House Map with Animated Avatars
   renderHouseMap(player, ai);
@@ -605,9 +728,9 @@ function renderAriaNeeds(ai, inSameRoom = true, currentRoomName = '') {
   const aiRoomName = capitalize((gameState?.ai?.location?.roomId || 'other room').replace('_', ' '));
 
   if (!inSameRoom) {
-    if (ariaNeedsBox) ariaNeedsBox.style.display = 'none';
+    if (ariaNeedsBox) ariaNeedsBox.hidden = true;
     if (ariaOutOfSight) {
-      ariaOutOfSight.style.display = 'flex';
+      ariaOutOfSight.hidden = selectedCharacterDetails !== 'aria';
       if (ariaOutOfSightText) {
         ariaOutOfSightText.textContent = `Aria is in ${aiRoomName} — physical state and needs are out of sight`;
       }
@@ -616,8 +739,8 @@ function renderAriaNeeds(ai, inSameRoom = true, currentRoomName = '') {
   }
 
   // Same room: display physical state and vitals
-  if (ariaOutOfSight) ariaOutOfSight.style.display = 'none';
-  if (ariaNeedsBox) ariaNeedsBox.style.display = 'block';
+  if (ariaOutOfSight) ariaOutOfSight.hidden = true;
+  if (ariaNeedsBox) ariaNeedsBox.hidden = selectedCharacterDetails !== 'aria';
   if (ariaBodyDescription) ariaBodyDescription.textContent = getDetailedPhysicalDescription(ai);
   if (ariaClothing) {
     ariaClothing.textContent = `${ai.clothing.upper}, ${ai.clothing.lower} (${ai.clothing.footwear})`;
@@ -676,6 +799,57 @@ function renderAriaNeeds(ai, inSameRoom = true, currentRoomName = '') {
       ariaBodyStatusPill.textContent = 'Satisfied & Well';
       ariaBodyStatusPill.style.color = '#34d399';
     }
+  }
+}
+
+function renderCharacterDetails(player) {
+  const playerRoom = gameState.world?.allRooms?.find((room) => room.id === player.location.roomId);
+  const playerRoomName = playerRoom?.name || capitalize(player.location.roomId.replace(/_/g, ' '));
+
+  if (ariaDetailsToggle) {
+    ariaDetailsToggle.setAttribute('aria-expanded', selectedCharacterDetails === 'aria' ? 'true' : 'false');
+  }
+  if (playerDetailsToggle) {
+    playerDetailsToggle.setAttribute('aria-expanded', selectedCharacterDetails === 'player' ? 'true' : 'false');
+  }
+  if (playerAvatarStatus) {
+    playerAvatarStatus.textContent = `YOU · ${playerRoomName.toUpperCase()}`;
+  }
+
+  if (playerDetailsPanel) {
+    playerDetailsPanel.hidden = selectedCharacterDetails !== 'player';
+  }
+  if (playerDetailsDescription) {
+    playerDetailsDescription.textContent =
+      gameState.playerBodyState?.body || getDetailedPhysicalDescription(player);
+  }
+  if (playerBodyStatusPill) {
+    playerBodyStatusPill.textContent = `In ${playerRoomName}`;
+  }
+  if (playerDetailsClothing) {
+    playerDetailsClothing.textContent =
+      `${player.clothing.upper}, ${player.clothing.lower} (${player.clothing.footwear})`;
+  }
+  if (playerDetailsAppearance) {
+    playerDetailsAppearance.textContent = formatAppearance(player.appearance);
+  }
+
+  for (const element of playerDetailsPanel?.querySelectorAll('[data-player-need]') || []) {
+    const needName = element.dataset.playerNeed;
+    const value = player.needs[needName];
+    element.textContent = Number.isFinite(value) ? `${Math.round(value)}%` : '—';
+  }
+}
+
+function toggleCharacterDetails(character) {
+  selectedCharacterDetails = selectedCharacterDetails === character ? null : character;
+  if (gameState) {
+    renderAriaNeeds(
+      gameState.ai,
+      gameState.ai.location.roomId === gameState.player.location.roomId,
+      gameState.roomDetails?.room?.name
+    );
+    renderCharacterDetails(gameState.player);
   }
 }
 
@@ -1398,28 +1572,7 @@ function renderActions(actions) {
 }
 
 function handleActionClick(act) {
-  let targetObjectId;
-  if (act.requiresTarget) {
-    const roomObjs = gameState.roomDetails.objects;
-    const { objectState, objectStateNot } = act.preconditions || {};
-    const match = roomObjs.find((object) => {
-      const objectTypes = Array.isArray(object.type) ? object.type : [object.type];
-      if (act.targetTypes && !objectTypes.some((type) => act.targetTypes.includes(type))) return false;
-      if (!(object.interactions || []).includes(act.id)) return false;
-      const state = object.currentState;
-      if (objectState) {
-        const allowed = Array.isArray(objectState) ? objectState : [objectState];
-        if (!allowed.includes(state)) return false;
-      }
-      if (objectStateNot) {
-        const blocked = Array.isArray(objectStateNot) ? objectStateNot : [objectStateNot];
-        if (blocked.includes(state)) return false;
-      }
-      return true;
-    });
-    if (match) targetObjectId = match.id;
-  }
-  submitAction(act.id, targetObjectId);
+  submitAction(act.id);
 }
 
 function renderPlayerQuickActions(actions) {
@@ -1485,6 +1638,7 @@ function renderAiAvailableActions(actions) {
 }
 
 async function triggerAiAction(actionId) {
+  const finishActivity = startGameActivity('Aria is deciding…');
   if (btnAiAct) {
     btnAiAct.disabled = true;
     btnAiAct.classList.add('loading');
@@ -1509,10 +1663,25 @@ async function triggerAiAction(actionId) {
     }
 
     await fetchState();
+    if (exec?.result?.status === 'accepted') {
+      window.dispatchEvent(new CustomEvent('houseStateUpdated', {
+        detail: {
+          feedback: {
+            actor: 'ai',
+            floatText: {
+              actor: 'ai',
+              text: actName,
+              color: '#d8b4fe'
+            }
+          }
+        }
+      }));
+    }
   } catch (err) {
     console.error('Trigger AI action error:', err);
     showToast('Aria could not perform action right now');
   } finally {
+    finishActivity();
     if (btnAiAct) {
       btnAiAct.disabled = false;
       btnAiAct.classList.remove('loading');
@@ -1866,6 +2035,8 @@ btnTalkAria.addEventListener('click', talkToAria);
 ariaMessageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') talkToAria();
 });
+ariaDetailsToggle?.addEventListener('click', () => toggleCharacterDetails('aria'));
+playerDetailsToggle?.addEventListener('click', () => toggleCharacterDetails('player'));
 
 // Modals
 btnConvToggle.addEventListener('click', openConversationModal);
@@ -1919,30 +2090,164 @@ btnCopyJson.addEventListener('click', () => {
 window.submitAction = submitAction;
 window.showToast = showToast;
 window.openObjectModal = openObjectModal;
+window.syncPlayerMapPosition = async (roomId, gridX, gridY) => {
+  try {
+    const res = await fetch('/api/navigation/position', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId, gridX, gridY })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not save map position');
+    await fetchState();
+  } catch (error) {
+    console.error('Map position sync failed:', error);
+    showToast('Could not save your position', true);
+  }
+};
 
 function syncPhaserHouse(player, ai, layout) {
   window.gameState = gameState;
   if (!player || !ai) return;
 
-  const characters = {
-    player: {
-      id: player.id,
-      name: player.name,
-      roomId: player.location.roomId,
-      positionId: player.location.positionId,
-      posture: player.body.posture,
-    },
-    ai: {
-      id: ai.id,
-      name: ai.name,
-      roomId: ai.location.roomId,
-      positionId: ai.location.positionId,
-      posture: ai.body.posture,
+  const configuredObjects = gameState?.world?.objects || [];
+  const roomConfigs = gameState?.world?.allRooms || [];
+  const resolveCharacterMapData = (character) => {
+    const { roomId, positionId } = character.location;
+    const mapPosition = character.location.mapPosition;
+    const roomConfig = roomConfigs.find((room) => room.id === roomId);
+    const position = roomConfig?.positions?.find((candidate) => candidate.id === positionId);
+    const configuredObject = configuredObjects.find((object) =>
+      object.id === position?.objectId ||
+      object.id === positionId ||
+      (object.roomId === roomId && object.positionId === positionId)
+    );
+    const placedObject = layout?.placedObjects?.find((object) =>
+      object.roomId === roomId &&
+      (object.id === positionId ||
+        object.id === configuredObject?.id ||
+        object.id === configuredObject?.houseObjectId ||
+        object.templateId === configuredObject?.houseTemplateId)
+    );
+
+    let x;
+    let y;
+    if (mapPosition?.roomId === roomId) {
+      x = mapPosition.x;
+      y = mapPosition.y;
+    } else if (placedObject) {
+      x = placedObject.x + placedObject.width / 2;
+      y = placedObject.y + placedObject.height / 2;
+    } else {
+      const room = layout?.rooms?.find((candidate) => candidate.id === roomId);
+      if (room && position?.objectId === null && /door|entrance/i.test(positionId)) {
+        const roomDoors = (layout.doors || []).filter((door) =>
+          door.roomA === roomId || door.roomB === roomId
+        );
+        const roomCenter = { x: room.x + room.width / 2, y: room.y + room.height / 2 };
+        const door = roomDoors.sort((left, right) => {
+          const centerOf = (candidate) => ({
+            x: candidate.x + (candidate.orientation === 'horizontal' ? candidate.width / 2 : 0.5),
+            y: candidate.y + (candidate.orientation === 'vertical' ? candidate.width / 2 : 0.5)
+          });
+          const leftCenter = centerOf(left);
+          const rightCenter = centerOf(right);
+          return Math.hypot(leftCenter.x - roomCenter.x, leftCenter.y - roomCenter.y) -
+            Math.hypot(rightCenter.x - roomCenter.x, rightCenter.y - roomCenter.y);
+        })[0];
+        if (door) {
+          const doorCenter = {
+            x: door.x + (door.orientation === 'horizontal' ? door.width / 2 : 0.5),
+            y: door.y + (door.orientation === 'vertical' ? door.width / 2 : 0.5)
+          };
+          const distance = Math.hypot(roomCenter.x - doorCenter.x, roomCenter.y - doorCenter.y) || 1;
+          x = doorCenter.x + (roomCenter.x - doorCenter.x) / distance * 0.6;
+          y = doorCenter.y + (roomCenter.y - doorCenter.y) / distance * 0.6;
+        }
+      }
+
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        const room = layout?.rooms?.find((candidate) => candidate.id === roomId);
+        x = room ? room.x + room.width / 2 : 10;
+        y = room ? room.y + room.height / 2 : 10;
+      }
     }
+
+    const heldObjectId = character.holding?.objectId || null;
+    const heldObject = configuredObjects.find((object) => object.id === heldObjectId);
+    return {
+      id: character.id,
+      name: character.name,
+      roomId,
+      positionId: placedObject?.id || positionId,
+      posture: character.body.posture,
+      x,
+      y,
+      holdingIcon: heldObject?.icon || null
+    };
+  };
+
+  const mapLayout = layout && {
+    ...layout,
+    placedObjects: layout.placedObjects.flatMap((placed) => {
+      const configured = configuredObjects.find((object) =>
+        object.id === placed.id ||
+        object.houseObjectId === placed.id ||
+        object.houseTemplateId === placed.templateId
+      );
+      if (configured?.heldBy) return [];
+      if (!configured) return [placed];
+
+      const width = placed.width || 1;
+      const height = placed.height || 1;
+      return [{
+        ...placed,
+        roomId: configured.roomId,
+        x: Number.isFinite(configured.x) ? configured.x - width / 2 : placed.x,
+        y: Number.isFinite(configured.y) ? configured.y - height / 2 : placed.y,
+        state: configured.currentState ?? placed.state,
+        occupiedBy: configured.occupiedBy ?? null
+      }];
+    })
+  };
+  const mappedObjectIds = new Set(mapLayout?.placedObjects.map((object) => object.id) || []);
+  for (const object of configuredObjects) {
+    if (!Number.isFinite(object.x) || !Number.isFinite(object.y) || object.heldBy) continue;
+    const alreadyMapped = mapLayout?.placedObjects.some((placed) =>
+      placed.id === object.id ||
+      placed.id === object.houseObjectId ||
+      placed.templateId === object.houseTemplateId
+    );
+    if (alreadyMapped || mappedObjectIds.has(object.id)) continue;
+
+    mapLayout?.placedObjects.push({
+      id: object.id,
+      templateId: object.houseTemplateId || object.id,
+      name: object.name,
+      type: Array.isArray(object.type) ? object.type[0] : object.type,
+      roomId: object.roomId,
+      x: object.x - 0.5,
+      y: object.y - 0.5,
+      width: 1,
+      height: 1,
+      rotation: 0,
+      icon: object.icon,
+      color: '#475569',
+      state: object.currentState,
+      isSolid: false,
+      interactions: object.interactions,
+      placedBy: 'player_001',
+      placedAt: '',
+      occupiedBy: object.occupiedBy ?? null
+    });
+  }
+  const characters = {
+    player: resolveCharacterMapData(player),
+    ai: resolveCharacterMapData(ai)
   };
 
   window.dispatchEvent(new CustomEvent('houseStateUpdated', {
-    detail: { layout, characters }
+    detail: { layout: mapLayout, characters }
   }));
 }
 
@@ -2488,6 +2793,10 @@ updateLiveClock();
 fetchState();
 setInterval(updateLiveClock, 1000);
 setInterval(refreshLiveVitals, 60 * 1000);
+setInterval(pollGameState, 3000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) pollGameState();
+});
 
 // Refresh real weather every 10 minutes
 setInterval(fetchRealWeather, 10 * 60 * 1000);

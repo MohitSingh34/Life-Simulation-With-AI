@@ -10,7 +10,9 @@ import { ConversationManager } from "./ai/ConversationManager.js";
 import { HouseCommand } from "./types/house.js";
 import { AriaBuildProposal } from "./ai/AriaBuildPlanner.js";
 import { executeHomeMapCommands, getHomeFloorCoordinates } from "./ai/HomeMapCommandProcessor.js";
-import { executeAiActionCommands, getAiActionOptions } from "./ai/AiActionCommandProcessor.js";
+import { executeAiActionCommands } from "./ai/AiActionCommandProcessor.js";
+import { executeHelpCommands } from "./ai/HelpCommandProcessor.js";
+import { buildAriaTurnPrompt } from "./ai/AriaPromptBuilder.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,6 +62,82 @@ export function createServer(port = 3000) {
   const engine = new GameEngine();
   engine.init();
   const realtimePersistence = new RealtimePersistence(engine);
+  const gemini = new GeminiWebProvider();
+  const conversationManager = new ConversationManager();
+  const pendingCommandOutcomes = new Map<string, string[]>();
+
+  if (gemini.isConfigured) {
+    realtimePersistence.setAriaPingHandler(async () => {
+      const activeConversation = conversationManager.getActiveConversation();
+      const conversationId = activeConversation.id;
+      const turnNumber = conversationManager.incrementPromptTurnCount(conversationId);
+      const checkInMessage =
+        "Scheduled simulation check-in: review the current state and decide whether to take a useful permitted action. You may do nothing. Keep any dialogue brief.";
+      let rawDialogue = await gemini.generateReplyForSession(
+        buildAriaTurnPrompt(
+          engine,
+          conversationManager,
+          conversationId,
+          turnNumber,
+          checkInMessage
+        ),
+        conversationId
+      );
+      for (let round = 0; round < 3; round++) {
+        const mapResult = executeHomeMapCommands(rawDialogue, engine.houseBuilder);
+        const helpResult = executeHelpCommands(mapResult.response, engine);
+        const actionResult = executeAiActionCommands(helpResult.response, engine);
+        rawDialogue = actionResult.response;
+        const outcomes = [...mapResult.outcomes, ...helpResult.outcomes, ...actionResult.outcomes];
+        if (actionResult.hasCommands || mapResult.hasCommands) {
+          realtimePersistence.persist();
+        }
+        if (!mapResult.hasCommands && !helpResult.hasCommands && !actionResult.hasCommands) break;
+        if (round === 2) {
+          pendingCommandOutcomes.set(conversationId, outcomes);
+          break;
+        }
+
+        rawDialogue = await gemini.generateReplyForSession(
+          buildAriaTurnPrompt(
+            engine,
+            conversationManager,
+            conversationId,
+            turnNumber,
+            "Continue in character after reviewing the engine results. Do not repeat commands that have already succeeded.",
+            outcomes
+          ),
+          conversationId
+        );
+      }
+
+      const parsed = TagParser.parse(rawDialogue);
+      if (parsed.edits.build_command) {
+        try {
+          const command = JSON.parse(parsed.edits.build_command);
+          command.issuedBy = "ai_001";
+          const result = engine.houseBuilder.executeCommand(command);
+          pendingCommandOutcomes.set(conversationId, [
+            result.success
+              ? `Your build command succeeded: ${result.message}.`
+              : `Your build command failed: ${result.message}.`,
+          ]);
+          if (!result.success) {
+            parsed.dialogue = `I couldn't make that change: ${result.message}`;
+            parsed.edits.dialogue = parsed.dialogue;
+          }
+        } catch (error) {
+          console.error("Could not parse Aria's scheduled build command:", error);
+        }
+      }
+      if (Object.keys(parsed.edits).length > 0) {
+        engine.stateManager.updateNarrative(parsed.edits);
+      }
+      conversationManager.addMessage("aria", parsed.dialogue, engine.timeEngine.getFormattedClock());
+      realtimePersistence.persist();
+    });
+  }
+
   realtimePersistence.start();
   const realtimeInterval = setInterval(() => {
     try {
@@ -68,9 +146,6 @@ export function createServer(port = 3000) {
       console.error("Could not update or persist real-time simulation state:", error);
     }
   }, 1000);
-  const gemini = new GeminiWebProvider();
-  const conversationManager = new ConversationManager();
-  const pendingCommandOutcomes = new Map<string, string[]>();
 
   const server = http.createServer(async (req, res) => {
     if (req.method === "OPTIONS") {
@@ -135,9 +210,24 @@ export function createServer(port = 3000) {
             currentState: state.state,
             roomId: state.roomId ?? object.roomId,
             positionId: state.positionId ?? object.positionId,
+            x: state.x,
+            y: state.y,
             heldBy: state.heldBy ?? null,
+            occupiedBy: state.occupiedBy ?? null,
           };
         });
+        const houseLayout = engine.houseBuilder.getLayout();
+        const houseLayoutWithStates = {
+          ...houseLayout,
+          placedObjects: houseLayout.placedObjects.map((object) => {
+            const state = engine.stateManager.getObjectState(object.id);
+            return {
+              ...object,
+              state: state.state,
+              occupiedBy: state.occupiedBy ?? null,
+            };
+          }),
+        };
 
         const inSameRoom = player.location.roomId === ai.location.roomId;
         const aiAvailableActions = engine.actionEngine.getAvailableActions(ai.id);
@@ -172,7 +262,7 @@ export function createServer(port = 3000) {
           alerts,
           events,
           world: { ...world, objects, allRooms },
-          houseLayout: engine.houseBuilder.getLayout(),
+          houseLayout: houseLayoutWithStates,
           narrative: engine.stateManager.getNarrative(),
           activeConversation: conversationManager.getActiveConversation(),
         });
@@ -229,7 +319,10 @@ export function createServer(port = 3000) {
             ].join("\n\n");
 
             const rawActionReply = await Promise.race([
-              gemini.generateReply(actionPrompt),
+              gemini.generateReplyForSession(
+                actionPrompt,
+                conversationManager.getActiveConversation().id
+              ),
               new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
             ]);
 
@@ -324,7 +417,11 @@ export function createServer(port = 3000) {
           return;
         }
         const clockTime = engine.timeEngine.getFormattedClock();
-        const conversationId = conversationManager.getActiveConversation().id;
+        const activeConversation = conversationManager.getActiveConversation();
+        const conversationId = activeConversation.id;
+        const turnNumber = gemini.isConfigured
+          ? conversationManager.incrementPromptTurnCount(conversationId)
+          : 0;
         const pendingOutcomes = pendingCommandOutcomes.get(conversationId) || [];
         conversationManager.addMessage("player", body.message.trim(), clockTime);
 
@@ -372,75 +469,17 @@ export function createServer(port = 3000) {
             }
           }
         } else {
-          const snapshot = engine.stateManager.getSnapshot();
-          const room = engine.getCurrentRoomDetails();
-          const houseLayout = engine.houseBuilder.getLayout();
-          const prompt = [
-            "Roleplay as Aria, the player's roommate in an ongoing everyday-life simulation set in Jabalpur.",
-            "Relationship: you and the player have been in conflict. Neither of you could find another suitable place to live, so you reluctantly share the same flat. The living arrangement is a source of awkwardness and friction, not instant friendship.",
-            "Play the relationship with nuance: be guarded, irritated, defensive, or blunt when the moment calls for it, but let small courtesies, humor, vulnerability, and gradual changes emerge naturally. Do not force hostility into every exchange or resolve the conflict immediately. Let the player's words and the events of the shared life shape how you respond.",
-            "Speak in first person as Aria, like a real person in a face-to-face conversation. Reply to what the player actually said; keep it conversational and usually to one or two short sentences. Use natural wording, occasional pauses or dry humor, and avoid narration, stage directions, dialogue labels, lists, and explanations unless the player asks for them.",
-            "Use the simulation state for immediate continuity, such as where you are, what you are doing, the time, and your current mood or needs. Do not invent actions, objects, locations, or events that contradict it. You may refer to personal details or history only when they are genuinely available from the conversation context; do not fabricate shared memories or imply access to information you were not given.",
-            "The game engine applies simulation changes. Do not claim an action or home edit succeeded until the game reports its result; only describe changes that the engine confirms.",
-            "INTERFACE CONTROL INSTRUCTIONS:",
-            "You can control and update what is displayed on the player's screen! Format your output using these exact XML tags:",
-            "<dialogue>Your in-character spoken response to the player.</dialogue>",
-            "<player_body>An evocative, physical 1-2 sentence description of the player's physical body posture, hands, and bodily sensations right now.</player_body>",
-            "<player_pose>A short 2-4 word summary of the player's posture (e.g. Lying on bed, Standing beside counter, Sitting at desk).</player_pose>",
-            "<player_mood>A short mood description with emoji reflecting the vibe between you two (e.g. 😐 Guarded & Wary, 😌 Calm, 😒 Annoyed, 🙂 Softening).</player_mood>",
-            "<room_ambience>A 1-sentence sensory description of this room's light, sound, and air right now.</room_ambience>",
-            "<room_description>A 1-2 sentence description of the room from your perspective.</room_description>",
-            "<ai_activity>A short description of what you are doing right now (e.g. Leaning against the desk with arms crossed, Chopping onions at the counter).</ai_activity>",
-            "<ai_location>Short status badge for you (e.g. In Study Room • Reading, In Kitchen • Cooking).</ai_location>",
-            "<player_clothing>What the player is wearing if changed or noticed.</player_clothing>",
-            "<hunger_feeling>How hungry the player appears or feels (e.g. Stomach rumbling softly).</hunger_feeling>",
-            "<thirst_feeling>How thirsty the player appears or feels (e.g. Could enjoy a glass of water).</thirst_feeling>",
-            "<energy_feeling>The player's energy level (e.g. Rested and alert, Sluggish).</energy_feeling>",
-            "<sleepiness_feeling>The player's drowsiness (e.g. Wide awake, Heavy eyelids).</sleepiness_feeling>",
-            "<hygiene_feeling>The player's cleanliness (e.g. Fresh & comfortable, Sticky from heat).</hygiene_feeling>",
-            "<bladder_feeling>The player's bladder status (e.g. Comfortable, Needs restroom).</bladder_feeling>",
-            "<time_weather>Weather and temperature description (e.g. ☀️ 26°C Clear Sky).</time_weather>",
-            "<time_period>Time period tag (e.g. Morning Light, Afternoon Sun).</time_period>",
-            "You and the player can collaboratively rearrange the home. For adding furniture, you can output a construction command: <build_command>{\"action\":\"place_object\",\"params\":{\"templateId\":\"monstera_001\",\"roomId\":\"study_room\",\"x\":28,\"y\":8}}</build_command>. Only move items that exist in the supplied home layout.",
-            "You can request a precise floor map by outputting &&coordinates_of_home_floor&&. The game will send you room bounds, occupied objects, and free single-cell coordinate runs in its next tool-result message.",
-            "To move an existing object, output &&&object_id-action:reposition;x,y;room_id&& (the room suffix is optional). Example: &&&desk_001-action:reposition;28,8;study_room&&. Use the exact object id from the supplied home layout and zero-based grid coordinates. The game will validate bounds, collisions, and doorways, then send the result back to you before your final reply.",
-            "Home coordinates are zero-based grid cells: x increases to the right, y increases downward, and each object's x/y is its top-left cell. Room x/y/width/height define the valid floor area. The floor query returns free coordinates for 1x1 objects; larger items need adjacent free cells and are validated on move.",
-            "You can perform physical actions as Aria by emitting commands in this exact form: &&action:<action_id>&& or &&action:<action_id>;target:<object_id>&&. Use only action IDs and target IDs from the currently valid options below. Movement between rooms uses the configured walk_to_* actions; posture and position changes use their configured actions. Commands affect Aria only, never Mohit. The engine validates every command and reports whether it succeeded.",
-            `Currently valid actions and target objects for Aria (refreshes after each command): ${JSON.stringify(getAiActionOptions(engine))}`,
-            ...(pendingOutcomes.length > 0
-              ? [`Result of your previous home command(s); use this to maintain continuity: ${pendingOutcomes.join(" | ")}`]
-              : []),
-            "Always provide <dialogue> and <player_body>. Any other tags are optional whenever you want to update or manipulate that specific screen element.",
-            `Current simulation context (JSON): ${JSON.stringify({
-              time: snapshot.time,
-              characters: snapshot.characters,
-              objects: snapshot.objects,
-              currentRoom: {
-                id: room.room.id,
-                ambience: room.ambience,
-                objects: room.objects,
-              },
-              home: {
-                grid: {
-                  cols: houseLayout.grid.cols,
-                  rows: houseLayout.grid.rows,
-                  coordinateSystem: "zero-based grid cells; x increases right, y increases down",
-                },
-                rooms: houseLayout.rooms.map(({ id, name, x, y, width, height }) => ({
-                  id, name, x, y, width, height,
-                })),
-                placedObjects: houseLayout.placedObjects.map(({
-                  id, name, roomId, x, y, width, height, rotation,
-                }) => ({
-                  id, name, roomId, x, y, width, height, rotation,
-                })),
-              },
-            })}`,
+          const prompt = buildAriaTurnPrompt(
+            engine,
+            conversationManager,
+            conversationId,
+            turnNumber,
             `The player says: ${JSON.stringify(body.message.trim())}`,
-          ].join("\n\n");
+            pendingOutcomes
+          );
 
           try {
-            rawDialogue = await gemini.generateReply(prompt);
+            rawDialogue = await gemini.generateReplyForSession(prompt, conversationId);
             pendingCommandOutcomes.delete(conversationId);
           } catch (error) {
             console.error("Gemini dialogue request failed:", error);
@@ -455,14 +494,19 @@ export function createServer(port = 3000) {
         if (gemini.isConfigured) {
           for (let round = 0; round < 3; round++) {
             const mapResult = executeHomeMapCommands(rawDialogue, engine.houseBuilder);
-            const actionResult = executeAiActionCommands(mapResult.response, engine);
+            const helpResult = executeHelpCommands(mapResult.response, engine);
+            const actionResult = executeAiActionCommands(helpResult.response, engine);
             rawDialogue = actionResult.response;
-            const commandOutcomes = [...mapResult.outcomes, ...actionResult.outcomes];
+            const commandOutcomes = [
+              ...mapResult.outcomes,
+              ...helpResult.outcomes,
+              ...actionResult.outcomes,
+            ];
 
             if (actionResult.hasCommands) {
               realtimePersistence.persist();
             }
-            if (!mapResult.hasCommands && !actionResult.hasCommands) break;
+            if (!mapResult.hasCommands && !helpResult.hasCommands && !actionResult.hasCommands) break;
 
             if (round === 2) {
               pendingCommandOutcomes.set(conversationId, commandOutcomes);
@@ -470,13 +514,17 @@ export function createServer(port = 3000) {
             }
 
             try {
-              rawDialogue = await gemini.generateReply([
-                "Your previous response requested home or physical-action tools. The game processed them.",
-                `The player's original message was: ${JSON.stringify(body.message.trim())}`,
-                `Command results: ${commandOutcomes.join(" ")}`,
-                `Your currently valid physical actions and targets are: ${JSON.stringify(getAiActionOptions(engine))}`,
-                "Now continue the same conversation in character. Acknowledge only successful changes, respond naturally to the player's original message, and do not repeat commands that have already succeeded.",
-              ].join("\n\n"));
+              rawDialogue = await gemini.generateReplyForSession(
+                buildAriaTurnPrompt(
+                  engine,
+                  conversationManager,
+                  conversationId,
+                  turnNumber,
+                  `The player's original message was: ${JSON.stringify(body.message.trim())}. Continue in character and do not repeat commands that already succeeded.`,
+                  commandOutcomes
+                ),
+                conversationId
+              );
             } catch (error) {
               console.error("Could not send command results to Aria:", error);
               pendingCommandOutcomes.set(conversationId, commandOutcomes);
@@ -529,14 +577,6 @@ export function createServer(port = 3000) {
 
       // 4. API: Conversation Management
       if (req.method === "GET" && pathname === "/api/conversations") {
-        if (gemini.isConfigured) {
-          try {
-            const remote = await gemini.listChats();
-            conversationManager.syncRemoteChats(remote);
-          } catch {
-            // Ignore remote sync errors
-          }
-        }
         sendJson({
           activeId: conversationManager.getActiveConversation().id,
           conversations: conversationManager.listConversations(),
@@ -555,13 +595,6 @@ export function createServer(port = 3000) {
           sendJson({ error: "Conversation not found" }, 404);
           return;
         }
-        if (gemini.isConfigured) {
-          try {
-            await gemini.selectChat(session.cid || "", session.metadata);
-          } catch (err) {
-            console.warn("Could not select chat in Gemini worker:", err);
-          }
-        }
         sendJson({ activeConversation: session });
         return;
       }
@@ -569,13 +602,6 @@ export function createServer(port = 3000) {
       if (req.method === "POST" && pathname === "/api/conversations/new") {
         const body = await parseBody<{ title?: string }>();
         const session = conversationManager.createConversation(body.title);
-        if (gemini.isConfigured) {
-          try {
-            await gemini.newChat();
-          } catch (err) {
-            console.warn("Could not start new chat in Gemini worker:", err);
-          }
-        }
         sendJson({ activeConversation: session });
         return;
       }
@@ -755,6 +781,43 @@ export function createServer(port = 3000) {
       }
 
       // 9. API: A* Pathfinding Navigation
+      if (req.method === "POST" && pathname === "/api/navigation/position") {
+        const body = await parseBody<{ roomId: string; gridX: number; gridY: number }>();
+        const player = engine.getPlayer();
+        const room = engine.houseBuilder.getLayout().rooms.find(
+          (candidate) => candidate.id === body.roomId
+        );
+        if (
+          !room ||
+          !Number.isInteger(body.gridX) ||
+          !Number.isInteger(body.gridY) ||
+          body.gridX < room.x ||
+          body.gridX >= room.x + room.width ||
+          body.gridY < room.y ||
+          body.gridY >= room.y + room.height ||
+          !engine.houseBuilder.pathfindingEngine.isWalkable(body.gridX, body.gridY)
+        ) {
+          sendJson({ error: "Choose a walkable floor position inside a room." }, 400);
+          return;
+        }
+
+        if (player.location.roomId !== room.id || player.body.posture !== "standing") {
+          sendJson({ error: "Stand up and enter the room before walking to that map position." }, 409);
+          return;
+        }
+
+        player.location.roomId = room.id;
+        player.location.positionId = `floor_${body.gridX}_${body.gridY}`;
+        player.location.mapPosition = {
+          roomId: room.id,
+          x: body.gridX + 0.5,
+          y: body.gridY + 0.5,
+        };
+        realtimePersistence.persist();
+        sendJson({ success: true, player });
+        return;
+      }
+
       if (req.method === "GET" && pathname === "/api/navigation/path") {
         const sX = parseFloat(url.searchParams.get("startX") || "0");
         const sY = parseFloat(url.searchParams.get("startY") || "0");

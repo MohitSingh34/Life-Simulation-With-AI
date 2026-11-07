@@ -10,6 +10,7 @@ import { EventManager } from "./EventManager.js";
 import { MovementEngine } from "./MovementEngine.js";
 import { NeedsEngine } from "./NeedsEngine.js";
 import { TimeEngine } from "./TimeEngine.js";
+import { ObjectInteractionEngine } from "./ObjectInteractionEngine.js";
 
 export class ActionEngine {
   constructor(
@@ -18,26 +19,22 @@ export class ActionEngine {
     private eventManager: EventManager,
     private movementEngine: MovementEngine,
     private needsEngine: NeedsEngine,
-    private timeEngine: TimeEngine
+    private timeEngine: TimeEngine,
+    private objectInteractionEngine: ObjectInteractionEngine
   ) {}
 
   public getAvailableActions(characterId: string): ActionConfig[] {
     const char = this.stateManager.getCharacter(characterId);
     if (!char) return [];
 
-    const allActions = this.configLoader.getAllActions();
-    const available: ActionConfig[] = [];
-
-    for (const action of allActions) {
-      if (
-        this.checkPreconditions(char, action.preconditions, action.id) &&
-        this.canOccupyDestination(char, action)
-      ) {
-        available.push(action);
-      }
-    }
-
-    return available;
+    return this.configLoader.getAllActions().filter(
+      (action) =>
+        this.validateAction({
+          actorId: char.id,
+          actionId: action.id,
+          timestamp: new Date().toISOString(),
+        }).status === "accepted"
+    );
   }
 
   private checkPreconditions(
@@ -59,7 +56,11 @@ export class ActionEngine {
     // Position match
     if (pre.positionId) {
       const allowedPositions = Array.isArray(pre.positionId) ? pre.positionId : [pre.positionId];
-      if (!allowedPositions.includes(char.location.positionId)) {
+      const currentPosition = this.objectInteractionEngine.getCanonicalPositionId(
+        char.location.roomId,
+        char.location.positionId
+      );
+      if (!allowedPositions.includes(currentPosition)) {
         return false;
       }
     }
@@ -195,39 +196,17 @@ export class ActionEngine {
       };
     }
 
-    if (!request.targetObjectId && action.requiresTarget) {
-      // 1. Check held item
-      if (char.holding) {
-        const heldObj = this.configLoader.getObject(char.holding.objectId);
-        if (heldObj?.interactions.includes(action.id)) {
-          request.targetObjectId = heldObj.id;
-        }
-      }
-      // 2. Check position object
-      if (!request.targetObjectId) {
-        const roomConfig = this.configLoader.getRoom(char.location.roomId);
-        const pos = roomConfig?.positions.find((p) => p.id === char.location.positionId);
-        if (pos?.objectId) {
-          const posObj = this.configLoader.getObject(pos.objectId);
-          if (posObj?.interactions.includes(action.id)) {
-            request.targetObjectId = posObj.id;
-          }
-        }
-      }
-      // 3. Check objects in room
-      if (!request.targetObjectId) {
-        const roomObjs = this.configLoader.getObjectsInRoom(char.location.roomId);
-        const match = roomObjs.find((o) => o.interactions.includes(action.id));
-        if (match) {
-          request.targetObjectId = match.id;
-        }
-      }
+    if (!request.targetObjectId && (action.requiresTarget || action.effects.moveToTargetPosition)) {
+      request.targetObjectId = this.objectInteractionEngine.findTargetObject(
+        char.id,
+        action.id
+      )?.id;
     }
 
     const targetObject = request.targetObjectId
-      ? this.configLoader.getObject(request.targetObjectId)
+      ? this.objectInteractionEngine.getObject(request.targetObjectId)
       : undefined;
-    if (action.requiresTarget && !targetObject) {
+    if ((action.requiresTarget || action.effects.moveToTargetPosition) && !targetObject) {
       return {
         status: "rejected",
         actionId: request.actionId,
@@ -286,6 +265,26 @@ export class ActionEngine {
           actionId: request.actionId,
           message: "You need to be in the same room as your roommate to do this.",
           reason: "ROOMMATE_NOT_PRESENT",
+        };
+      }
+    }
+
+    if (action.effects.transferToCharacterId) {
+      const recipient = this.stateManager.getCharacter(action.effects.transferToCharacterId);
+      if (!recipient || recipient.id === char.id || recipient.location.roomId !== char.location.roomId) {
+        return {
+          status: "rejected",
+          actionId: request.actionId,
+          message: "Aria needs to be in the same room to receive the item.",
+          reason: "RECIPIENT_NOT_PRESENT",
+        };
+      }
+      if (recipient.holding) {
+        return {
+          status: "rejected",
+          actionId: request.actionId,
+          message: "Aria needs a free hand before she can take the item.",
+          reason: "RECIPIENT_HANDS_FULL",
         };
       }
     }
@@ -400,7 +399,7 @@ export class ActionEngine {
       };
     }
 
-    if (!this.canOccupyDestination(char, action)) {
+    if (!this.canOccupyDestination(char, action, targetObject?.id)) {
       return {
         status: "rejected",
         actionId: request.actionId,
@@ -479,8 +478,16 @@ export class ActionEngine {
     if (effects.moveToRoom) {
       char.location.roomId = effects.moveToRoom;
       char.location.positionId = effects.moveToPosition || "door_area";
+      delete char.location.mapPosition;
+    } else if (effects.moveToTargetPosition && request.targetObjectId) {
+      char.location.roomId =
+        this.objectInteractionEngine.getRoomId(request.targetObjectId) ?? char.location.roomId;
+      char.location.positionId =
+        this.objectInteractionEngine.getPositionId(request.targetObjectId) ?? char.location.positionId;
+      delete char.location.mapPosition;
     } else if (effects.moveToPosition) {
       char.location.positionId = effects.moveToPosition;
+      delete char.location.mapPosition;
     }
 
     // Resolve implicit target if not provided
@@ -559,10 +566,30 @@ export class ActionEngine {
       });
     }
 
+    if (effects.transferToCharacterId && char.holding) {
+      const recipient = this.stateManager.getCharacter(effects.transferToCharacterId)!;
+      const transferredId = char.holding.objectId;
+      recipient.holding = { objectId: transferredId, hand: char.holding.hand };
+      char.holding = null;
+      this.stateManager.updateObjectState(transferredId, (obj) => {
+        obj.heldBy = recipient.id;
+        obj.roomId = recipient.location.roomId;
+        obj.positionId = recipient.location.positionId;
+        const point = this.objectInteractionEngine.getPositionPoint(
+          recipient.location.roomId,
+          recipient.location.positionId
+        );
+        obj.x = point.x;
+        obj.y = point.y;
+      });
+    }
+
     if (effects.pickUp && request.targetObjectId) {
       char.holding = { objectId: request.targetObjectId, hand: "both" };
       this.stateManager.updateObjectState(request.targetObjectId, (obj) => {
         obj.heldBy = char.id;
+        delete obj.x;
+        delete obj.y;
       });
     }
 
@@ -572,6 +599,14 @@ export class ActionEngine {
         obj.heldBy = null;
         obj.roomId = char.location.roomId;
         obj.positionId = char.location.positionId;
+        const point = char.location.mapPosition?.roomId === char.location.roomId
+          ? { x: char.location.mapPosition.x, y: char.location.mapPosition.y }
+          : this.objectInteractionEngine.getPositionPoint(
+              char.location.roomId,
+              char.location.positionId
+            );
+        obj.x = point.x;
+        obj.y = point.y;
       });
       char.holding = null;
     }
@@ -754,24 +789,40 @@ export class ActionEngine {
 
   private canOccupyDestination(
     char: NonNullable<ReturnType<StateManager["getCharacter"]>>,
-    action: ActionConfig
+    action: ActionConfig,
+    targetObjectId?: string
   ): boolean {
     const effects = action.effects;
-    if (!effects.posture && !effects.moveToPosition && !effects.moveToRoom) return true;
+    if (
+      !effects.posture &&
+      !effects.moveToPosition &&
+      !effects.moveToRoom &&
+      !effects.moveToTargetPosition
+    ) return true;
 
     const posture = effects.posture ?? char.body.posture;
     if (posture !== "sitting" && posture !== "lying") return true;
 
-    const roomId = effects.moveToRoom ?? char.location.roomId;
-    const positionId = effects.moveToPosition ?? char.location.positionId;
+    const roomId = effects.moveToRoom ??
+      (effects.moveToTargetPosition && targetObjectId
+        ? this.objectInteractionEngine.getRoomId(targetObjectId)
+        : undefined) ??
+      char.location.roomId;
+    const positionId = effects.moveToTargetPosition && targetObjectId
+      ? this.objectInteractionEngine.getPositionId(targetObjectId)
+      : effects.moveToPosition ?? char.location.positionId;
+    if (!positionId) return false;
     const position = this.configLoader.getRoom(roomId)?.positions.find(
       (candidate) => candidate.id === positionId
     );
-    if (!position?.objectId) return true;
-    if (posture === "sitting" && !position.sittable) return true;
-    if (posture === "lying" && !position.lieable) return true;
+    if (position && posture === "sitting" && !position.sittable) return true;
+    if (position && posture === "lying" && !position.lieable) return true;
 
-    const occupant = this.stateManager.getObjectState(position.objectId).occupiedBy;
+    const occupancyObjectId = position?.objectId ??
+      this.objectInteractionEngine.getOccupancyObjectId(roomId, positionId) ??
+      (effects.moveToTargetPosition ? targetObjectId : undefined);
+    if (!occupancyObjectId) return true;
+    const occupant = this.stateManager.getObjectState(occupancyObjectId).occupiedBy;
     return !occupant || occupant === char.id;
   }
 
@@ -794,7 +845,7 @@ export class ActionEngine {
       this.stateManager.updateObjectState(previousObjectId, (objectState) => {
         if (objectState.occupiedBy !== char.id) return;
         objectState.occupiedBy = null;
-        const object = this.configLoader.getObject(previousObjectId);
+        const object = this.objectInteractionEngine.getObject(previousObjectId);
         const releasedState = ["rumpled", "available", "vacant", "neat"].find(
           (state) => object?.possibleStates.includes(state)
         );
@@ -805,7 +856,7 @@ export class ActionEngine {
     if (nextObjectId) {
       this.stateManager.updateObjectState(nextObjectId, (objectState) => {
         objectState.occupiedBy = char.id;
-        const object = this.configLoader.getObject(nextObjectId);
+        const object = this.objectInteractionEngine.getObject(nextObjectId);
         const occupiedState = char.body.posture === "lying"
           ? "occupied_lying"
           : "occupied_sitting";
@@ -827,9 +878,11 @@ export class ActionEngine {
     const position = this.configLoader.getRoom(roomId)?.positions.find(
       (candidate) => candidate.id === positionId
     );
-    if (!position?.objectId) return undefined;
-    if (posture === "sitting" && !position.sittable) return undefined;
-    if (posture === "lying" && !position.lieable) return undefined;
-    return position.objectId;
+    if (position) {
+      if (posture === "sitting" && !position.sittable) return undefined;
+      if (posture === "lying" && !position.lieable) return undefined;
+      if (position.objectId) return position.objectId;
+    }
+    return this.objectInteractionEngine.getOccupancyObjectId(roomId, positionId);
   }
 }

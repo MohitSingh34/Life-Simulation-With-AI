@@ -165,13 +165,15 @@ This is the AI layer.
 
 - `AIDecisionEngine.ts` decides what the AI should do next
 - `ConversationManager.ts` tracks active chats and conversation history
-- `GeminiWebProvider.ts` connects to the Gemini-based conversational layer when configured
+- `GeminiWebProvider.ts` sends dialogue through the local Gemini OpenAI-compatible API and uses each saved game conversation ID as its persistent Gemini session ID
 - `TagParser.ts` parses XML-style narrative tags for in-game text updates
-- `gemini_web_worker.py` supports the browser/AI bridge for Gemini interactions
+- `gemini_web_worker.py` contains the legacy direct Gemini browser bridge
 
 The AI is a companion layer: it can narrate and make recommendations, but the engine still owns the true in-game state.
 
-Aria can also perform configured physical actions. Her prompt receives the actions and target objects currently valid for her, and she can request an action using `&&action:<action_id>&&` or `&&action:<action_id>;target:<object_id>&&`. The engine validates and executes each command as Aria; movement and posture changes must use configured actions. The **Reset Needs** control restores both characters' initialized physical needs only—it preserves time, positions, objects, the home map, and conversations.
+The web server sends Gemini requests to `http://127.0.0.1:8001/v1/chat/completions` by default and always requests `gemini-2.5-flash` for game dialogue. Set `GEMINI_API_URL` to override the endpoint and `GEMINI_API_KEY` if the Gemini API server requires an API key. Keep the Gemini API server running; game conversations use stable IDs so switching and returning to a saved game conversation resumes its Gemini session. Static role and command instructions plus complete action, object, room, and home configuration are included on the first turn and every tenth turn. Every turn also includes both characters' current physical state, their valid actions, nearby objects, and a summary of simulation/configuration changes since the prior prompt.
+
+Aria also receives a Gemini check-in every 10 wall-clock minutes, using the active conversation's persistent session. Each prompt includes short action-category keywords and valid action/object IDs instead of the full tool documentation. She can request on-demand instructions with `&&help:<keyword>&&` or `&&help:<keyword1>,<keyword2>&&`; supported keywords include action IDs/categories and `home`, `map`, `objects`, and `ui`. After returning help, the game sends the details back to Aria so she can issue a command. Physical actions use `&&action:<action_id>&&` or `&&action:<action_id>;target:<object_id>&&`. The engine validates each command, chooses the nearest compatible target when none is specified, and executes movement and posture changes through configured actions. Floor-map movement saves the character's exact location; putting down an item places it at that location. `give_item_to_aria` hands a held item to Aria when she is in the same room and has a free hand. The map reflects authoritative character positions and posture, held items, object states, and occupancy; completed actions also get a brief map-side visual cue. Pending requests use a small, non-blocking loading indicator in the bottom-right corner. The **Reset Needs** control restores both characters' initialized physical needs only—it preserves time, positions, objects, the home map, and conversations.
 
 ### `src/ui/`
 The terminal presentation layer.

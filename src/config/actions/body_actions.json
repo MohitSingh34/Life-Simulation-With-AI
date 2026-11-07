@@ -95,13 +95,14 @@
     "description": "Sit on the ergonomic chair in front of the desk.",
     "category": "body",
     "duration": 2,
-    "requiresTarget": false,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
     "preconditions": {
       "roomId": "study_room",
       "posture": ["standing"]
     },
     "effects": {
-      "moveToPosition": "desk_chair",
+      "moveToTargetPosition": true,
       "posture": "sitting"
     },
     "successMessage": "You pull the desk chair out and sit comfortably at your workstation.",
@@ -113,13 +114,14 @@
     "description": "Sit on the tall stool near the kitchen counter.",
     "category": "body",
     "duration": 2,
-    "requiresTarget": false,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
     "preconditions": {
       "roomId": "kitchen",
       "posture": ["standing"]
     },
     "effects": {
-      "moveToPosition": "dining_chair",
+      "moveToTargetPosition": true,
       "posture": "sitting"
     },
     "successMessage": "You hop up onto the kitchen stool, resting your feet on the rung.",
@@ -159,13 +161,14 @@
     "description": "Take a comfortable seat on the living room sofa.",
     "category": "body",
     "duration": 2,
-    "requiresTarget": false,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
     "preconditions": {
       "roomId": "living_room",
       "posture": ["standing", "lying"]
     },
     "effects": {
-      "moveToPosition": "sofa_area",
+      "moveToTargetPosition": true,
       "posture": "sitting"
     },
     "successMessage": "You sink into the plush, welcoming cushions of the sofa.",
@@ -195,17 +198,17 @@
     "description": "Sit comfortably on the outdoor wicker cane armchair.",
     "category": "body",
     "duration": 2,
-    "requiresTarget": false,
+    "requiresTarget": true,
+    "targetTypes": ["furniture"],
     "preconditions": {
       "roomId": "balcony",
       "posture": ["standing"]
     },
     "effects": {
-      "moveToPosition": "cane_chair",
+      "moveToTargetPosition": true,
       "posture": "sitting"
     },
     "successMessage": "You settle down into the woven cane chair, feeling the cool breeze on your face.",
     "icon": "🪑"
   }
 ]
-

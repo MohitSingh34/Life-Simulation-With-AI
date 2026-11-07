@@ -46,21 +46,22 @@ export class GeminiWebProvider {
   private queue: Promise<void> = Promise.resolve();
 
   public get isConfigured(): boolean {
-    return Boolean(process.env.GEMINI_COOKIE_1PSID?.trim());
+    return Boolean(
+      process.env.GEMINI_API_URL?.trim() || process.env.GEMINI_COOKIE_1PSID?.trim()
+    );
   }
 
   public generateReply(prompt: string): Promise<string> {
-    const request = this.queue.then(() => this.sendOne({ prompt }));
+    return this.generateReplyForSession(prompt, "life-simulation");
+  }
+
+  public generateReplyForSession(prompt: string, sessionId: string): Promise<string> {
+    const request = this.queue.then(() => this.sendApiCompletion(prompt, sessionId));
     this.queue = request.then(
       () => undefined,
       () => undefined
     );
-    return request.then((res: WorkerMessage) => {
-      if (typeof res.text !== "string") {
-        throw new Error("Gemini returned an empty or invalid response.");
-      }
-      return res.text;
-    });
+    return request;
   }
 
   public listChats(): Promise<GeminiChatSummary[]> {
@@ -101,6 +102,67 @@ export class GeminiWebProvider {
 
   public close(): void {
     this.child?.stdin.end();
+  }
+
+  private async sendApiCompletion(prompt: string, sessionId: string): Promise<string> {
+    if (!this.isConfigured) {
+      throw new Error("Set GEMINI_API_URL or GEMINI_COOKIE_1PSID to enable Gemini.");
+    }
+
+    const endpoint =
+      process.env.GEMINI_API_URL?.trim() ||
+      "http://127.0.0.1:8001/v1/chat/completions";
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-Gemini-Client": "life-simulation",
+      "X-Gemini-Session-ID": `life-simulation:${sessionId}`,
+    };
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: "gemini-2.5-flash",
+        session_id: `life-simulation:${sessionId}`,
+        user: "life-simulation",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error(`Gemini API returned invalid JSON (HTTP ${response.status}).`);
+    }
+    if (!response.ok) {
+      const detail =
+        data && typeof data === "object" && "detail" in data
+          ? String(data.detail)
+          : `HTTP ${response.status}`;
+      throw new Error(`Gemini API request failed: ${detail}`);
+    }
+    if (
+      !data ||
+      typeof data !== "object" ||
+      !("choices" in data) ||
+      !Array.isArray(data.choices)
+    ) {
+      throw new Error("Gemini API returned an invalid chat completion.");
+    }
+
+    const message = data.choices[0]?.message;
+    if (
+      !message ||
+      typeof message !== "object" ||
+      !("content" in message) ||
+      typeof message.content !== "string"
+    ) {
+      throw new Error("Gemini API returned an empty or invalid response.");
+    }
+    return message.content;
   }
 
   private async sendOne(payload: Record<string, unknown>): Promise<WorkerMessage> {

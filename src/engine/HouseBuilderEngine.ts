@@ -125,15 +125,13 @@ export class HouseBuilderEngine {
 
     for (const obj of this.layout.placedObjects) {
       const existing = this.stateManager.getObjectState(obj.id);
-      if (!existing) {
-        this.stateManager.updateObjectState(obj.id, (state) => {
-          state.id = obj.id;
-          state.state = obj.state || "ready";
-          state.roomId = obj.roomId;
-          state.positionId = `${obj.roomId}_center`;
-          state.occupiedBy = null;
-        });
-      }
+      this.stateManager.updateObjectState(obj.id, (state) => {
+        state.id = obj.id;
+        if (!existing.roomId) state.state = obj.state || "ready";
+        state.roomId = obj.roomId;
+        state.positionId = obj.id;
+        state.occupiedBy = state.occupiedBy || null;
+      });
     }
   }
 

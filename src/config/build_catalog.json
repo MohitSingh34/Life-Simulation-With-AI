@@ -131,7 +131,7 @@
     "description": "High-back mesh chair with lumbar support and 360-degree swivel for focused work.",
     "defaultState": "empty",
     "possibleStates": ["empty", "occupied"],
-    "interactions": ["sit_down_chair", "stand_up"],
+    "interactions": ["sit_down_study_chair", "stand_up"],
     "isSolid": true
   },
   {
@@ -191,7 +191,7 @@
     "description": "Hand-woven rattan cane chair with a deep curve, perfect for looking out onto the street.",
     "defaultState": "empty",
     "possibleStates": ["empty", "occupied"],
-    "interactions": ["sit_balcony_chair", "stand_up"],
+    "interactions": ["sit_on_cane_chair", "stand_up"],
     "isSolid": true
   },
   {
@@ -600,4 +600,3 @@
     "isSolid": false
   }
 ]
-

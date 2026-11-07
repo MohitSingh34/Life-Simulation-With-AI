@@ -27,6 +27,10 @@ export interface ObjectConfig {
   currentState?: string;
   /** Portable items displayed as contents of this object */
   containedObjectIds?: string[];
+  /** Matching house-build template when this configured object has a map placement */
+  houseTemplateId?: string;
+  /** Specific default house placement represented by this configured object */
+  houseObjectId?: string;
 }
 
 /** Runtime state of an object */
@@ -35,6 +39,9 @@ export interface ObjectState {
   state: string;
   roomId?: string;
   positionId?: string;
+  /** Grid-space center where a portable object was last put down */
+  x?: number;
+  y?: number;
   heldBy?: string | null;
   /** Who is using this object right now? */
   occupiedBy: string | null;

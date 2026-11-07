@@ -9,6 +9,7 @@ import { EmotionEngine } from "./EmotionEngine.js";
 import { AIDecisionEngine } from "../ai/AIDecisionEngine.js";
 import { BodyStateEngine } from "./BodyStateEngine.js";
 import { HouseBuilderEngine } from "./HouseBuilderEngine.js";
+import { ObjectInteractionEngine } from "./ObjectInteractionEngine.js";
 import { AriaBuildPlanner } from "../ai/AriaBuildPlanner.js";
 import {
   CharacterState,
@@ -30,6 +31,7 @@ export class GameEngine {
   public aiEngine!: AIDecisionEngine;
   public bodyStateEngine!: BodyStateEngine;
   public houseBuilder!: HouseBuilderEngine;
+  public objectInteractionEngine!: ObjectInteractionEngine;
   public ariaBuildPlanner!: AriaBuildPlanner;
 
   public init(): void {
@@ -39,17 +41,23 @@ export class GameEngine {
     this.timeEngine = new TimeEngine(this.stateManager);
     this.needsEngine = new NeedsEngine(this.stateManager, this.configLoader);
     this.movementEngine = new MovementEngine(this.stateManager, this.configLoader);
+    this.houseBuilder = new HouseBuilderEngine(this.stateManager);
+    this.objectInteractionEngine = new ObjectInteractionEngine(
+      this.stateManager,
+      this.configLoader,
+      this.houseBuilder
+    );
     this.actionEngine = new ActionEngine(
       this.stateManager,
       this.configLoader,
       this.eventManager,
       this.movementEngine,
       this.needsEngine,
-      this.timeEngine
+      this.timeEngine,
+      this.objectInteractionEngine
     );
     this.emotionEngine = new EmotionEngine(this.stateManager);
     this.bodyStateEngine = new BodyStateEngine();
-    this.houseBuilder = new HouseBuilderEngine(this.stateManager);
     this.ariaBuildPlanner = new AriaBuildPlanner(this.houseBuilder);
     this.aiEngine = new AIDecisionEngine(
       this.stateManager,
@@ -66,6 +74,7 @@ export class GameEngine {
       this.configLoader.getCharacterTemplates(),
       this.configLoader.getAllObjects()
     );
+    this.houseBuilder.setStateManager(this.stateManager);
   }
 
   public getPlayer(): CharacterState {
@@ -176,10 +185,18 @@ export class GameEngine {
         const state = this.stateManager.getObjectState(object.id);
         return (state.roomId ?? object.roomId) === room.id && !state.heldBy;
       })
-      .map((object) => ({
-        ...object,
-        currentState: this.stateManager.getObjectState(object.id).state,
-      }));
+      .map((object) => {
+        const state = this.stateManager.getObjectState(object.id);
+        return {
+          ...object,
+          roomId: state.roomId ?? object.roomId,
+          positionId: state.positionId ?? object.positionId,
+          x: state.x,
+          y: state.y,
+          heldBy: state.heldBy ?? null,
+          currentState: state.state,
+        };
+      });
     const charactersPresent = this.stateManager.getCharactersInRoom(room.id);
 
     return {

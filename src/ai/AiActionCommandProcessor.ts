@@ -20,22 +20,29 @@ export interface AiActionCommandResult {
   outcomes: string[];
 }
 
-export function getAiActionOptions(engine: GameEngine): AiActionOption[] {
-  const ai = engine.getAI();
+export function getCharacterActionOptions(
+  engine: GameEngine,
+  characterId: string
+): AiActionOption[] {
+  const character = engine.stateManager.getCharacter(characterId);
+  if (!character) return [];
   const options: AiActionOption[] = [];
 
   for (const action of engine.configLoader.getAllActions()) {
-    if (action.requiresTarget) {
-      const targets = engine.configLoader.getAllObjects()
-        .filter((object) => object.interactions.includes(action.id))
+    if (action.requiresTarget || action.effects.moveToTargetPosition) {
+      const targets = engine.objectInteractionEngine
+        .getObjectsForAction(character.location.roomId, action.id)
         .flatMap((object) => {
           const state = engine.stateManager.getObjectState(object.id);
-          if ((state.roomId ?? object.roomId) !== ai.location.roomId && state.heldBy !== ai.id) {
+          if (
+            (state.roomId ?? object.roomId) !== character.location.roomId &&
+            state.heldBy !== character.id
+          ) {
             return [];
           }
 
           const result = engine.actionEngine.validateAction({
-            actorId: ai.id,
+            actorId: character.id,
             actionId: action.id,
             targetObjectId: object.id,
             timestamp: new Date().toISOString(),
@@ -60,7 +67,7 @@ export function getAiActionOptions(engine: GameEngine): AiActionOption[] {
     }
 
     const result = engine.actionEngine.validateAction({
-      actorId: ai.id,
+      actorId: character.id,
       actionId: action.id,
       timestamp: new Date().toISOString(),
     });
@@ -77,6 +84,10 @@ export function getAiActionOptions(engine: GameEngine): AiActionOption[] {
   }
 
   return options;
+}
+
+export function getAiActionOptions(engine: GameEngine): AiActionOption[] {
+  return getCharacterActionOptions(engine, engine.getAI().id);
 }
 
 export function executeAiActionCommands(
@@ -104,11 +115,6 @@ export function executeAiActionCommands(
       outcomes.push(`Action "${actionId}" is not configured.`);
       return "";
     }
-    if (action.requiresTarget && !targetObjectId) {
-      outcomes.push(`Action "${actionId}" needs a target object id.`);
-      return "";
-    }
-
     const result: ActionResult = engine.actionEngine.executeAction({
       actorId: engine.getAI().id,
       actionId,

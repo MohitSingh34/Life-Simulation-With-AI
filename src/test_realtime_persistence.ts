@@ -40,6 +40,21 @@ try {
   assert.equal(resumedEngine.getAI().needs.hunger, 31.2);
   assert.equal(resumedEngine.timeEngine.getFormattedClock(), "17:10");
   assert.equal(fs.readFileSync(path.join(temporaryDirectory, "timings.txt"), "utf8").trim().split("\n").length, 7);
+
+  const pingEngine = new GameEngine();
+  pingEngine.init();
+  const pingPersistence = new RealtimePersistence(
+    pingEngine,
+    path.join(temporaryDirectory, "scheduled-ping")
+  );
+  pingPersistence.start(start);
+  let pingCount = 0;
+  pingPersistence.setAriaPingHandler(async () => {
+    pingCount++;
+  });
+  pingPersistence.update(new Date(start.getTime() + 10 * 60_000));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(pingCount, 1);
 } finally {
   fs.rmSync(temporaryDirectory, { recursive: true, force: true });
 }

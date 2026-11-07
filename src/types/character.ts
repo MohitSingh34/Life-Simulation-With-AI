@@ -118,6 +118,12 @@ export interface CharacterState {
   location: {
     roomId: string;
     positionId: string;
+    /** Last exact map location, when movement was issued from the floor map */
+    mapPosition?: {
+      roomId: string;
+      x: number;
+      y: number;
+    };
   };
   body: CharacterBody;
   needs: CharacterNeeds;

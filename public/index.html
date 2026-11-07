@@ -11,6 +11,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body class="theme-morning weather-clear" data-time="morning" data-weather="clear">
+  <div id="game-processing-indicator" class="game-processing-indicator" role="status" aria-live="polite" aria-hidden="true" hidden>
+    <span class="game-processing-spinner" aria-hidden="true"></span>
+    <span id="game-processing-label">Working…</span>
+  </div>
+
   <!-- Dynamic Atmospheric Canvas (Rain, Fog, Dust Motes, Twinkling Stars) -->
   <canvas id="weather-canvas" class="weather-canvas" aria-hidden="true"></canvas>
 
@@ -275,8 +280,19 @@
       <!-- Aria Roommate Messenger Card (30% Glass) -->
       <div class="card aria-chat-card">
         <div class="aria-chat-header">
-          <div class="avatar-ring-sm aria-avatar-ring">
-            <span class="avatar-fallback-sm aria-fallback">A</span>
+          <div class="character-avatar-switcher" aria-label="Character details">
+            <div class="character-avatar-item">
+              <button id="aria-details-toggle" class="avatar-ring-sm aria-avatar-ring character-avatar-toggle" type="button" aria-label="Show Aria's details" aria-controls="aria-needs-box aria-out-of-sight" aria-expanded="false">
+                <span class="avatar-fallback-sm aria-fallback">A</span>
+              </button>
+              <span class="avatar-short-status">ARIA</span>
+            </div>
+            <div class="character-avatar-item">
+              <button id="player-details-toggle" class="avatar-ring-sm player-avatar-ring-sm character-avatar-toggle" type="button" aria-label="Show your details" aria-controls="player-details-panel" aria-expanded="false">
+                <span class="avatar-fallback-sm player-fallback-sm">M</span>
+              </button>
+              <span id="player-avatar-status" class="avatar-short-status">YOU</span>
+            </div>
           </div>
           <div class="aria-meta-col">
             <div class="aria-name-badge-row">
@@ -298,13 +314,39 @@
         </div>
 
         <!-- Out of line of sight notice (Shown when in different room) -->
-        <div id="aria-out-of-sight" class="aria-out-of-sight" style="display: none;">
+        <div id="aria-out-of-sight" class="aria-out-of-sight" hidden>
           <span class="sight-icon">👁️‍🗨️</span>
           <span id="aria-out-of-sight-text">Aria is in Study Room — physical state and needs are out of sight</span>
         </div>
 
-        <!-- Aria's Body Needs Panel (Visible only when in the same room) -->
-        <div class="aria-body-needs-box" id="aria-needs-box">
+        <!-- Character detail cards open from their avatar buttons -->
+        <div class="aria-body-needs-box" id="player-details-panel" hidden>
+          <div class="aria-needs-title-row">
+            <span class="section-eyebrow">YOUR BODY STATE</span>
+            <span id="player-body-status-pill" class="aria-status-pill">Present</span>
+          </div>
+          <p id="player-details-description" class="aria-body-description"></p>
+          <div class="aria-body-clothing">
+            <span class="wearing-title">Clothes</span>
+            <p id="player-details-clothing" class="wearing-desc"></p>
+          </div>
+          <div class="appearance-summary aria-appearance-summary">
+            <span class="wearing-title">Appearance</span>
+            <p id="player-details-appearance" class="appearance-values"></p>
+          </div>
+          <div class="aria-needs-label">BODY NEEDS</div>
+          <div class="player-details-needs-grid">
+            <span>Appetite <b data-player-need="hunger">—</b></span>
+            <span>Thirst <b data-player-need="thirst">—</b></span>
+            <span>Energy <b data-player-need="energy">—</b></span>
+            <span>Drowsiness <b data-player-need="sleepiness">—</b></span>
+            <span>Bladder <b data-player-need="bladder">—</b></span>
+            <span>Hygiene <b data-player-need="hygiene">—</b></span>
+          </div>
+        </div>
+
+        <!-- Aria's Body Needs Panel (Visible only when selected and in the same room) -->
+        <div class="aria-body-needs-box" id="aria-needs-box" hidden>
           <div class="aria-needs-title-row">
             <span class="section-eyebrow">ARIA'S BODY STATE</span>
             <span id="aria-body-status-pill" class="aria-status-pill">Satisfied &amp; Well</span>

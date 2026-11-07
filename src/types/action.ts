@@ -35,6 +35,8 @@ export interface ActionEffect {
   orientation?: string;
   /** Move character to a position */
   moveToPosition?: string;
+  /** Move character to the position associated with the selected target object */
+  moveToTargetPosition?: boolean;
   /** Move character to a room */
   moveToRoom?: string;
   /** Change an object's state */
@@ -45,6 +47,8 @@ export interface ActionEffect {
   pickUp?: boolean;
   /** Put down held object */
   putDown?: boolean;
+  /** Hand the held object to a specific companion in the same room */
+  transferToCharacterId?: string;
   /** Need changes (positive = increase, negative = decrease) */
   needChanges?: Partial<Record<string, number>>;
   /** Emotion changes (e.g. confidence, stress, happiness) */

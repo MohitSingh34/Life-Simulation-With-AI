@@ -23,6 +23,8 @@ export class RealtimePersistence {
   private lastAiPingCheckpointMs = 0;
   private lastLocalDate = "";
   private lastLoggedMinuteMs: number | null = null;
+  private ariaPingHandler?: () => Promise<void>;
+  private ariaPingInProgress = false;
 
   constructor(
     private readonly engine: GameEngine,
@@ -31,6 +33,10 @@ export class RealtimePersistence {
     this.dataDirectory = dataDirectory;
     this.statePath = path.join(dataDirectory, "game-state.json");
     this.timingsPath = path.join(dataDirectory, "timings.txt");
+  }
+
+  public setAriaPingHandler(handler: () => Promise<void>): void {
+    this.ariaPingHandler = handler;
   }
 
   public start(now = new Date()): void {
@@ -80,13 +86,26 @@ export class RealtimePersistence {
 
     let aiPingTriggered = false;
     if (elapsedSinceAiPing >= pingInterval) {
-      try {
-        this.engine.tickAutonomousAI();
-        aiPingTriggered = true;
-      } catch (err) {
-        console.warn("Autonomous AI tick failed:", err);
-      }
       this.lastAiPingCheckpointMs += Math.floor(elapsedSinceAiPing / pingInterval) * pingInterval * MINUTE_MS;
+      if (this.ariaPingHandler) {
+        if (!this.ariaPingInProgress) {
+          this.ariaPingInProgress = true;
+          void this.ariaPingHandler()
+            .catch((error) => {
+              console.error("Autonomous Aria check-in failed:", error);
+            })
+            .finally(() => {
+              this.ariaPingInProgress = false;
+            });
+        }
+      } else {
+        try {
+          this.engine.tickAutonomousAI();
+          aiPingTriggered = true;
+        } catch (error) {
+          console.warn("Autonomous AI tick failed:", error);
+        }
+      }
     }
 
     if (checkpointChanged) {

@@ -93,6 +93,38 @@ export class ConversationManager {
     );
   }
 
+  public getConversation(id: string): ConversationSession | null {
+    return this.sessions.get(id) ?? null;
+  }
+
+  public incrementPromptTurnCount(id: string): number {
+    const session = this.sessions.get(id);
+    if (!session) throw new Error(`Conversation "${id}" not found.`);
+    const metadata =
+      session.metadata && typeof session.metadata === "object" && !Array.isArray(session.metadata)
+        ? session.metadata as Record<string, unknown>
+        : {};
+    const savedCount = metadata.ariaPromptTurnCount;
+    const previousCount = typeof savedCount === "number" && Number.isInteger(savedCount) && savedCount >= 0
+      ? savedCount
+      : session.messages.filter((message) => message.sender === "player").length;
+    const nextCount = previousCount + 1;
+    session.metadata = { ...metadata, ariaPromptTurnCount: nextCount };
+    this.save();
+    return nextCount;
+  }
+
+  public setConversationMetadata(id: string, updates: Record<string, unknown>): void {
+    const session = this.sessions.get(id);
+    if (!session) throw new Error(`Conversation "${id}" not found.`);
+    const metadata =
+      session.metadata && typeof session.metadata === "object" && !Array.isArray(session.metadata)
+        ? session.metadata as Record<string, unknown>
+        : {};
+    session.metadata = { ...metadata, ...updates };
+    this.save();
+  }
+
   public selectConversation(id: string): ConversationSession | null {
     const session = this.sessions.get(id);
     if (session) {

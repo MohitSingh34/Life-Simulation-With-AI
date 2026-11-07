@@ -576,6 +576,24 @@
     "icon": "⬇️"
   },
   {
+    "id": "give_item_to_aria",
+    "name": "Give Held Item to Aria",
+    "description": "Hand the item you are holding to Aria when she is in the same room and has free hands.",
+    "category": "social",
+    "duration": 3,
+    "requiresTarget": false,
+    "preconditions": {
+      "holding": "any",
+      "requiresSharedRoom": true
+    },
+    "effects": {
+      "transferToCharacterId": "ai_001"
+    },
+    "successMessage": "You carefully hand the item to Aria.",
+    "failureMessage": "Aria needs a free hand before she can take the item.",
+    "icon": "🤝"
+  },
+  {
     "id": "make_bed",
     "name": "Make the Bed",
     "description": "Straighten the bedsheet, pull corners taut, and fluff up the pillows.",

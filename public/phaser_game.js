@@ -46,7 +46,6 @@ class HouseScene extends Phaser.Scene {
     this.cameraStartX = 0;
     this.cameraStartY = 0;
     this.pointerGesture = null;
-    this.pointerObjectTarget = null;
     this.selectedPlacedDisplay = null;
 
     // Rendered Display Object Maps
@@ -120,7 +119,7 @@ class HouseScene extends Phaser.Scene {
     });
 
     // Left drag pans the map; in Build & Edit, dragging an object moves it instead.
-    this.input.on('pointerdown', (pointer) => {
+    this.input.on('pointerdown', (pointer, currentlyOver = []) => {
       if (pointer.rightButtonDown()) return;
 
       const isMiddleButton = pointer.button === 1;
@@ -128,8 +127,17 @@ class HouseScene extends Phaser.Scene {
       if (!isMiddleButton && !isLeftButton) return;
 
       const forcePan = isMiddleButton || this.keySpace?.isDown === true;
-      const target = this.pointerObjectTarget;
-      this.pointerObjectTarget = null;
+      const targetDisplay = currentlyOver
+        .map((gameObject) => {
+          let candidate = gameObject;
+          while (candidate && !candidate.getData?.('objectData')) {
+            candidate = candidate.parentContainer;
+          }
+          return candidate;
+        })
+        .find(Boolean);
+      const objectData = targetDisplay?.getData('objectData');
+      const target = objectData ? { obj: objectData, display: targetDisplay } : null;
       const shouldMoveObject = isLeftButton && !forcePan && this.isBuildMode && !!target;
       const shouldPlaceItem = isLeftButton && !forcePan && this.isBuildMode && !!this.selectedCatalogItem && !target;
       const worldPoint = cam.getWorldPoint(pointer.x, pointer.y);
@@ -149,6 +157,10 @@ class HouseScene extends Phaser.Scene {
         grabOffsetX: object ? worldPoint.x - object.x * this.CELL_SIZE : 0,
         grabOffsetY: object ? worldPoint.y - object.y * this.CELL_SIZE : 0
       };
+      if (shouldMoveObject) {
+        this.cancelGhostPlacement();
+        this.selectPlacedObject(object, target.display);
+      }
       if (this.game.canvas) this.game.canvas.style.cursor = 'grabbing';
     });
 
@@ -187,17 +199,25 @@ class HouseScene extends Phaser.Scene {
     });
 
     // Keyboard Pan (WASD / Arrows)
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-    this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-    this.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
-    this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-    this.keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
-    this.keyEscape = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-    this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    const keyCodes = Phaser.Input.Keyboard.KeyCodes;
+    this.cursors = this.input.keyboard.addKeys({
+      up: keyCodes.UP,
+      down: keyCodes.DOWN,
+      left: keyCodes.LEFT,
+      right: keyCodes.RIGHT
+    }, false);
+    this.keyW = this.input.keyboard.addKey(keyCodes.W, false);
+    this.keyA = this.input.keyboard.addKey(keyCodes.A, false);
+    this.keyS = this.input.keyboard.addKey(keyCodes.S, false);
+    this.keyD = this.input.keyboard.addKey(keyCodes.D, false);
+    this.keyR = this.input.keyboard.addKey(keyCodes.R, false);
+    this.keyEscape = this.input.keyboard.addKey(keyCodes.ESC, false);
+    this.keySpace = this.input.keyboard.addKey(keyCodes.SPACE, false);
 
     // Rotate Ghost Key (R)
     this.keyR.on('down', () => {
+      if (this.isKeyboardInputFocused()) return;
+
       if (this.isBuildMode && this.selectedCatalogItem) {
         this.rotateGhost();
       } else if (this.isBuildMode && this.selectedPlacedObject) {
@@ -207,9 +227,18 @@ class HouseScene extends Phaser.Scene {
 
     // Deselect Key (Esc)
     this.keyEscape.on('down', () => {
+      if (this.isKeyboardInputFocused()) return;
+
       this.cancelGhostPlacement();
       this.deselectPlacedObject();
     });
+  }
+
+  isKeyboardInputFocused() {
+    const activeElement = document.activeElement;
+    return activeElement instanceof HTMLElement &&
+      (activeElement.isContentEditable ||
+        activeElement.matches('input, textarea, select'));
   }
 
   updateDraggedObject(gesture, pointer) {
@@ -429,6 +458,7 @@ class HouseScene extends Phaser.Scene {
     window.addEventListener('houseStateUpdated', (e) => {
       if (e.detail?.layout) this.updateLayout(e.detail.layout);
       if (e.detail?.characters) this.updateCharacters(e.detail.characters);
+      if (e.detail?.feedback) this.applyActionFeedback(e.detail.feedback);
     });
 
     window.addEventListener('setBuildMode', (e) => {
@@ -469,6 +499,8 @@ class HouseScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    if (this.isKeyboardInputFocused()) return;
+
     // Keyboard Camera Pan
     const cam = this.cameras.main;
     const speed = 8 / cam.zoom;
@@ -838,20 +870,159 @@ class HouseScene extends Phaser.Scene {
       box.strokeRoundedRect(-w / 2, -h / 2, w, h, cornerRadius);
     });
 
-    // Left Click Handling
-    container.on('pointerdown', (pointer) => {
-      if (pointer.rightButtonDown()) return; // Handled by canvas contextmenu
-      this.pointerObjectTarget = { obj, display: container };
-      if (this.isBuildMode) {
-        if (!this.keySpace?.isDown && pointer.button !== 1) {
-          this.cancelGhostPlacement();
-          this.selectPlacedObject(obj, container);
-        }
-      }
-    });
     container.on('pointerover', () => label.setVisible(true));
 
+    this.applyObjectStateVisual(container, obj);
     return container;
+  }
+
+  applyObjectStateVisual(container, object) {
+    const oldBadge = container.getData('stateBadge');
+    if (oldBadge) oldBadge.destroy();
+
+    const occupant = object.occupiedBy;
+    const occupantBadge = occupant === 'player_001'
+      ? '👨'
+      : occupant === 'ai_001'
+        ? '👩'
+        : null;
+    const stateBadges = {
+      on: '💡',
+      cooking: '🔥',
+      running: '💧',
+      running_tap: '💧',
+      foggy: '🌫️',
+      open: '↗',
+      with_food: '🍛',
+      dirty: '🧽',
+      filled_water: '💧',
+      half: '💧',
+      needs_water: '💧',
+      dry: '💧',
+      watered: '💦',
+      blooming: '🌸',
+      playing_music: '🎵',
+      occupied_lying: '🛌',
+      occupied_sitting: '🪑',
+      needs_flush: '⚠️',
+      has_clothes: '👕',
+      has_trash: '🗑️',
+      in_play: '♟️',
+    };
+    const badgeText = occupantBadge || stateBadges[object.state];
+    if (!badgeText) return;
+
+    const badge = this.add.text(
+      object.width * this.CELL_SIZE / 2 - 2,
+      -object.height * this.CELL_SIZE / 2 + 2,
+      badgeText,
+      {
+        fontFamily: 'Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif',
+        fontSize: '13px',
+        resolution: 2,
+        backgroundColor: 'rgba(8, 11, 18, 0.88)',
+        padding: { x: 3, y: 2 }
+      }
+    ).setOrigin(1, 0);
+    container.add(badge);
+    container.setData('stateBadge', badge);
+  }
+
+  applyPostureVisual(token, posture) {
+    const body = token?.getData('bodyGraphic');
+    if (!body) return;
+
+    const presets = {
+      standing: { scaleX: 1, scaleY: 1, angle: 0 },
+      sitting: { scaleX: 0.86, scaleY: 0.86, angle: 0 },
+      lying: { scaleX: 1.12, scaleY: 0.68, angle: -12 },
+      kneeling: { scaleX: 0.88, scaleY: 0.78, angle: 0 },
+      squatting: { scaleX: 0.8, scaleY: 0.72, angle: 0 },
+    };
+    const preset = presets[posture] || presets.standing;
+    this.tweens.killTweensOf(body);
+    this.tweens.add({
+      targets: body,
+      ...preset,
+      duration: 180,
+      ease: 'Sine.easeOut'
+    });
+  }
+
+  applyHeldItemVisual(token, icon) {
+    if (!token) return;
+    let badge = token.getData('heldBadge');
+    if (icon) {
+      if (!badge) {
+        badge = this.add.text(14, 8, icon, {
+          fontFamily: 'Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif',
+          fontSize: '13px',
+          resolution: 2,
+          backgroundColor: 'rgba(8, 11, 18, 0.88)',
+          padding: { x: 2, y: 1 }
+        }).setOrigin(0.5);
+        token.add(badge);
+        token.setData('heldBadge', badge);
+      } else {
+        badge.setText(icon);
+      }
+    } else if (badge) {
+      badge.destroy();
+      token.setData('heldBadge', null);
+    }
+  }
+
+  applyActionFeedback(feedback) {
+    const floatingText = feedback?.floatText;
+    const actor = floatingText?.actor || feedback?.actor;
+    const actorType = actor === 'ai_001' || actor === 'ai' ? 'ai' : 'player';
+    const token = this.characterTokens[actorType];
+    if (floatingText?.text && token) {
+      this.showFloatingText(
+        floatingText.text,
+        floatingText.x ?? token.x,
+        floatingText.y ?? token.y - 24,
+        floatingText.color || '#a7f3d0'
+      );
+    }
+
+    const flashCharacter = feedback?.flashCharacter;
+    const flashToken = this.characterTokens[
+      flashCharacter === 'ai_001' || flashCharacter === 'ai' ? 'ai' :
+        flashCharacter === 'player_001' || flashCharacter === 'player' ? 'player' : actorType
+    ];
+    if (flashToken) {
+      this.tweens.add({
+        targets: flashToken,
+        alpha: { from: 0.45, to: 1 },
+        duration: 120,
+        repeat: 2,
+        yoyo: true
+      });
+    }
+  }
+
+  showFloatingText(text, x, y, color = '#a7f3d0') {
+    const label = this.add.text(x, y, text, {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '13px',
+      resolution: 2,
+      fontWeight: '600',
+      color,
+      backgroundColor: 'rgba(8, 11, 18, 0.84)',
+      padding: { x: 7, y: 4 },
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5, 1);
+
+    this.tweens.add({
+      targets: label,
+      y: y - 28,
+      alpha: 0,
+      duration: 1200,
+      ease: 'Cubic.easeOut',
+      onComplete: () => label.destroy()
+    });
   }
 
   // ============================================================
@@ -859,6 +1030,11 @@ class HouseScene extends Phaser.Scene {
   // ============================================================
 
   renderCharacters() {
+    Object.values(this.characterTokens || {}).forEach((token) => {
+      if (!token) return;
+      token.getData('pulseTween')?.stop();
+      this.tweens.killTweensOf(token.getData('bodyGraphic'));
+    });
     this.characterContainer.removeAll(true);
     this.characterTokens = {
       player: this.createCharacterToken('player', 'Mohit', 0xf59e0b, 'M', '👨'),
@@ -878,7 +1054,7 @@ class HouseScene extends Phaser.Scene {
     container.add(pulseRing);
 
     // Tween pulse
-    this.tweens.add({
+    const pulseTween = this.tweens.add({
       targets: pulseRing,
       scaleX: 1.25,
       scaleY: 1.25,
@@ -888,14 +1064,16 @@ class HouseScene extends Phaser.Scene {
       yoyo: true,
       ease: 'Sine.easeInOut'
     });
+    container.setData('pulseTween', pulseTween);
 
     // Avatar Base Circle
+    const bodyGraphic = this.add.container(0, 0);
     const base = this.add.graphics();
     base.fillStyle(color, 1.0);
     base.fillCircle(0, 0, 12);
     base.lineStyle(2, 0xffffff, 0.95);
     base.strokeCircle(0, 0, 12);
-    container.add(base);
+    bodyGraphic.add(base);
 
     // Avatar Letter/Emoji
     const text = this.add.text(0, 0, emoji, {
@@ -904,7 +1082,9 @@ class HouseScene extends Phaser.Scene {
       resolution: 2
     });
     text.setOrigin(0.5, 0.5);
-    container.add(text);
+    bodyGraphic.add(text);
+    container.add(bodyGraphic);
+    container.setData('bodyGraphic', bodyGraphic);
 
     // Name & Posture Floating Tag
     const tagBg = this.add.graphics();
@@ -945,7 +1125,15 @@ class HouseScene extends Phaser.Scene {
     if (!this.layout) return;
 
     // Helper: find default or object center coordinates for a room/position
-    const resolveWorldCoords = (roomId, positionId) => {
+    const resolveWorldCoords = (character) => {
+      if (Number.isFinite(character.x) && Number.isFinite(character.y)) {
+        return {
+          x: character.x * this.CELL_SIZE,
+          y: character.y * this.CELL_SIZE
+        };
+      }
+
+      const { roomId, positionId } = character;
       // Check placed objects first
       if (this.layout?.placedObjects) {
         const obj = this.layout.placedObjects.find(
@@ -973,15 +1161,17 @@ class HouseScene extends Phaser.Scene {
 
     if (this.characterTokens.player && !this.isPlayerMoving) {
       const p = this.characterData.player;
-      const coords = resolveWorldCoords(p.roomId, p.positionId);
+      const coords = resolveWorldCoords(p);
       this.characterTokens.player.setPosition(coords.x, coords.y);
       const tag = this.characterTokens.player.getData('nameTag');
       if (tag) tag.setText(`Mohit (${p.posture || 'standing'})`);
+      this.applyPostureVisual(this.characterTokens.player, p.posture);
+      this.applyHeldItemVisual(this.characterTokens.player, p.holdingIcon);
     }
 
     if (this.characterTokens.ai && !this.isAiMoving) {
       const ai = this.characterData.ai;
-      let coords = resolveWorldCoords(ai.roomId, ai.positionId);
+      let coords = resolveWorldCoords(ai);
       // Slight offset if in same room & position
       if (
         this.characterData.player &&
@@ -993,6 +1183,8 @@ class HouseScene extends Phaser.Scene {
       this.characterTokens.ai.setPosition(coords.x, coords.y);
       const tag = this.characterTokens.ai.getData('nameTag');
       if (tag) tag.setText(`Aria (${ai.posture || 'studying'})`);
+      this.applyPostureVisual(this.characterTokens.ai, ai.posture);
+      this.applyHeldItemVisual(this.characterTokens.ai, ai.holdingIcon);
     }
   }
 
@@ -1107,18 +1299,33 @@ class HouseScene extends Phaser.Scene {
       .then((res) => res.json())
       .then((data) => {
         if (data.path && data.path.length > 0) {
+          const destination = data.path[data.path.length - 1];
           this.walkCharacterAlongPath('player', data.path, () => {
-            // If moved to a new room, execute walk action to synchronize simulation
-            if (window.gameState && window.gameState.player.location.roomId !== clickedRoom.id) {
-              if (typeof window.submitAction === 'function') {
-                window.submitAction(`walk_to_${clickedRoom.id}`);
-              }
+            const destinationRoom = this.layout.rooms.find((room) =>
+              destination.gridX >= room.x &&
+              destination.gridX < room.x + room.width &&
+              destination.gridY >= room.y &&
+              destination.gridY < room.y + room.height
+            )?.id || clickedRoom.id;
+            const syncPosition = () => window.syncPlayerMapPosition?.(
+              destinationRoom,
+              destination.gridX,
+              destination.gridY
+            );
+
+            if (window.gameState && window.gameState.player.location.roomId !== destinationRoom) {
+              Promise.resolve(window.submitAction?.(`walk_to_${destinationRoom}`))
+                .then((succeeded) => succeeded && syncPosition());
+            } else {
+              syncPosition();
             }
           });
         } else if (clickedRoom.id !== window.gameState?.player?.location?.roomId) {
           // Direct room step fallback
           if (typeof window.submitAction === 'function') {
-            window.submitAction(`walk_to_${clickedRoom.id}`);
+            window.submitAction(`walk_to_${clickedRoom.id}`)
+              .then((succeeded) => succeeded &&
+                window.syncPlayerMapPosition?.(clickedRoom.id, gridX, gridY));
           }
         }
       })
