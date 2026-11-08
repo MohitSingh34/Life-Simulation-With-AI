@@ -547,6 +547,7 @@ class HouseScene extends Phaser.Scene {
     this.renderDoorsAndWindows();
     this.renderPlacedObjects();
     this.renderGrid();
+    this.updateCharacterPositionsFromData();
   }
 
   /**
