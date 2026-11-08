@@ -1,0 +1,1 @@
+Working agent that is working on any new feature or similar should write tests and should not break the project. Test always at last if new thing implemented.
